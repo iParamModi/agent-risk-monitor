@@ -1,0 +1,1 @@
+"""Writes outputs/tables/*.md."""
