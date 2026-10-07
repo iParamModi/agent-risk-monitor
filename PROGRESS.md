@@ -15,7 +15,7 @@
 
 | Task | Who | Started | Status / Notes |
 |------|-----|---------|----------------|
-| <task name> | <name> | YYYY-MM-DD | <what's done so far, blockers> |
+| Step 7: external data (record schema, normalize R-Judge + ATBench, split, sample, risk types) | Meet | 2026-10-07 | Starting with `configs/schemas/record.schema.json` draft for team review |
 
 ## Next Up
 
@@ -36,4 +36,5 @@
 
 ## Activity Log (newest first)
 
+- 2026-10-07, Meet: started Step 7 (external data)
 - 2026-10-07, Meet: repo skeleton set up, raw R-Judge + ATBench downloaded and pushed
