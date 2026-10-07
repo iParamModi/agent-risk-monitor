@@ -55,3 +55,13 @@ GitHub is the single source of truth. `PROGRESS.md` is how we avoid doing the sa
 - Only work on tasks assigned to the current user in `PROGRESS.md`, unless the user says otherwise.
 - Do not edit files that another teammate is actively working on (see **In Progress**) without asking the user.
 - Keep `PROGRESS.md` short and accurate. It is what teammates check before starting work.
+
+## Team Workflow
+
+- **Before any task:** run `git pull --rebase --autostash`, read `PROGRESS.md`, and tell the user in 2-3 lines what is in progress (and by whom), what is done, and what is next.
+- If the requested task is already **Completed** or **In Progress by someone else**, warn the user before writing any code.
+- **When starting a task:** move it to **In Progress** in `PROGRESS.md` with the user's name and date, then commit and push only `PROGRESS.md`.
+- **After finishing a task:** move it to **Completed** (who, date, files changed), update **Next Up** (task + who), add an **Activity Log** line, then commit the code and `PROGRESS.md` and run `git pull --rebase --autostash && git push`.
+- Commit as the user (their git config). Never add Claude as author or co-author; never add `Co-Authored-By` or "Generated with Claude Code" lines.
+- Never use `git push --force`. On a conflict, stop and ask the user.
+- Never commit secrets (`.env`, keys), datasets, or model weights.
