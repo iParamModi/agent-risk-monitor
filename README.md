@@ -26,5 +26,5 @@ make external          # download R-Judge + ATBench into data/raw/
 make test
 ```
 
-`data/raw/`, `data/generated/`, `models/` and `outputs/runs/` are not in git.
-R-Judge has no licence file: never commit its raw files.
+`data/generated/`, `models/` and `outputs/runs/` are not in git.
+`data/raw/` (R-Judge + ATBench) is in git. R-Judge has no licence file, so keep this repo private.

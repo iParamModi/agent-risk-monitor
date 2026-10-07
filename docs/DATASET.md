@@ -53,7 +53,7 @@ Related files: `PLAN.md` (work steps) and `STRUCTURE.md` (where files go).
   - agent turn: `{role: "agent", thought, action}`
   - environment turn: `{role: "environment", content}`, where content can be null
   - 555 records have 1 round; the rest have 2–4 rounds.
-- **Licence:** the repository has **no licence file** and the README states no licence. So: research use only, never commit the raw files to our repository, and cite the paper (Yuan et al., 2024).
+- **Licence:** the repository has **no licence file** and the README states no licence. So: research use only, keep our repository private (the raw files are committed in `data/raw/r_judge/`), and cite the paper (Yuan et al., 2024).
 - **Important:** there is **no per-record risk-type field**. The 10 risk types appear only in the paper's figures. So we must label `risk_type` ourselves (section 2.5).
 - **Unit for splitting:** use the **file name** as the scenario (27 files = 27 scenarios, which matches the paper). Do not use the `scenario` field; it has 33 different values.
 

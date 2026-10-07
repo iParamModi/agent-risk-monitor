@@ -49,7 +49,7 @@ agentrisk-monitor/
 │       └── live.yaml
 │
 ├── data/
-│   ├── raw/                       # downloads exactly as received. NOT in git.
+│   ├── raw/                       # downloads exactly as received. In git (repo must stay private).
 │   │   ├── r_judge/               # cloned GitHub data (27 JSON files) + VERSION.txt
 │   │   └── atbench/               # ATBench/test.json from Hugging Face + VERSION.txt
 │   ├── external/                  # R-Judge + ATBench in OUR record format
@@ -279,9 +279,9 @@ data/seeds/ ─▶ data/generated/ (skeleton → draft → checks) ─▶ data/r
 2. **Hidden information never reaches a prompt.** `prompt_builder.py` reads only the `visible` part of a record and `policies.jsonl`. The test `test_prompt_has_no_hidden_fields.py` fails if a prompt contains hidden state, gold fields, or text from `policy_logic.yaml`.
 3. **Locked test files.** `test.jsonl` and `ood_test.jsonl` are hashed in `LOCKED_TEST.sha256`. `test_locked_test_set.py` fails if they change.
 4. **Runs are never overwritten.** Each run gets a new `run_id` folder with its config and commit hash.
-5. **What stays out of git** (listed in `.gitignore`): `data/raw/`, `data/generated/`, `models/`, `outputs/runs/`, `outputs/service_logs/`, `.env`. Share these through the team drive.
+5. **What stays out of git** (listed in `.gitignore`): `data/generated/`, `models/`, `outputs/runs/`, `outputs/service_logs/`, `.env`. Share these through the team drive.
 6. **What goes in git:** code, configs, prompts, seeds, policies, final records, labels, `outputs/tables/`, `results_sheet.csv`, docs and report.
-7. **R-Judge raw files are never committed.** The repository has no licence file. Commit only our normalized IDs and labels, and the script to rebuild the rest.
+7. **R-Judge raw files are committed, so this repository must stay private.** R-Judge has no licence file: research use only, never make the repo public or share the raw files outside the team, and cite the paper. If the repo ever goes public, remove `data/raw/r_judge/` from git history first.
 8. **Secrets only in `.env`.** Never paste a key into code, configs or notebooks.
 9. **Labels are fixed through code, not by hand.** If a gold label is wrong, fix the rule in `policy_logic.yaml` or the generator, then rebuild. This keeps labels reproducible.
 
@@ -315,7 +315,6 @@ The owner reviews every change to their folders.
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
-data/raw/
 data/generated/
 models/
 outputs/runs/

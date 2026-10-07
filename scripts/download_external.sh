@@ -7,18 +7,24 @@ cd "$(dirname "$0")/.."
 RAW=data/raw
 NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-# ---- R-Judge (GitHub, no licence file: research use only, never commit) ----
+# ---- R-Judge (GitHub, no licence file: research use only, keep our repo private) ----
 RJ_URL=https://github.com/Lordog/R-Judge.git
-mkdir -p "$RAW/r_judge"
-if [ ! -d "$RAW/r_judge/.git" ]; then
-  git clone --depth 1 "$RJ_URL" "$RAW/r_judge"
+if [ ! -f "$RAW/r_judge/VERSION.txt" ]; then
+  TMP=$(mktemp -d)
+  git clone --depth 1 "$RJ_URL" "$TMP/r_judge"
+  RJ_COMMIT=$(git -C "$TMP/r_judge" rev-parse HEAD)
+  # Drop the clone's .git so the files commit as plain files, not a submodule link.
+  rm -rf "$TMP/r_judge/.git"
+  mkdir -p "$RAW/r_judge"
+  cp -r "$TMP/r_judge/." "$RAW/r_judge/"
+  rm -rf "$TMP"
+  {
+    echo "source: $RJ_URL"
+    echo "commit: $RJ_COMMIT"
+    echo "downloaded_utc: $NOW"
+    echo "licence: none in repository (research use only, do not redistribute)"
+  } > "$RAW/r_judge/VERSION.txt"
 fi
-{
-  echo "source: $RJ_URL"
-  echo "commit: $(git -C "$RAW/r_judge" rev-parse HEAD)"
-  echo "downloaded_utc: $NOW"
-  echo "licence: none in repository (research use only, do not redistribute)"
-} > "$RAW/r_judge/VERSION.txt"
 
 # ---- ATBench (Hugging Face, Apache-2.0) ----
 ATB_REPO=AI45Research/ATBench
