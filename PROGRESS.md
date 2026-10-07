@@ -1,7 +1,7 @@
 # Project Progress
 
 > Check this file before starting any work. Update it and push to GitHub after every change.
-> Last updated: YYYY-MM-DD by <name>
+> Last updated: 2026-10-07 by Meet
 
 ## Team
 
@@ -9,7 +9,7 @@
 |------|-------------|
 | Prateek | |
 | Param | |
-| <Teammate 3> | |
+| Meet | |
 
 ## In Progress (currently running)
 
@@ -21,13 +21,14 @@
 
 | Task | Assigned To | Depends On | Notes |
 |------|-------------|------------|-------|
-| <task name> | <name> | <task, or none> | |
+| Step 2: lock all definitions (`docs/decisions.md` + configs) | Everyone (M1 writes) | none | Resolve the 17 open issues in PLAN.md; pick writer LLM + 2 agent LLMs; assign M1-M4 roles |
 
 ## Completed
 
 | Task | Done By | Date | Files Changed | Notes |
 |------|---------|------|---------------|-------|
-| <task name> | <name> | YYYY-MM-DD | `src/...` | <results, how to run> |
+| Step 1: repo skeleton (folders, stubs, Makefile, .gitignore, README) | Meet | 2026-10-07 | all of `STRUCTURE.md` tree, `docs/` | Still to do: Python 3.11 env, pin `requirements.txt`, real tests so `make test` passes |
+| Download raw R-Judge + ATBench (part of Step 7) | Meet | 2026-10-07 | `scripts/download_external.sh`, `data/raw/` | Counts match DATASET.md: R-Judge 571 (270 safe / 301 unsafe), ATBench 1,000 (503 / 497). Run `make external` |
 
 ## Blockers / Questions
 
@@ -35,4 +36,4 @@
 
 ## Activity Log (newest first)
 
-- YYYY-MM-DD, <name>: <one line of what changed>
+- 2026-10-07, Meet: repo skeleton set up, raw R-Judge + ATBench downloaded and pushed
