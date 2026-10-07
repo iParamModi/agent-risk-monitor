@@ -8,7 +8,7 @@
 | Name | Role / Area |
 |------|-------------|
 | Prateek | |
-| <Teammate 2> | |
+| Param | |
 | <Teammate 3> | |
 
 ## In Progress (currently running)
