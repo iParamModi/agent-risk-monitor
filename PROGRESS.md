@@ -15,7 +15,7 @@
 
 | Task | Who | Started | Status / Notes |
 |------|-----|---------|----------------|
-| Step 7: external data (record schema, normalize R-Judge + ATBench, split, sample, risk types) | Meet | 2026-10-07 | Done: record schema + normalize (571 + 1,000 records, 0 schema errors, `make external`). Next: split + 300 sample, then risk types |
+| Step 7: external data (record schema, normalize R-Judge + ATBench, split, sample, risk types) | Meet | 2026-10-07 | Done: schema, normalize, split + 150/150 train sample (`data/external/splits/`). Next: ATBench risk-type map, R-Judge risk types (LLM + human), token counts |
 
 ## Next Up
 
@@ -36,6 +36,7 @@
 
 ## Activity Log (newest first)
 
+- 2026-10-08, Meet: split external data by group. R-Judge 396/58/117 (seed 56), ATBench 700/100/200 (seed 44); 300-record train samples saved
 - 2026-10-08, Meet: pushed normalized external data (`data/external/`: 571 R-Judge + 1,000 ATBench records, jsonl + one file per record). `split` and UNSAFE `risk_type` still null
 - 2026-10-08, Meet: normalizer also writes one readable JSON file per record (`data/external/r_judge/`, `data/external/atbench/`)
 - 2026-10-08, Meet: record schema (`configs/schemas/record.schema.json`) + R-Judge/ATBench normalizer with tests
