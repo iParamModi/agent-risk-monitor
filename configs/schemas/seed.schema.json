@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "seed.schema.json",
+  "title": "Seed spec",
+  "description": "One hand-written in-domain or OOD seed. DATASET.md section 3.4, PLAN Step 8. DRAFT, not locked. A seed expands into 2-4 records: T1 -> A,B; T2 -> a,b,c,d; T3-T5 -> v1,v2.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["seed_id", "domain", "case_type", "proposed_action", "gold_policy_ids",
+               "start_state", "story_hint", "author", "reviewer"],
+  "properties": {
+    "seed_id": {
+      "description": "IND-<DOMAIN>-<TYPE>-<nnn>, e.g. IND-FILE-T1-001. Must match the file name.",
+      "type": "string",
+      "pattern": "^(IND|OOD)-[A-Z]+-T[1-5]-[0-9]{3}$"
+    },
+    "domain":    {"description": "CUST is OOD only.", "enum": ["FILE", "PRIV", "ACC", "FIN", "REPO", "CAL", "CUST"]},
+    "case_type": {"enum": ["T1", "T2", "T3", "T4", "T5"]},
+    "writer_style": {"description": "Optional style hint for the writer LLM, e.g. plain_office, terse_chat, formal_email.", "type": "string"},
+    "proposed_action": {"$ref": "#/$defs/call"},
+    "gold_policy_ids": {
+      "description": "One or more P_<DOMAIN>_<nn> IDs. These policies must exist in data/policies (Step 5) before records can be generated.",
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "pattern": "^P_[A-Z]+_[0-9]{2}$"}
+    },
+    "key_fact": {
+      "description": "The deciding hidden fact. Required for T1, T2, and T5 facts_disagree.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resource", "attribute"],
+      "properties": {
+        "resource":  {"type": "string"},
+        "attribute": {"type": "string"}
+      }
+    },
+    "start_state": {
+      "description": "Entities the simulator loads (PLAN Step 3). Fields per entity are documented in PLAN; only the shape is checked here.",
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "users":            {"type": "array", "items": {"type": "object"}},
+        "folders":          {"type": "array", "items": {"type": "object"}},
+        "files":            {"type": "array", "items": {"type": "object"}},
+        "repositories":     {"type": "array", "items": {"type": "object"}},
+        "accounts":         {"type": "array", "items": {"type": "object"}},
+        "contacts":         {"type": "array", "items": {"type": "object"}},
+        "events":           {"type": "array", "items": {"type": "object"}},
+        "customer_records": {"type": "array", "items": {"type": "object"}}
+      }
+    },
+    "hidden_pair": {
+      "description": "T1 only. A and B share the visible text but differ in one hidden fact and in the gold decision. Keys are '<resource>.<attribute>'.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["A", "B"],
+      "properties": {
+        "A": {"type": "object", "minProperties": 1},
+        "B": {"type": "object", "minProperties": 1}
+      }
+    },
+    "t2_subtypes": {
+      "description": "T2 only. a: fresh read, same resource (no check). b: read of a DIFFERENT resource (check). c: read then a write changed the resource (check). d: only the agent claims the fact (check).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["a", "b", "c", "d"],
+      "properties": {
+        "a": {"type": "object"},
+        "b": {"type": "object"},
+        "c": {"type": "object"},
+        "d": {"type": "object"}
+      }
+    },
+    "t5_kind": {"description": "T5 only.", "enum": ["policy_conflict", "facts_disagree"]},
+    "story_hint": {"description": "One line for the writer LLM. Must not reveal hidden values.", "type": "string", "minLength": 1},
+    "author":   {"type": "string", "minLength": 1},
+    "reviewer": {"description": "A teammate who did NOT write this seed (DATASET.md section 5).", "type": "string", "minLength": 1},
+    "notes":    {"description": "Optional free notes for teammates; never used by the generator.", "type": "string"}
+  },
+  "allOf": [
+    {
+      "if":   {"properties": {"case_type": {"const": "T1"}}},
+      "then": {"required": ["key_fact", "hidden_pair"]}
+    },
+    {
+      "if":   {"properties": {"case_type": {"const": "T2"}}},
+      "then": {"required": ["key_fact", "t2_subtypes"]}
+    },
+    {
+      "if":   {"properties": {"case_type": {"const": "T5"}}},
+      "then": {"required": ["t5_kind"]}
+    },
+    {
+      "if":   {"properties": {"case_type": {"const": "T5"}, "t5_kind": {"const": "facts_disagree"}}, "required": ["t5_kind"]},
+      "then": {"required": ["key_fact"]}
+    }
+  ],
+  "$defs": {
+    "call": {
+      "description": "An action or tool call: a name plus an args object.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "args"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "args": {"type": "object"}
+      }
+    }
+  }
+}
