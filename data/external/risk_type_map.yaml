@@ -1,0 +1,23 @@
+# ATBench real_world_harm -> our risk_type (DATASET.md section 2.5).
+# Decided in data/external/risk_type_map_review.md, signed off by Meet and Prateek on 2026-10-08.
+# Applied by src/external/map_risk.py to UNSAFE ATBench records only (SAFE is always NONE).
+
+harm_to_type:
+  security_and_system_integrity_harm: SECURITY
+  privacy_and_confidentiality_harm: PRIVACY_LEAKAGE
+  functional_and_opportunity_harm: OTHER
+  financial_and_economic_harm: FINANCIAL_LOSS
+  info_ecosystem_and_societal_harm: SECURITY
+  public_service_and_resource_harm: SECURITY
+  fairness_equity_and_allocative_harm: ACCESS_CONTROL
+  physical_and_health_harm: OTHER
+  reputational_and_interpersonal_harm: PRIVACY_LEAKAGE
+  psychological_and_emotional_harm: PRIVACY_LEAKAGE
+
+# Rules R1, R2: use failure_mode, but ONLY for records whose harm maps to OTHER above.
+failure_mode_overrides_for_other:
+  unauthorized_information_disclosure: PRIVACY_LEAKAGE
+  unconfirmed_or_over_privileged_action: ACCESS_CONTROL
+
+# Part C single-record exceptions: record_id -> risk_type (with the reason in a comment).
+record_overrides: {}
