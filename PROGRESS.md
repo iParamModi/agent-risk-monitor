@@ -36,6 +36,7 @@
 
 ## Activity Log (newest first)
 
+- 2026-10-08, Meet: normalizer also writes one readable JSON file per record (`data/external/r_judge/`, `data/external/atbench/`)
 - 2026-10-08, Meet: record schema (`configs/schemas/record.schema.json`) + R-Judge/ATBench normalizer with tests
 - 2026-10-07, Meet: started Step 7 (external data)
 - 2026-10-07, Meet: repo skeleton set up, raw R-Judge + ATBench downloaded and pushed

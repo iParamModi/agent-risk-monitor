@@ -1,7 +1,8 @@
 """Converts external records into our record format (DATASET.md section 2.4).
 
 Run: python -m src.external.normalize
-Writes data/external/r_judge.jsonl and data/external/atbench.jsonl. Every record is
+Writes data/external/r_judge.jsonl and data/external/atbench.jsonl (for code), plus one
+readable <record_id>.json per record in data/external/r_judge/ and data/external/atbench/. Every record is
 checked against configs/schemas/record.schema.json; failures are logged and skipped.
 split and risk_type (for UNSAFE) stay null here: sample.py and map_risk.py fill them.
 """
@@ -13,7 +14,7 @@ import unicodedata
 from collections import Counter
 from pathlib import Path
 
-from src.common.io import REPO_ROOT, write_json, write_jsonl
+from src.common.io import REPO_ROOT, write_json, write_jsonl, write_record_files
 from src.common.schema import schema_errors
 from src.external.load_atbench import load_atbench
 from src.external.load_rjudge import load_rjudge
@@ -156,8 +157,9 @@ def run(items, convert, name: str) -> tuple[list[dict], dict]:
 def main() -> int:
     rjudge, rj_stats = run(load_rjudge(), normalize_rjudge, "r_judge")
     atbench, atb_stats = run(load_atbench(), normalize_atbench, "atbench")
-    write_jsonl(OUT_DIR / "r_judge.jsonl", rjudge)
-    write_jsonl(OUT_DIR / "atbench.jsonl", atbench)
+    for name, records in (("r_judge", rjudge), ("atbench", atbench)):
+        write_jsonl(OUT_DIR / f"{name}.jsonl", records)
+        write_record_files(OUT_DIR / name, records)
     write_json(REPORT, {"r_judge": rj_stats, "atbench": atb_stats})
     for name, s in (("r_judge", rj_stats), ("atbench", atb_stats)):
         print(f"{name}: {s['records']} records ({s['safe']} safe / {s['unsafe']} unsafe), "

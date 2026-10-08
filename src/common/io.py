@@ -24,6 +24,19 @@ def write_jsonl(path: str | Path, rows: Iterable[dict]) -> int:
     return n
 
 
+def write_record_files(folder: str | Path, records: Iterable[dict]) -> int:
+    """One pretty-printed <record_id>.json per record, for reading by hand. Old .json files are removed first."""
+    folder = Path(folder)
+    folder.mkdir(parents=True, exist_ok=True)
+    for old in folder.glob("*.json"):
+        old.unlink()
+    n = 0
+    for rec in records:
+        write_json(folder / f"{rec['record_id']}.json", rec)
+        n += 1
+    return n
+
+
 def write_json(path: str | Path, obj) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
