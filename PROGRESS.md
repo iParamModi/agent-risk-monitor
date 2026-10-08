@@ -1,7 +1,7 @@
 # Project Progress
 
 > Check this file before starting any work. Update it and push to GitHub after every change.
-> Last updated: 2026-10-07 by Meet
+> Last updated: 2026-10-08 by Meet
 
 ## Team
 
@@ -15,7 +15,7 @@
 
 | Task | Who | Started | Status / Notes |
 |------|-----|---------|----------------|
-| Step 7: external data (record schema, normalize R-Judge + ATBench, split, sample, risk types) | Meet | 2026-10-07 | Starting with `configs/schemas/record.schema.json` draft for team review |
+| Step 7: external data (record schema, normalize R-Judge + ATBench, split, sample, risk types) | Meet | 2026-10-07 | Done: record schema + normalize (571 + 1,000 records, 0 schema errors, `make external`). Next: split + 300 sample, then risk types |
 
 ## Next Up
 
@@ -36,5 +36,6 @@
 
 ## Activity Log (newest first)
 
+- 2026-10-08, Meet: record schema (`configs/schemas/record.schema.json`) + R-Judge/ATBench normalizer with tests
 - 2026-10-07, Meet: started Step 7 (external data)
 - 2026-10-07, Meet: repo skeleton set up, raw R-Judge + ATBench downloaded and pushed

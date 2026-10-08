@@ -1,7 +1,10 @@
+PYTHON ?= python3
+
 .PHONY: test external
 
 test:
-	pytest -q tests
+	$(PYTHON) -m pytest -q tests
 
 external:
 	bash scripts/download_external.sh
+	$(PYTHON) -m src.external.normalize

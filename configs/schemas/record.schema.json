@@ -1,0 +1,188 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "record.schema.json",
+  "title": "Record",
+  "description": "One data record: ours (task=decide_action) or external R-Judge/ATBench (task=judge_trajectory). DATASET.md section 4. DRAFT, not locked.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["record_id", "seed_id", "source", "set", "split", "domain", "case_type",
+               "subtype", "pair_side", "version", "task", "visible", "hidden", "gold", "meta"],
+  "properties": {
+    "record_id": {
+      "description": "Ours: <seed_id>-<A|B|a|b|c|d|v1|v2>. R-Judge: RJ-<file stem>-<id>. ATBench: ATB-<id>.",
+      "type": "string",
+      "pattern": "^((IND|OOD)-[A-Z]+-T[1-5]-[0-9]{3}-(A|B|a|b|c|d|v1|v2)|RJ-[A-Za-z0-9_]+-[0-9]+|ATB-[0-9]+)$"
+    },
+    "seed_id": {
+      "description": "Splitting / bootstrap unit. Ours: IND-PRIV-T2-014. R-Judge: RJ-scn-<file stem>. ATBench: ATB-grp-<8 hex of tool-group hash>.",
+      "type": "string",
+      "pattern": "^((IND|OOD)-[A-Z]+-T[1-5]-[0-9]{3}|RJ-scn-[A-Za-z0-9_]+|ATB-grp-[0-9a-f]{8})$"
+    },
+    "source":    {"description": "Where the record comes from.", "enum": ["ours", "r_judge", "atbench"]},
+    "set":       {"description": "in_domain / ood for ours, external for R-Judge and ATBench.", "enum": ["in_domain", "ood", "external"]},
+    "split":     {"description": "null until the split step has run.", "enum": ["train", "val", "test", null]},
+    "domain":    {"description": "Ours only. CUST is OOD only.", "enum": ["FILE", "PRIV", "ACC", "FIN", "REPO", "CAL", "CUST", null]},
+    "case_type": {"description": "Ours only.", "enum": ["T1", "T2", "T3", "T4", "T5", null]},
+    "subtype":   {"description": "T2 only.", "enum": ["a", "b", "c", "d", null]},
+    "pair_side": {"description": "T1 only.", "enum": ["A", "B", null]},
+    "version":   {"description": "T3-T5 only.", "enum": ["v1", "v2", null]},
+    "task":      {"description": "decide_action = judge one proposed action (ours). judge_trajectory = judge the whole conversation (external).",
+                  "enum": ["decide_action", "judge_trajectory"]},
+    "visible": {
+      "description": "The ONLY part the monitor ever sees.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["trajectory", "proposed_action"],
+      "properties": {
+        "trajectory": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/message"}},
+        "proposed_action": {"description": "null for external records.", "oneOf": [{"type": "null"}, {"$ref": "#/$defs/call"}]}
+      }
+    },
+    "hidden": {
+      "description": "Simulator state. Never in a prompt. null for external records.",
+      "oneOf": [
+        {"type": "null"},
+        {"type": "object", "additionalProperties": false, "required": ["state", "key_facts"],
+         "properties": {"state": {"type": "object"}, "key_facts": {"type": "object"}}}
+      ]
+    },
+    "gold": {"$ref": "#/$defs/gold"},
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["n_tokens", "ood_shift"],
+      "properties": {
+        "writer_llm":        {"description": "Ours: writer LLM name + version.", "type": ["string", "null"]},
+        "generator_version": {"type": ["string", "null"]},
+        "n_tokens":          {"description": "Qwen3 tokenizer count of the visible part. null until the tokenizer is installed.", "type": ["integer", "null"], "minimum": 0},
+        "ood_shift":         {"type": "array", "uniqueItems": true, "items": {"enum": ["new_tools", "new_wording", "new_style", "new_values"]}},
+        "category":          {"description": "R-Judge folder: Application, Finance, IoT, Program, Web.", "type": ["string", "null"]},
+        "attack_type":       {"description": "R-Judge only.", "enum": ["injection", "unintended", null]},
+        "source_file":       {"description": "External only: raw file path, for spot checks.", "type": ["string", "null"]},
+        "source_id":         {"description": "External only: id in the raw file.", "type": ["integer", "string", "null"]}
+      }
+    }
+  },
+  "$defs": {
+    "call": {
+      "description": "A structured tool call or proposed action.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "args"],
+      "properties": {"name": {"type": "string", "minLength": 1}, "args": {"type": "object"}}
+    },
+    "message": {
+      "description": "One turn. R-Judge free-text actions and ATBench Complete{...} answers go in action_text; ATBench JSON {name, arguments} actions go in tool_call.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "text", "tool_call", "action_text"],
+      "properties": {
+        "role":        {"enum": ["context", "user", "agent", "tool"]},
+        "text":        {"type": "string"},
+        "tool_call":   {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/call"}]},
+        "action_text": {"type": ["string", "null"]}
+      }
+    },
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tool", "args"],
+      "properties": {"tool": {"type": "string", "pattern": "^check_[a-z_]+$"}, "args": {"type": "object"}}
+    },
+    "gold": {
+      "description": "Correct answers. Never in a prompt.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision", "risk_label", "risk_type", "risk_cause", "check_needed", "required_checks",
+                   "missing_fact", "policy_ids", "evidence", "source_note", "source_taxonomy"],
+      "properties": {
+        "decision":        {"enum": ["ALLOW", "ASK_CONFIRMATION", "BLOCK", "ESCALATE", null]},
+        "risk_label":      {"enum": ["SAFE", "UNSAFE"]},
+        "risk_type":       {"description": "null only while R-Judge human review is unfinished.",
+                            "enum": ["DATA_LOSS", "PRIVACY_LEAKAGE", "FINANCIAL_LOSS", "ACCESS_CONTROL", "SECURITY", "OTHER", "NONE", null]},
+        "risk_cause":      {"enum": ["ENVIRONMENT_STATE", "USER_REQUEST", "AGENT_ERROR", "POLICY_CONFLICT", "UNTRUSTED_CONTENT", "NONE", null]},
+        "check_needed":    {"type": ["boolean", "null"]},
+        "required_checks": {"oneOf": [{"type": "null"}, {"type": "array", "maxItems": 2, "items": {"$ref": "#/$defs/check"}}]},
+        "missing_fact":    {"description": "Template: '<attribute> of <resource>'.", "type": ["string", "null"]},
+        "policy_ids":      {"oneOf": [{"type": "null"}, {"type": "array", "items": {"type": "string", "pattern": "^P_[A-Z]+_[0-9]{2}(_R)?$"}}]},
+        "evidence": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "object", "additionalProperties": false, "required": ["facts", "policy_ids"],
+             "properties": {"facts": {"type": "array", "items": {"type": "string"}},
+                            "policy_ids": {"type": "array", "items": {"type": "string"}}}}
+          ]
+        },
+        "source_note":     {"description": "External explanation (R-Judge risk_description, ATBench reason). NEVER in model input.", "type": ["string", "null"]},
+        "source_taxonomy": {
+          "description": "ATBench unsafe only. null for SAFE (ATBench fills these even for safe records; we drop them).",
+          "oneOf": [
+            {"type": "null"},
+            {"type": "object", "additionalProperties": false, "required": ["risk_source", "failure_mode", "real_world_harm"],
+             "properties": {"risk_source": {"type": "string"}, "failure_mode": {"type": "string"}, "real_world_harm": {"type": "string"}}}
+          ]
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "description": "External records: no action, no hidden state, no decision or check fields.",
+      "if": {"properties": {"task": {"const": "judge_trajectory"}}},
+      "then": {"properties": {
+        "source": {"enum": ["r_judge", "atbench"]},
+        "set": {"const": "external"},
+        "domain": {"type": "null"}, "case_type": {"type": "null"}, "subtype": {"type": "null"},
+        "pair_side": {"type": "null"}, "version": {"type": "null"},
+        "hidden": {"type": "null"},
+        "visible": {"properties": {"proposed_action": {"type": "null"}}},
+        "gold": {"properties": {
+          "decision": {"type": "null"}, "check_needed": {"type": "null"}, "required_checks": {"type": "null"},
+          "missing_fact": {"type": "null"}, "policy_ids": {"type": "null"}, "evidence": {"type": "null"},
+          "risk_cause": {"type": "null"}}}
+      }}
+    },
+    {
+      "description": "Our records: action, hidden state, decision and check fields are all required.",
+      "if": {"properties": {"task": {"const": "decide_action"}}},
+      "then": {"properties": {
+        "source": {"const": "ours"},
+        "set": {"enum": ["in_domain", "ood"]},
+        "domain": {"type": "string"}, "case_type": {"type": "string"},
+        "hidden": {"type": "object"},
+        "visible": {"properties": {"proposed_action": {"$ref": "#/$defs/call"}}},
+        "gold": {"properties": {
+          "decision": {"enum": ["ALLOW", "ASK_CONFIRMATION", "BLOCK", "ESCALATE"]},
+          "check_needed": {"type": "boolean"},
+          "risk_type": {"type": "string"},
+          "risk_cause": {"type": "string"},
+          "policy_ids": {"type": "array"},
+          "evidence": {"type": "object"}}}
+      }}
+    },
+    {
+      "description": "SAFE always has risk_type NONE and no source taxonomy.",
+      "if": {"properties": {"gold": {"properties": {"risk_label": {"const": "SAFE"}}}}},
+      "then": {"properties": {"gold": {"properties": {"risk_type": {"const": "NONE"}, "source_taxonomy": {"type": "null"}}}}}
+    },
+    {
+      "description": "UNSAFE never has risk_type NONE.",
+      "if": {"properties": {"gold": {"properties": {"risk_label": {"const": "UNSAFE"}}}}},
+      "then": {"properties": {"gold": {"properties": {"risk_type": {"not": {"const": "NONE"}}}}}}
+    },
+    {
+      "description": "Our data: risk_label follows the decision (UNSAFE if not ALLOW).",
+      "if": {"properties": {"task": {"const": "decide_action"}, "gold": {"properties": {"decision": {"const": "ALLOW"}}}}},
+      "then": {"properties": {"gold": {"properties": {"risk_label": {"const": "SAFE"}}}}},
+      "else": {"if": {"properties": {"task": {"const": "decide_action"}}},
+               "then": {"properties": {"gold": {"properties": {"risk_label": {"const": "UNSAFE"}}}}}}
+    },
+    {
+      "description": "Our data: required_checks present exactly when a check is needed.",
+      "if": {"properties": {"task": {"const": "decide_action"}, "gold": {"properties": {"check_needed": {"const": true}}}}},
+      "then": {"properties": {"gold": {"properties": {"required_checks": {"type": "array", "minItems": 1}, "missing_fact": {"type": "string"}}}}},
+      "else": {"if": {"properties": {"task": {"const": "decide_action"}}},
+               "then": {"properties": {"gold": {"properties": {"required_checks": {"type": "null"}, "missing_fact": {"type": "null"}}}}}}
+    }
+  ]
+}
