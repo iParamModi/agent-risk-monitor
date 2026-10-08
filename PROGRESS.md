@@ -15,13 +15,15 @@
 
 | Task | Who | Started | Status / Notes |
 |------|-----|---------|----------------|
-| Step 7: external data (record schema, normalize R-Judge + ATBench, split, sample, risk types) | Meet | 2026-10-07 | Done: schema, normalize, split + 150/150 train sample, ATBench risk types. Next: R-Judge risk types (LLM + human), token counts, spot check |
+| Step 7: external data (record schema, normalize R-Judge + ATBench, split, sample, risk types) | Meet | 2026-10-07 | Done: schema, normalize, split + sample, ATBench risk types, R-Judge LLM suggestions (237 records). Next: human review of R-Judge types, token counts, spot check |
 | Step 8: in-domain seed specs (FILE domain, `data/seeds/in_domain/`) | Param | 2026-10-08 | Drafting seeds ahead of Steps 2/5; `gold_policy_ids` are stubbed (P_FILE_*) until policies are written. Adding `configs/schemas/seed.schema.json` + validator. Starting with 1 seed per case type (T1-T5) |
 
 ## Next Up
 
 | Task | Assigned To | Depends On | Notes |
 |------|-------------|------------|-------|
+| R-Judge risk types: fill `human_final` in `data/external/risk_type_review.csv` (237 rows, low/medium confidence first) | Meet | none | Leave `human_final` = suggestion if you agree; set `changed` = yes and a note if not |
+| R-Judge blind double check: fill `reviewer_b_type` in `data/external/risk_type_double_check.csv` (30 rows) | Prateek | none | Do NOT open `risk_type_review.csv` first; read each record file and pick one type |
 | Step 2: lock all definitions (`docs/decisions.md` + configs) | Everyone (M1 writes) | none | Resolve the 17 open issues in PLAN.md; pick writer LLM + 2 agent LLMs; assign M1-M4 roles |
 
 ## Completed
@@ -38,6 +40,7 @@
 
 ## Activity Log (newest first)
 
+- 2026-10-08, Meet: Claude suggested risk types for 237 used unsafe R-Judge records (`risk_type_review.csv`); 30-item blind double-check sheet for Prateek
 - 2026-10-08, Meet: ATBench risk-type map signed off (Meet + Prateek) and applied to all 497 unsafe records
 - 2026-10-08, Meet: ATBench risk-type review sheet added and reviewed by Meet; Prateek is Reviewer 2
 - 2026-10-08, Param: started Step 8, drafting FILE-domain seed specs (one per case type T1-T5) for review
