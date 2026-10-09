@@ -17,7 +17,7 @@
 | Task | Who | Started | Status / Notes |
 |------|-----|---------|----------------|
 | Step 7: external data (record schema, normalize R-Judge + ATBench, split, sample, risk types) | Meet | 2026-10-07 | Done: schema, normalize, split + sample, ATBench risk types, R-Judge LLM suggestions (237 records). Next: human review of R-Judge types, token counts, spot check |
-| Step 8: in-domain seed specs (`data/seeds/in_domain/`) | Param | 2026-10-08 | All 150 seeds generated, schema-valid. Policies stubbed (P_*) until Step 5. **All T1 (60, all 6 domains) reviewed + pushed.** Reviewing T2-T5 next (held local until reviewed). `docs/Policy.md` drafted as the consistent policy/permission catalogue (held) |
+| Step 8: in-domain seed specs (`data/seeds/in_domain/`) | Param | 2026-10-08 | All 150 seeds generated, schema-valid. Policies stubbed (P_*) until Step 5. **All T1 (60) reviewed + pushed.** **T2-T5 (90) now pushed as NOT-reviewed (`reviewer: TBD`) for the team to review** + `docs/Policy.md` (the consistent policy/permission catalogue) pushed. Generators `scripts/gen_seeds.py` + `gen_policy.py` pushed |
 
 ## Next Up
 
@@ -25,6 +25,8 @@
 |------|-------------|------------|-------|
 | R-Judge risk types: fill `human_final` in `data/external/risk_type_review.csv` (237 rows, low/medium confidence first) | Meet | none | Leave `human_final` = suggestion if you agree; set `changed` = yes and a note if not |
 | R-Judge blind double check: fill `reviewer_b_type` in `data/external/risk_type_double_check.csv` (30 rows) | Prateek | none | Do NOT open `risk_type_review.csv` first; read each record file and pick one type |
+| Verify T2 + T3 seeds (`data/seeds/in_domain/IND-*-T2-*.yaml`, `*-T3-*.yaml`) | Moiesha | Step 8 T1 | Pushed but NOT reviewed (`reviewer: TBD`). Check each against `docs/Policy.md` (policy intent + expected gold in each seed's `notes`); set `reviewer: Moiesha` when OK. T2 = 4-subtype trust-rule cases; T3 = clearly-safe/ALLOW |
+| Verify T4 + T5 seeds | (unassigned) | Step 8 T1 | Pushed, `reviewer: TBD`. T4 = clearly-unsafe/BLOCK; T5 = conflict/facts-disagree/ESCALATE |
 | Step 2: lock all definitions (`docs/decisions.md` + configs) | Everyone (M1 writes) | none | Resolve the 17 open issues in PLAN.md; pick writer LLM + 2 agent LLMs; assign M1-M4 roles |
 
 ## Completed
@@ -42,6 +44,7 @@
 
 ## Activity Log (newest first)
 
+- 2026-10-10, Param: pushed T2-T5 (90 seeds, `reviewer: TBD`) + `docs/Policy.md` + generators for team review; assigned T2/T3 verification to Moiesha
 - 2026-10-09, Param: reviewed + pushed all T1 seeds (60, 6 domains); diversified facts + counter-direction cases; `docs/Policy.md` catalogue drafted (held). T2-T5 under review
 - 2026-10-08, Param: reviewed + pushed FILE-domain T1 seeds (14); seed schema + validator added. Other seeds held local pending review
 - 2026-10-08, Meet: Claude suggested risk types for 237 used unsafe R-Judge records (`risk_type_review.csv`); 30-item blind double-check sheet for Prateek
