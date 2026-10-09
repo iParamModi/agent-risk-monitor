@@ -58,10 +58,10 @@ GitHub is the single source of truth. `PROGRESS.md` is how we avoid doing the sa
 
 ## Team Workflow
 
-- Before any task: run `git pull --rebase --autostash`, read PROGRESS.md, and tell me in 2-3 lines what is in progress (and by whom), what is done, and what is next.
-- If my task is already Completed or In Progress by someone else, warn me before coding.
-- When starting a task: move it to In Progress in PROGRESS.md with my name and date, then commit and push only PROGRESS.md.
-- After finishing a task: move it to Completed (who, date, files changed), update Next Up (task + who), add an Activity Log line, then commit the code and PROGRESS.md and run `git pull --rebase --autostash && git push`.
-- Commit as the user (their git config). Never add Claude as author or co-author, never add Co-Authored-By or "Generated with Claude Code" lines.
+- **Before any task:** run `git pull --rebase --autostash`, read `PROGRESS.md`, and tell me in 2-3 lines what is in progress (and by whom), what is done, and what is next.
+- If my task is already **Completed** or **In Progress by someone else**, warn me before coding.
+- **When starting a task:** move it to **In Progress** in `PROGRESS.md` with my name and date, then commit and push only `PROGRESS.md`.
+- **After finishing a task:** move it to **Completed** (who, date, files changed), update **Next Up** (task + who), add an **Activity Log** line, then commit the code and `PROGRESS.md` and run `git pull --rebase --autostash && git push`.
+- Commit as the user (their git config). Never add Claude as author or co-author, never add `Co-Authored-By` or "Generated with Claude Code" lines.
 - Never use `git push --force`. On a conflict, stop and ask me.
-- Never commit secrets (.env, keys), datasets, or model weights.
+- Never commit secrets (`.env`, keys), datasets, or model weights.
