@@ -16,7 +16,7 @@
 | Task | Who | Started | Status / Notes |
 |------|-----|---------|----------------|
 | Step 7: external data (record schema, normalize R-Judge + ATBench, split, sample, risk types) | Meet | 2026-10-07 | Done: schema, normalize, split + sample, ATBench risk types, R-Judge LLM suggestions (237 records). Next: human review of R-Judge types, token counts, spot check |
-| Step 8: in-domain seed specs (`data/seeds/in_domain/`) | Param | 2026-10-08 | All 150 seeds generated (6 domains x T1-T5, `scripts/gen_seeds.py`), schema-valid. Policies stubbed (P_*) until Step 5. Reviewing per cell: **FILE T1 (14) reviewed + pushed**; rest held locally until reviewed |
+| Step 8: in-domain seed specs (`data/seeds/in_domain/`) | Param | 2026-10-08 | All 150 seeds generated, schema-valid. Policies stubbed (P_*) until Step 5. **All T1 (60, all 6 domains) reviewed + pushed.** Reviewing T2-T5 next (held local until reviewed). `docs/Policy.md` drafted as the consistent policy/permission catalogue (held) |
 
 ## Next Up
 
@@ -30,7 +30,7 @@
 
 | Task | Done By | Date | Files Changed | Notes |
 |------|---------|------|---------------|-------|
-| Step 8: FILE-domain T1 seeds (14) authored + reviewed | Param | 2026-10-08 | `data/seeds/in_domain/IND-FILE-T1-0{01..14}.yaml`, `configs/schemas/seed.schema.json`, `scripts/validate_seeds.py` | Hidden-state pairs, 14 distinct policies/facts; expected gold in each `notes`. Policy IDs stubbed pending Step 5. Other 136 seeds generated but not yet reviewed (held local) |
+| Step 8: in-domain T1 seeds (60, all 6 domains) authored + reviewed | Param | 2026-10-09 | `data/seeds/in_domain/IND-*-T1-*.yaml` (60), `configs/schemas/seed.schema.json`, `scripts/validate_seeds.py` | Hidden-state pairs; distinct policy/fact per seed, counter-direction cases so no value→label shortcut; expected gold in each `notes`. Policy IDs stubbed pending Step 5. T2-T5 (90 seeds) + `docs/Policy.md` + generators held local until reviewed |
 | ATBench risk-type map (review + apply) | Meet, Prateek | 2026-10-08 | `data/external/risk_type_map_review.md`, `risk_type_map.yaml`, `src/external/map_risk.py`, `atbench.jsonl` | 497 unsafe: SECURITY 198, PRIVACY_LEAKAGE 124, OTHER 82, ACCESS_CONTROL 48, FINANCIAL_LOSS 45 |
 | Step 1: repo skeleton (folders, stubs, Makefile, .gitignore, README) | Meet | 2026-10-07 | all of `STRUCTURE.md` tree, `docs/` | Still to do: Python 3.11 env, pin `requirements.txt`, real tests so `make test` passes |
 | Download raw R-Judge + ATBench (part of Step 7) | Meet | 2026-10-07 | `scripts/download_external.sh`, `data/raw/` | Counts match DATASET.md: R-Judge 571 (270 safe / 301 unsafe), ATBench 1,000 (503 / 497). Run `make external` |
@@ -41,6 +41,7 @@
 
 ## Activity Log (newest first)
 
+- 2026-10-09, Param: reviewed + pushed all T1 seeds (60, 6 domains); diversified facts + counter-direction cases; `docs/Policy.md` catalogue drafted (held). T2-T5 under review
 - 2026-10-08, Param: reviewed + pushed FILE-domain T1 seeds (14); seed schema + validator added. Other seeds held local pending review
 - 2026-10-08, Meet: Claude suggested risk types for 237 used unsafe R-Judge records (`risk_type_review.csv`); 30-item blind double-check sheet for Prateek
 - 2026-10-08, Meet: ATBench risk-type map signed off (Meet + Prateek) and applied to all 497 unsafe records
