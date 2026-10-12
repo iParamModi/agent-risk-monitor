@@ -1,7 +1,7 @@
 # Project Progress
 
 > Check this file before starting any work. Update it and push to GitHub after every change.
-> Last updated: 2026-10-11 by Moiesha
+> Last updated: 2026-10-12 by Meet
 
 ## Team
 
@@ -16,14 +16,14 @@
 
 | Task | Who | Started | Status / Notes |
 |------|-----|---------|----------------|
-| Step 7: external data (record schema, normalize R-Judge + ATBench, split, sample, risk types) | Meet | 2026-10-07 | Done: schema, normalize, split + sample, ATBench risk types, R-Judge LLM suggestions (237 records). Next: human review of R-Judge types, token counts, spot check |
+| Step 7: external data (record schema, normalize R-Judge + ATBench, split, sample, risk types) | Meet | 2026-10-07 | Done: schema, normalize, split + sample, ATBench risk types, R-Judge LLM suggestions (237 records). R-Judge human review handed to Moiesha (2026-10-12). Meet next: token counts, spot check |
 | Step 8: in-domain seed specs (`data/seeds/in_domain/`) | Param, Moiesha | 2026-10-08 | All 150 seeds generated, schema-valid. Policies stubbed (P_*) until Step 5. **All T1 (60) reviewed + pushed.** **All T2 (38) reviewed + pushed.** **All T3 (15) reviewed + diversified.** T4-T5 (37) currently pushed as `reviewer: TBD` for team review. |
 
 ## Next Up
 
 | Task | Assigned To | Depends On | Notes |
 |------|-------------|------------|-------|
-| R-Judge risk types: fill `human_final` in `data/external/risk_type_review.csv` (237 rows, low/medium confidence first) | Meet | none | Leave `human_final` = suggestion if you agree; set `changed` = yes and a note if not |
+| R-Judge risk types: fill `human_final`, `changed`, `note` in `data/external/risk_type_review.csv` (237 rows, low/medium confidence first) | **Moiesha** (handed over from Meet, 2026-10-12) | none | **Read `data/external/risk_type_review_HOWTO.md` first.** About 2-3 h. Do not open Prateek's `risk_type_double_check.csv`. Tell Meet when pushed |
 | R-Judge blind double check: fill `reviewer_b_type` in `data/external/risk_type_double_check.csv` (30 rows) | Prateek | none | Do NOT open `risk_type_review.csv` first; read each record file and pick one type |
 | Verify T4 + T5 seeds (`data/seeds/in_domain/IND-*-T4-*.yaml`, `*-T5-*.yaml`) | Moiesha / (unassigned) | Step 8 T3 | Pushed, `reviewer: TBD`. T4 = clearly-unsafe/BLOCK; T5 = conflict/facts-disagree/ESCALATE |
 | Step 2: lock all definitions (`docs/decisions.md` + configs) | Everyone (M1 writes) | none | Resolve the 17 open issues in PLAN.md; pick writer LLM + 2 agent LLMs; assign M1-M4 roles |
@@ -45,6 +45,7 @@
 
 ## Activity Log (newest first)
 
+- 2026-10-12, Meet: handed R-Judge risk-type review to Moiesha; instructions in `data/external/risk_type_review_HOWTO.md`
 - 2026-10-11, Moiesha: reviewed and diversified all in-domain T3 seeds (15, 6 domains); fixed ACC-002 ownership bug, diversified FIN accounts, fixed FILE-003 destination folder, set reviewer: Moiesha
 - 2026-10-10, Moiesha: reviewed and diversified all in-domain T2 seeds (38, 6 domains); verified 4-subtype trust rules, diversified roles/folders, set reviewer: Moiesha
 - 2026-10-10, Param: pushed T2-T5 (90 seeds, `reviewer: TBD`) + `docs/Policy.md` + generators for team review; assigned T2/T3 verification to Moiesha
