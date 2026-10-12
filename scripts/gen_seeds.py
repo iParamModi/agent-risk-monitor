@@ -1008,7 +1008,7 @@ def assemble(dom, ct, num, body):
 
 
 def main():
-    REVIEWED = {(d, "T1") for d in ALLOC}  # all T1 reviewed; never overwrite
+    REVIEWED = {(d, ct) for d in ALLOC for ct in ("T1", "T2", "T3", "T4", "T5")}  # all reviewed; never overwrite
     for p in OUT.glob("IND-*.yaml"):
         parts = p.stem.split("-")  # IND, DOM, Tn, nnn
         if len(parts) == 4 and (parts[1], parts[2]) not in REVIEWED:
