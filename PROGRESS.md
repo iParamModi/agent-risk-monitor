@@ -1,7 +1,7 @@
 # Project Progress
 
 > Check this file before starting any work. Update it and push to GitHub after every change.
-> Last updated: 2026-10-12 by Meet
+> Last updated: 2026-10-15 by Moiesha
 
 ## Team
 
@@ -23,7 +23,6 @@
 
 | Task | Assigned To | Depends On | Notes |
 |------|-------------|------------|-------|
-| R-Judge risk types: fill `human_final`, `changed`, `note` in `data/external/risk_type_review.csv` (237 rows, low/medium confidence first) | **Moiesha** (handed over from Meet, 2026-10-12) | none | **Read `data/external/risk_type_review_HOWTO.md` first.** About 2-3 h. Do not open Prateek's `risk_type_double_check.csv`. Tell Meet when pushed |
 | R-Judge blind double check: fill `reviewer_b_type` in `data/external/risk_type_double_check.csv` (30 rows) | Prateek | none | Do NOT open `risk_type_review.csv` first; read each record file and pick one type |
 | Step 8: write 45 OOD seeds (`data/seeds/ood/`) | Param | in-domain seeds done | New CUST domain + reworded policies, new styles/values; test-only (DATASET 3.7) |
 | Step 2: lock all definitions (`docs/decisions.md` + configs) | Everyone (M1 writes) | none | Resolve the 17 open issues in PLAN.md; pick writer LLM + 2 agent LLMs; assign M1-M4 roles |
@@ -32,6 +31,7 @@
 
 | Task | Done By | Date | Files Changed | Notes |
 |------|---------|------|---------------|-------|
+| R-Judge risk-type review (237 rows) | Moiesha | 2026-10-15 | `data/external/risk_type_review.csv` (237) | Reviewed all 237 unsafe R-Judge records (4 low, 50 med, 183 high confidence). 233 accepted suggestions, 4 overrides: RJ-webbrowser-158 (SECURITY), RJ-dh_app-1015 (SECURITY), RJ-moneymanagement-20 (FINANCIAL_LOSS), RJ-webbrowser-136 (PRIVACY_LEAKAGE). Breakdown: PRIVACY_LEAKAGE 103, SECURITY 53, OTHER 37, FINANCIAL_LOSS 17, ACCESS_CONTROL 15, DATA_LOSS 12. Handed to Meet for jsonl sync & Prateek double-check. |
 | Step 8: in-domain T4 (15) + T5 (22) seeds reviewed | Param | 2026-10-12 | `data/seeds/in_domain/IND-*-T4-*.yaml` (15), `*-T5-*.yaml` (22) | T4 = clearly-unsafe/BLOCK (violation visible, no check); T5 = policy_conflict + facts_disagree/ESCALATE. All `reviewer: Param`. **All 150 in-domain seeds now reviewed (0 TBD).** |
 | Step 8: in-domain T3 seeds (15, all 6 domains) reviewed + diversified | Moiesha | 2026-10-11 | `data/seeds/in_domain/IND-*-T3-*.yaml` (15) | Verified clearly-safe/ALLOW rules; fixed 002 owner overlap; diversified FIN company accounts; fixed FILE 003 destination folder; all reviewer: Moiesha |
 | Step 8: in-domain T2 seeds (38, all 6 domains) reviewed + diversified | Moiesha | 2026-10-10 | `data/seeds/in_domain/IND-*-T2-*.yaml` (38) | Verified 4-subtype trust rules; diversified roles/folders; fixed 005 folder mismatch bug; all reviewer: Moiesha |
@@ -46,6 +46,7 @@
 
 ## Activity Log (newest first)
 
+- 2026-10-15, Moiesha: completed R-Judge risk-type review (237 records in `data/external/risk_type_review.csv`); 233 accepted suggestions, 4 overrides; ready for Meet to map to `r_judge.jsonl`
 - 2026-10-12, Param: robustness-checked all 150 in-domain seeds (0 issues). Fixed 3 FIN seeds (T1-005, T5-001, T5-003) where `key_fact`/the authorization check pointed at a vendor name that was only an account's `owner` label (not a modelled entity) — repointed to the account (`acct_77`/`acct_79`) so the simulator can resolve it; decisions unchanged
 - 2026-10-12, Param: reviewed T4 (15) + T5 (22) in-domain seeds; all 150 in-domain seeds now reviewed (0 `reviewer: TBD`); extended gen_seeds REVIEWED guard to all cells
 - 2026-10-12, Meet: handed R-Judge risk-type review to Moiesha; instructions in `data/external/risk_type_review_HOWTO.md`
