@@ -26,3 +26,5 @@ Changes from `flow_agent.md` (the `flow.md` spec) and small choices made while b
 | 2026-10-19 | `FakeLLM` lives in `agent/llm.py`; `call_llm` hands off to it when it's passed as the client | One seam for tests, and `run_agent`'s signature stays as in the spec. |
 | 2026-10-19 | `assistant_msg()` builds `AssistantMsg.raw` as a clean assistant dict (role, content, tool_calls) | `raw` is appended to `messages` and sent back to Groq, so it must be a valid API message. |
 | 2026-10-19 | Installed openai SDK is 3.35 (uses `httpx2`); tests fake the HTTP response object instead of importing httpx | Keeps tests independent of the SDK's HTTP library. |
+| 2026-10-19 | System prompt fills `{current_user}` as "Name (user_id, email)" | The agent needs the id/email to act for the user; text otherwise as in section 4.8. |
+| 2026-10-19 | `logger.new_episode_id(task_id)` = `<task_id>_<YYYYmmdd-HHMMSS>_<4 hex>`; `fake_gate` takes optional `policy_id`/`reason` | Unique, sortable episode files; BLOCK results show a policy id in tests. |
