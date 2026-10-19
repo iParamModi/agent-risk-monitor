@@ -11,3 +11,5 @@ Changes from `flow_agent.md` (the `flow.md` spec) and small choices made while b
 | 2026-10-19 | Live tests are marked `@pytest.mark.live` and skipped unless `LMA_LIVE=1` | Keeps `pytest -q` free of API calls. |
 | 2026-10-19 | `CompanyState.exports: list[dict] = []` added | `export_customer_data` "logs an export"; the spec state had nowhere to log it. |
 | 2026-10-19 | `StepLog.tool_type` also allows `"invalid"` | `handle_call` in section 4.13 logs a failed validation with type `"invalid"`, which the section 3 Literal didn't allow. |
+| 2026-10-19 | Seed 0 is fixed; other seeds only jitter filler file dates and two balances | Smoke tasks and demos rely on exact seed-0 values; seeds still give distinct, repeatable states. |
+| 2026-10-19 | `apply_overrides`: a key with no dot sets a top-level field; an unknown item key adds a new item; field paths can go into dicts (`content.B4`) | Lets tasks set `current_user`, add files, and change single spreadsheet cells. |
