@@ -11,7 +11,7 @@ Package: `lma_agent/` at the repo root. Tests: `tests/agent/`. Run tests with `.
 | 3 | sim/seed_state.py | done | lma_agent/sim/seed_state.py, tests/agent/test_seed_state.py | seed 0 = 10 users, 20 files, 5 contacts, 4 accounts, 4 repos, 5 emails, 3 customers |
 | 4 | sim/readers.py | done | lma_agent/sim/readers.py, tests/agent/test_readers.py | NotFound is a LookupError; 2 extra helpers |
 | 5 | tools.yaml + tools/registry.py | done | lma_agent/tools.yaml, lma_agent/tools/registry.py, tests/agent/test_registry.py | 21 tools: READ 10, WRITE 11 (3 OOD) |
-| 6 | tools/validate.py | missing | | |
+| 6 | tools/validate.py | done | lma_agent/tools/validate.py, tests/agent/test_validate.py | jsonschema Draft 2020-12; catches unknown tool, missing arg, wrong type, extra args |
 | 7 | tools/read_tools.py + run_read | missing | | |
 | 8 | tools/write_tools.py + apply_action | missing | | |
 | 9 | agent/llm.py (live Groq call) | missing | | |
