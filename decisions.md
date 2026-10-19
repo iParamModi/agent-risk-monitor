@@ -32,3 +32,6 @@ Changes from `flow_agent.md` (the `flow.md` spec) and small choices made while b
 | 2026-10-19 | `run_agent` takes `out_dir=None`; it calls `save_episode` only when given | The call graph saves inside `run_agent`; unit tests shouldn't write to `runs/`. `run_smoke.py` passes `RUNS_DIR`. |
 | 2026-10-19 | An exception from `call_llm` ends the episode with status `error` | `EpisodeResult.status` already allows `error`; the section 4.13 sketch had no path to it. |
 | 2026-10-19 | A gate-approved write that fails (e.g. `not_found`) is logged with `executed=False` | The state didn't change, so "executed" would be misleading for the monitor's labels. |
+| 2026-10-19 | Tool-choice check (`compare_tools`) and the table live in `scripts/run_smoke.py`; a task passes if every expected tool was used (extra lookups are fine) | Spec names no module for step 14; expected_tools lists the tools that must appear, not the only ones allowed. |
+| 2026-10-19 | `run_smoke.py` table adds `writes_done` and `missing` columns; `main()` returns the rows | Shows at a glance what each `--gate` branch did; lets tests and the live test check results. |
+| 2026-10-19 | Run as `python -m lma_agent.scripts.run_smoke` | `lma_agent/scripts/` is a package so imports work without path hacks. |

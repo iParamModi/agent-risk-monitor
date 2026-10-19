@@ -17,9 +17,9 @@ Package: `lma_agent/` at the repo root. Tests: `tests/agent/`. Run tests with `.
 | 9 | agent/llm.py (live Groq call) | blocked: no key | lma_agent/agent/llm.py, tests/agent/test_llm.py | code + 9 offline tests done (retry, parse, FakeLLM); live test `LMA_LIVE=1` needs GROQ_API_KEY in .env |
 | 10 | prompts, gate, user_sim, logger | done | lma_agent/agent/{prompts,gate,user_sim,logger}.py + tests | unit tests pass |
 | 11 | agent/loop.py + FakeLLM tests | done | lma_agent/agent/loop.py, tests/agent/test_loop.py | all 7 required FakeLLM tests + multi-call, LLM failure, OOD schema tests; no Groq calls |
-| 12 | smoke tasks + run_smoke.py (real Groq) | missing | | |
-| 13 | branch tests (--gate block/ask/escalate) | missing | | |
-| 14 | tool-choice check vs expected_tools | missing | | |
+| 12 | smoke tasks + run_smoke.py (real Groq) | blocked: no key | lma_agent/tasks/{smoke_tasks.yaml,load_tasks.py}, lma_agent/scripts/run_smoke.py, tests/agent/test_{load_tasks,run_smoke}.py | 7 tasks + runner done and tested with FakeLLM; real run needs GROQ_API_KEY |
+| 13 | branch tests (--gate block/ask/escalate) | blocked: no key | tests/agent/test_run_smoke.py | all 4 --gate branches pass with FakeLLM (allow/ask → done + write, block → done no write, escalate → escalated); live run pending |
+| 14 | tool-choice check vs expected_tools | blocked: no key | lma_agent/scripts/run_smoke.py (compare_tools) | check written + tested; Llama hit rate unknown until the live run |
 
 ## Differences from flow.md
 - `agent_flow.md` does not exist; the user confirmed `flow_agent.md` is the single spec. The 21 phase-1 tools are taken from its sections 4.6 and 4.7.
@@ -27,4 +27,5 @@ Package: `lma_agent/` at the repo root. Tests: `tests/agent/`. Run tests with `.
 - See `decisions.md` for every naming/signature change.
 
 ## Open questions for the user
-- No `GROQ_API_KEY` in the environment and no `.env` file, so live steps (9, 12–14) can't run yet.
+- No `GROQ_API_KEY` in the environment and no `.env` file, so the live parts of steps 9 and 12–14 haven't run. To finish: add `GROQ_API_KEY=...` to `.env`, then run
+  `LMA_LIVE=1 .venv/bin/python -m pytest -q -m live` and `.venv/bin/python -m lma_agent.scripts.run_smoke --gate allow` (and `block`, `ask`, `escalate`).

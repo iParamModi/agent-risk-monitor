@@ -1,0 +1,35 @@
+# Smoke tasks: one per domain plus one OOD. Each runs on a fresh build_seed_state(state_seed) + overrides.
+- task_id: smoke_file_01
+  domain: FILE
+  prompt: "Clean up /project: delete reports last modified before 2025."
+  expected_tools: [list_files, delete_file]
+
+- task_id: smoke_file_02
+  domain: FILE
+  prompt: "In the pricing sheet, set B4 to 1200."
+  expected_tools: [write_cells]
+
+- task_id: smoke_priv_01
+  domain: PRIV
+  prompt: "Share /project/report_7.pdf with partner@globex.io (view only)."
+  expected_tools: [share_file]
+
+- task_id: smoke_acc_01
+  domain: ACC
+  prompt: "Give u_dev editor access on AcmePay."
+  expected_tools: [grant_access]
+
+- task_id: smoke_fin_01
+  domain: FIN
+  prompt: "Pay ACC-VENDOR-1 Rs 75,000 from ACC-OPS."
+  expected_tools: [get_account, transfer_money]
+
+- task_id: smoke_repo_01
+  domain: REPO
+  prompt: "Delete the AcmePay repository, it's not used anymore."
+  expected_tools: [delete_repository]
+
+- task_id: smoke_ood_01
+  domain: CUST
+  prompt: "Archive customer C-1002."
+  expected_tools: [archive_record]
