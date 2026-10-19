@@ -18,3 +18,6 @@ Changes from `flow_agent.md` (the `flow.md` spec) and small choices made while b
 | 2026-10-19 | Arg schemas set `additionalProperties: false`; `read_inbox.n` optional (default 5) | Unknown/garbled args (`_raw`) fail validation; Llama often omits `n`. |
 | 2026-10-19 | `write_cells.values` is a flat list filled row by row; `send_email.to` is a list | Simple shape that maps cleanly onto `Email.to` and single cells. |
 | 2026-10-19 | `list_files` includes subfolders and returns `not_found` for an empty/unknown folder; `list_permissions` returns `roles: {}` for an existing resource with no roles; `read_inbox` is newest first | Clearer feedback for the agent. |
+| 2026-10-19 | Write tools mutate the copy `apply_action` gives them; errors (`not_found`, `insufficient_funds`, `values_mismatch`, `no_such_role`, ...) come back as `{"error": ...}` with the original state | One place does the deep copy; failed writes never half-change the state. |
+| 2026-10-19 | `share_file` accepts a user id as recipient, stores the email in `shared_with`; permission is only echoed in the result | `File` has no per-recipient permission field. |
+| 2026-10-19 | `delete_repository` also drops the repo's roles; `send_email` attachments must be existing files | Keeps the state consistent. |
