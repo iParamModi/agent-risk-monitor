@@ -2,7 +2,7 @@
 
 Status: v1 · Oct 16, 2026
 Scope: the agent loop only (simulator + agent tools + loop + logging). The monitor plugs in later through `gate`.
-Agent model: **Llama 3.3 70B on Groq** (`llama-3.3-70b-versatile`), called through the OpenAI-compatible endpoint `https://api.groq.com/openai/v1`.
+Agent model: **GPT-OSS 120B on Groq** (`openai/gpt-oss-120b`; was Llama 3.3 70B, not available on Groq — see `decisions.md`), called through the OpenAI-compatible endpoint `https://api.groq.com/openai/v1`.
 Tools: the 21 phase-1 tools from `agent_flow.md`.
 
 ---
@@ -205,7 +205,7 @@ Note: the agent's read tools show only some fields. `classification`, `is_intern
 |---|---|
 | `GROQ_API_KEY` | read from env |
 | `BASE_URL` | `"https://api.groq.com/openai/v1"` |
-| `MODEL` | `"llama-3.3-70b-versatile"` |
+| `MODEL` | `"openai/gpt-oss-120b"` |
 | `MAX_STEPS` | `15` |
 | `TEMPERATURE` | `0.0` (repeatable runs) |
 | `MAX_RETRIES` | `3` |

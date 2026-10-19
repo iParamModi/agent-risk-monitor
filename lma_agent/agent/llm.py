@@ -58,12 +58,13 @@ def assistant_msg(content: str | None, tool_calls: list[ToolCall]) -> AssistantM
 
 
 def _retry_wait(err: RateLimitError, attempt: int) -> float:
-    """Seconds to wait after a 429: the retry-after header if present, else 2s, 4s, 8s."""
+    """Seconds to wait after a 429: the retry-after header or the 2s/4s/8s backoff, whichever is longer."""
+    backoff = BACKOFF_SECONDS[min(attempt, len(BACKOFF_SECONDS) - 1)]
     header = err.response.headers.get("retry-after") if err.response is not None else None
     try:
-        return float(header)
+        return max(float(header), backoff)
     except (TypeError, ValueError):
-        return BACKOFF_SECONDS[min(attempt, len(BACKOFF_SECONDS) - 1)]
+        return backoff
 
 
 def call_llm(client, messages: list[dict], tools: list[dict]) -> AssistantMsg:

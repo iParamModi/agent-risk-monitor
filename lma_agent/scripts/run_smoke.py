@@ -1,4 +1,4 @@
-"""Run the smoke tasks against Llama 3.3 70B on Groq and print one row per task.
+"""Run the smoke tasks against the agent model on Groq and print one row per task.
 
 Usage: python -m lma_agent.scripts.run_smoke [--gate allow|block|ask|escalate] [--task <task_id>]
 """

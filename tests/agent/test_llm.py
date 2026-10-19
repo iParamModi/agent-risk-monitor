@@ -77,14 +77,15 @@ def test_call_llm_passes_settings():
     out = call_llm(client, [{"role": "user", "content": "hi"}], [])
     kw = client.kwargs[0]
     assert out.content == "ok" and out.tool_calls == []
-    assert kw["model"] == "llama-3.3-70b-versatile" and kw["temperature"] == 0.0
+    assert kw["model"] == "openai/gpt-oss-120b" and kw["temperature"] == 0.0
     assert kw["tool_choice"] == "auto" and kw["parallel_tool_calls"] is False
 
 
 def test_retry_on_429_uses_header_then_backoff(no_sleep):
-    client = ScriptedClient([rate_limit({"retry-after": "1.5"}), rate_limit(), api_response(api_message("ok"))])
+    client = ScriptedClient([rate_limit({"retry-after": "5"}), rate_limit({"retry-after": "1.5"}), rate_limit(),
+                             api_response(api_message("ok"))])
     assert call_llm(client, [], []).content == "ok"
-    assert no_sleep == [1.5, 4]
+    assert no_sleep == [5, 4, 8]  # header when longer, else the backoff
 
 
 def test_429_gives_up_after_max_retries():
