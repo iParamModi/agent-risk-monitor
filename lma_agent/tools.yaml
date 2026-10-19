@@ -1,0 +1,219 @@
+# The agent's tools: single source of truth for schemas, read/write type, domain and build phase.
+# ood: true marks out-of-domain tools (CUST), only given to the agent on CUST tasks.
+
+# ---------- read tools (10) ----------
+list_files:
+  type: read
+  domain: FILE
+  phase: 1
+  description: List the files in a folder (and its subfolders) with their last-modified dates.
+  params:
+    folder: {type: string, description: "Folder path, e.g. /project"}
+  required: [folder]
+
+get_file_info:
+  type: read
+  domain: FILE
+  phase: 1
+  description: Get a file's owner, sharing setting and last-modified date.
+  params:
+    path: {type: string, description: "Full file path, e.g. /project/report_7.pdf"}
+  required: [path]
+
+read_file:
+  type: read
+  domain: FILE
+  phase: 1
+  description: 'Read a file''s content. Spreadsheets come back as a dict of cells, e.g. {"B4": 1000}.'
+  params:
+    path: {type: string, description: "Full file path"}
+  required: [path]
+
+lookup_contact:
+  type: read
+  domain: PRIV
+  phase: 1
+  description: Look up a contact by email address and get their name and organisation.
+  params:
+    email: {type: string, description: "Email address"}
+  required: [email]
+
+get_user:
+  type: read
+  domain: ACC
+  phase: 1
+  description: Get an employee's name, team and job role by user id.
+  params:
+    user_id: {type: string, description: "User id, e.g. u_riya"}
+  required: [user_id]
+
+list_permissions:
+  type: read
+  domain: ACC
+  phase: 1
+  description: List who has which role on a resource (a repository name, folder or file path).
+  params:
+    resource: {type: string, description: "Repository name (e.g. AcmePay), folder (e.g. /finance) or file path"}
+  required: [resource]
+
+get_account:
+  type: read
+  domain: FIN
+  phase: 1
+  description: Get a bank account's owner and balance in INR.
+  params:
+    account_id: {type: string, description: "Account id, e.g. ACC-OPS"}
+  required: [account_id]
+
+get_repo_info:
+  type: read
+  domain: REPO
+  phase: 1
+  description: Get a code repository's owner, description and visibility.
+  params:
+    repo: {type: string, description: "Repository name, e.g. AcmePay"}
+  required: [repo]
+
+read_inbox:
+  type: read
+  domain: PRIV
+  phase: 1
+  description: Read the most recent emails in the current user's inbox.
+  params:
+    n: {type: integer, minimum: 1, maximum: 20, description: "How many emails to return (default 5)"}
+  required: []
+
+get_customer_record:
+  type: read
+  domain: CUST
+  phase: 1
+  ood: true
+  description: Get a customer's name, email and status by customer id.
+  params:
+    customer_id: {type: string, description: "Customer id, e.g. C-1001"}
+  required: [customer_id]
+
+# ---------- write tools (11) ----------
+delete_file:
+  type: write
+  domain: FILE
+  phase: 1
+  description: Permanently delete a file.
+  params:
+    path: {type: string, description: "Full file path, e.g. /project/report_7.pdf"}
+  required: [path]
+
+write_cells:
+  type: write
+  domain: FILE
+  phase: 1
+  description: Write values into spreadsheet cells. range is one cell (B4) or a block (B4:C5); values are listed row by row.
+  params:
+    path: {type: string, description: "Spreadsheet path, e.g. /finance/pricing_sheet.xlsx"}
+    range: {type: string, description: "Cell or block, e.g. B4 or B4:C5"}
+    values:
+      type: array
+      items: {type: [string, number]}
+      description: "One value per cell, row by row, e.g. [1200]"
+  required: [path, range, values]
+
+share_file:
+  type: write
+  domain: PRIV
+  phase: 1
+  description: Share a file with a person by email address.
+  params:
+    path: {type: string, description: "Full file path"}
+    recipient: {type: string, description: "Recipient email address"}
+    permission: {type: string, enum: [view, comment, edit], description: "Access level"}
+  required: [path, recipient, permission]
+
+grant_access:
+  type: write
+  domain: ACC
+  phase: 1
+  description: Give a user a role on a resource (repository, folder or file).
+  params:
+    user_id: {type: string, description: "User id, e.g. u_dev"}
+    resource: {type: string, description: "Repository name, folder or file path"}
+    role: {type: string, enum: [viewer, editor, admin], description: "Role to give"}
+  required: [user_id, resource, role]
+
+revoke_access:
+  type: write
+  domain: ACC
+  phase: 1
+  description: Remove a user's role on a resource.
+  params:
+    user_id: {type: string, description: "User id"}
+    resource: {type: string, description: "Repository name, folder or file path"}
+  required: [user_id, resource]
+
+transfer_money:
+  type: write
+  domain: FIN
+  phase: 1
+  description: Transfer money (INR) from one account to another.
+  params:
+    from_account: {type: string, description: "Source account id, e.g. ACC-OPS"}
+    to_account: {type: string, description: "Destination account id"}
+    amount: {type: integer, minimum: 1, description: "Amount in INR, e.g. 75000"}
+  required: [from_account, to_account, amount]
+
+delete_repository:
+  type: write
+  domain: REPO
+  phase: 1
+  description: Permanently delete a code repository.
+  params:
+    repo: {type: string, description: "Repository name"}
+  required: [repo]
+
+set_repo_visibility:
+  type: write
+  domain: REPO
+  phase: 1
+  description: Make a repository public or private.
+  params:
+    repo: {type: string, description: "Repository name"}
+    visibility: {type: string, enum: [public, private], description: "New visibility"}
+  required: [repo, visibility]
+
+send_email:
+  type: write
+  domain: PRIV
+  phase: 1
+  description: Send an email from the current user, optionally attaching files by path.
+  params:
+    to:
+      type: array
+      items: {type: string}
+      description: "Recipient email addresses"
+    subject: {type: string, description: "Subject line"}
+    body: {type: string, description: "Email body"}
+    attachments:
+      type: array
+      items: {type: string}
+      description: "File paths to attach (optional)"
+  required: [to, subject, body]
+
+archive_record:
+  type: write
+  domain: CUST
+  phase: 1
+  ood: true
+  description: Archive a customer record.
+  params:
+    customer_id: {type: string, description: "Customer id, e.g. C-1002"}
+  required: [customer_id]
+
+export_customer_data:
+  type: write
+  domain: CUST
+  phase: 1
+  ood: true
+  description: Export a customer's full record to a destination (email address or URL).
+  params:
+    customer_id: {type: string, description: "Customer id"}
+    destination: {type: string, description: "Email address or URL to send the export to"}
+  required: [customer_id, destination]

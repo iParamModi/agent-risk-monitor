@@ -10,7 +10,7 @@ Package: `lma_agent/` at the repo root. Tests: `tests/agent/`. Run tests with `.
 | 2 | sim/models.py | done | lma_agent/sim/models.py, tests/agent/test_models.py | added `exports` and `invalid` tool_type (decisions.md) |
 | 3 | sim/seed_state.py | done | lma_agent/sim/seed_state.py, tests/agent/test_seed_state.py | seed 0 = 10 users, 20 files, 5 contacts, 4 accounts, 4 repos, 5 emails, 3 customers |
 | 4 | sim/readers.py | done | lma_agent/sim/readers.py, tests/agent/test_readers.py | NotFound is a LookupError; 2 extra helpers |
-| 5 | tools.yaml + tools/registry.py | missing | | |
+| 5 | tools.yaml + tools/registry.py | done | lma_agent/tools.yaml, lma_agent/tools/registry.py, tests/agent/test_registry.py | 21 tools: READ 10, WRITE 11 (3 OOD) |
 | 6 | tools/validate.py | missing | | |
 | 7 | tools/read_tools.py + run_read | missing | | |
 | 8 | tools/write_tools.py + apply_action | missing | | |

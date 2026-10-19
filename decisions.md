@@ -14,3 +14,6 @@ Changes from `flow_agent.md` (the `flow.md` spec) and small choices made while b
 | 2026-10-19 | Seed 0 is fixed; other seeds only jitter filler file dates and two balances | Smoke tasks and demos rely on exact seed-0 values; seeds still give distinct, repeatable states. |
 | 2026-10-19 | `apply_overrides`: a key with no dot sets a top-level field; an unknown item key adds a new item; field paths can go into dicts (`content.B4`) | Lets tasks set `current_user`, add files, and change single spreadsheet cells. |
 | 2026-10-19 | Added helpers `_is_internal_email` and `_resource_exists` to `readers.py` | Needed by `share_file` (external check) and `grant_access`/`list_permissions` (does the resource exist). |
+| 2026-10-19 | `tools.yaml` lives in `lma_agent/`; OOD tools carry `ood: true` (domain `CUST`) | `get_agent_tool_schemas(include_ood=...)` filters on that flag. The old `configs/tools.yaml` stub is left alone. |
+| 2026-10-19 | Arg schemas set `additionalProperties: false`; `read_inbox.n` optional (default 5) | Unknown/garbled args (`_raw`) fail validation; Llama often omits `n`. |
+| 2026-10-19 | `write_cells.values` is a flat list filled row by row; `send_email.to` is a list | Simple shape that maps cleanly onto `Email.to` and single cells. |
