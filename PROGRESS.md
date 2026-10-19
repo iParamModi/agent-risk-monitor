@@ -1,7 +1,7 @@
 # Project Progress
 
 > Check this file before starting any work. Update it and push to GitHub after every change.
-> Last updated: 2026-10-19 by Prateek
+> Last updated: 2026-10-19 by Param
 
 ## Team
 
@@ -17,7 +17,7 @@
 | Task | Who | Started | Status / Notes |
 |------|-----|---------|----------------|
 | Step 7: external data (record schema, normalize R-Judge + ATBench, split, sample, risk types) | Meet | 2026-10-07 | Done: schema, normalize, split + sample, ATBench risk types, R-Judge LLM suggestions (237 records). R-Judge human review handed to Moiesha (2026-10-12). Meet next: token counts, spot check |
-| Step 8: in-domain seed specs (`data/seeds/in_domain/`) | Param, Moiesha | 2026-10-08 | **All 150 in-domain seeds reviewed + pushed** (T1/T4/T5 = Param 97, T2/T3 = Moiesha 53), schema-valid, 0 `reviewer: TBD`. Policies stubbed (P_*) until Step 5. Remaining Step 8: 45 OOD seeds, then Step 9 record generation |
+| Step 8: in-domain seed specs (`data/seeds/in_domain/`) | Param, Moiesha | 2026-10-08 | **All 150 in-domain seeds reviewed + pushed** (T1/T4/T5 = Param 97, T2/T3 = Moiesha 53), schema-valid, 0 `reviewer: TBD`. Policies stubbed (P_*) until Step 5. **All 45 OOD seeds authored + pushed** (`data/seeds/ood/`), awaiting verification (see Next Up). Remaining Step 8: Step 9 record generation |
 
 ## Next Up
 
@@ -25,13 +25,25 @@
 |------|-------------|------------|-------|
 | R-Judge blind double check: fill `reviewer_b_type` in `data/external/risk_type_double_check.csv` (30 rows) | Prateek | none | Do NOT open `risk_type_review.csv` first; read each record file and pick one type |
 | Task agent: write the 40 live tasks (`flow_agent.md` section 7) | TBD | agent loop done | Mind the Groq limit of 8,000 tokens/min |
-| Step 8: write 45 OOD seeds (`data/seeds/ood/`) | Param | in-domain seeds done | New CUST domain + reworded policies, new styles/values; test-only (DATASET 3.7) |
+| Verify OOD CUST seeds (20) | Param: T1 (8), T5 (5); Moiesha: T2 (1), T3 (3), T4 (3) | seeds pushed | `data/seeds/ood/OOD-CUST-*.yaml`; set `reviewer:` to your name when done |
+| Verify OOD reworded-domain seeds (25) | Param: T1 (10), T4 (2), T5 (1); Moiesha: T2 (10), T3 (2) | seeds pushed | `OOD-{FILE,PRIV,ACC,FIN,REPO,CAL}-*.yaml`; Moiesha how-to in the note below |
 | Step 2: lock all definitions (`docs/decisions.md` + configs) | Everyone (M1 writes) | none | Resolve the 17 open issues in PLAN.md; pick writer LLM + 2 agent LLMs; assign M1-M4 roles |
+
+### How to verify — OOD reworded-domain seeds (Moiesha: T2, T3)
+
+Each reworded OOD seed is a copy of an existing in-domain rule in new words. To verify one:
+
+1. **Find its twin.** The `gold_policy_ids` in the OOD seed is the same ID as an in-domain seed (e.g. `OOD-ACC-T2-001` uses `P_ACC_21`; compare with the in-domain `P_ACC_21` seed and the row in `docs/Policy.md`).
+2. **Same logic?** Check the deciding fact, the action, and the gold decision match the original rule. The *rule* must be identical — only the surface changes.
+3. **Different wording?** The policy text in `notes`, the `story_hint`, the `writer_style`, the file paths/IDs/amounts must all read differently from the in-domain twin. If it looks like a near-copy of the original wording, flag it (that defeats the OOD test).
+4. **So: "same rule, different clothes."** Similar example, genuinely different wording/style/values → OK. Different rule, or identical wording → FIX.
+5. Set `reviewer: Moiesha` when a seed passes.
 
 ## Completed
 
 | Task | Done By | Date | Files Changed | Notes |
 |------|---------|------|---------------|-------|
+| Step 8: OOD seeds authored (45 = 20 CUST + 25 reworded-domain) | Param | 2026-10-19 | `data/seeds/ood/*.yaml` (45) | All schema-valid (195/195). CUST = new domain (archive_record/export_customer_data; consent/retention/legal-hold facts; P_CUST_* policies). Reworded = 6 old domains, same policy logic/new wording+style+values; T2 staled via the real tools `share_file`/`transfer_money`. Type mix T1 18 / T2 11 / T3 5 / T4 5 / T5 6 = 112 records. `reviewer: TBD` pending verification (see Next Up) |
 | Task agent loop phase 1 (`lma_agent/`, steps 1-14 of `flow_agent.md`) | Prateek | 2026-10-19 | `lma_agent/` (sim, tools, agent, tasks, scripts), `tests/agent/`, `STATUS.md`, `decisions.md`, `flow_agent.md`, `requirements.txt` | 143 offline tests pass. Live on Groq `openai/gpt-oss-120b` (Llama 3.3 70B not available): 7/7 smoke tasks done; block/ask/escalate gates behave as designed; expected tools 6/7. Results in `STATUS.md` |
 | R-Judge risk-type review (237 rows) | Moiesha | 2026-10-15 | `data/external/risk_type_review.csv` (237) | Reviewed all 237 unsafe R-Judge records (4 low, 50 med, 183 high confidence). 233 accepted suggestions, 4 overrides. Breakdown: PRIVACY_LEAKAGE 103, SECURITY 53, OTHER 37, FINANCIAL_LOSS 17, ACCESS_CONTROL 15, DATA_LOSS 12. Handed to Meet for jsonl sync & Prateek double-check. |
 | Step 8: in-domain T4 (15) + T5 (22) seeds reviewed | Param | 2026-10-12 | `data/seeds/in_domain/IND-*-T4-*.yaml` (15), `*-T5-*.yaml` (22) | T4 = clearly-unsafe/BLOCK (violation visible, no check); T5 = policy_conflict + facts_disagree/ESCALATE. All `reviewer: Param`. **All 150 in-domain seeds now reviewed (0 TBD).** |
@@ -48,6 +60,7 @@
 
 ## Activity Log (newest first)
 
+- 2026-10-19, Param: pushed 45 OOD seeds to `data/seeds/ood/` (20 CUST new-domain + 25 reworded-old-domain), all schema-valid; verification split assigned — CUST: Param T1/T5, Moiesha T2/T3/T4; reworded: Param T1/T4/T5, Moiesha T2/T3 (how-to in Next Up)
 - 2026-10-19, Prateek: task agent loop live on Groq; agent model switched to `openai/gpt-oss-120b` (Llama 3.3 70B not on Groq); 7/7 smoke tasks done, all 4 gate branches verified
 - 2026-10-19, Prateek: built task agent loop `lma_agent/` (simulator, 21 phase-1 tools, Groq client, gates, loop, smoke runner) per `flow_agent.md`; 143 tests pass offline; live Groq run pending a key
 - 2026-10-15, Moiesha: completed R-Judge risk-type review (237 records in `data/external/risk_type_review.csv`); 233 accepted suggestions, 4 overrides; ready for Meet to map to `r_judge.jsonl`
