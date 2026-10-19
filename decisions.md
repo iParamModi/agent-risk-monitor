@@ -13,3 +13,4 @@ Changes from `flow_agent.md` (the `flow.md` spec) and small choices made while b
 | 2026-10-19 | `StepLog.tool_type` also allows `"invalid"` | `handle_call` in section 4.13 logs a failed validation with type `"invalid"`, which the section 3 Literal didn't allow. |
 | 2026-10-19 | Seed 0 is fixed; other seeds only jitter filler file dates and two balances | Smoke tasks and demos rely on exact seed-0 values; seeds still give distinct, repeatable states. |
 | 2026-10-19 | `apply_overrides`: a key with no dot sets a top-level field; an unknown item key adds a new item; field paths can go into dicts (`content.B4`) | Lets tasks set `current_user`, add files, and change single spreadsheet cells. |
+| 2026-10-19 | Added helpers `_is_internal_email` and `_resource_exists` to `readers.py` | Needed by `share_file` (external check) and `grant_access`/`list_permissions` (does the resource exist). |
