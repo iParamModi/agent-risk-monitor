@@ -14,7 +14,7 @@ Package: `lma_agent/` at the repo root. Tests: `tests/agent/`. Run tests with `.
 | 6 | tools/validate.py | done | lma_agent/tools/validate.py, tests/agent/test_validate.py | jsonschema Draft 2020-12; catches unknown tool, missing arg, wrong type, extra args |
 | 7 | tools/read_tools.py + run_read | done | lma_agent/tools/read_tools.py, tests/agent/test_read_tools.py | hidden-field test runs over every read tool; state hash unchanged |
 | 8 | tools/write_tools.py + apply_action | done | lma_agent/tools/write_tools.py, tests/agent/test_write_tools.py | each write tested for exact change + input state untouched |
-| 9 | agent/llm.py (live Groq call) | missing | | |
+| 9 | agent/llm.py (live Groq call) | blocked: no key | lma_agent/agent/llm.py, tests/agent/test_llm.py | code + 9 offline tests done (retry, parse, FakeLLM); live test `LMA_LIVE=1` needs GROQ_API_KEY in .env |
 | 10 | prompts, gate, user_sim, logger | missing | | |
 | 11 | agent/loop.py + FakeLLM tests | missing | | |
 | 12 | smoke tasks + run_smoke.py (real Groq) | missing | | |

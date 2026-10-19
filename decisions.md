@@ -21,3 +21,8 @@ Changes from `flow_agent.md` (the `flow.md` spec) and small choices made while b
 | 2026-10-19 | Write tools mutate the copy `apply_action` gives them; errors (`not_found`, `insufficient_funds`, `values_mismatch`, `no_such_role`, ...) come back as `{"error": ...}` with the original state | One place does the deep copy; failed writes never half-change the state. |
 | 2026-10-19 | `share_file` accepts a user id as recipient, stores the email in `shared_with`; permission is only echoed in the result | `File` has no per-recipient permission field. |
 | 2026-10-19 | `delete_repository` also drops the repo's roles; `send_email` attachments must be existing files | Keeps the state consistent. |
+| 2026-10-19 | `make_client()` sets `max_retries=0` | `call_llm` owns the retry policy (retry-after, else 2/4/8 s, up to `MAX_RETRIES`); SDK retries would double it. |
+| 2026-10-19 | `call_llm` also retries Groq's `tool_use_failed` 400 (broken tool-call JSON) and drops `parallel_tool_calls` once if the API rejects it | INSTRUCTIONS step 9. |
+| 2026-10-19 | `FakeLLM` lives in `agent/llm.py`; `call_llm` hands off to it when it's passed as the client | One seam for tests, and `run_agent`'s signature stays as in the spec. |
+| 2026-10-19 | `assistant_msg()` builds `AssistantMsg.raw` as a clean assistant dict (role, content, tool_calls) | `raw` is appended to `messages` and sent back to Groq, so it must be a valid API message. |
+| 2026-10-19 | Installed openai SDK is 3.35 (uses `httpx2`); tests fake the HTTP response object instead of importing httpx | Keeps tests independent of the SDK's HTTP library. |
