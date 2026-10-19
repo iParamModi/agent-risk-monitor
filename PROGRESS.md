@@ -1,7 +1,7 @@
 # Project Progress
 
 > Check this file before starting any work. Update it and push to GitHub after every change.
-> Last updated: 2026-10-19 by Param
+> Last updated: 2026-10-20 by Prateek
 
 ## Team
 
@@ -18,7 +18,6 @@
 |------|-----|---------|----------------|
 | Step 7: external data (record schema, normalize R-Judge + ATBench, split, sample, risk types) | Meet | 2026-10-07 | Done: schema, normalize, split + sample, ATBench risk types, R-Judge LLM suggestions (237 records). R-Judge human review handed to Moiesha (2026-10-12). Meet next: token counts, spot check |
 | Step 8: in-domain seed specs (`data/seeds/in_domain/`) | Param, Moiesha | 2026-10-08 | **All 150 in-domain seeds reviewed + pushed** (T1/T4/T5 = Param 97, T2/T3 = Moiesha 53), schema-valid, 0 `reviewer: TBD`. Policies stubbed (P_*) until Step 5. **All 45 OOD seeds authored + pushed** (`data/seeds/ood/`), awaiting verification (see Next Up). Remaining Step 8: Step 9 record generation |
-| R-Judge blind double check: fill `reviewer_b_type` in `data/external/risk_type_double_check.csv` (30 rows) | Prateek | 2026-10-19 | Started, going record by record. Row 3 `record_id` typo: says RJ-bitcoint-131, file/description are RJ-bitcoin-31 (told Meet) |
 
 ## Next Up
 
@@ -26,6 +25,7 @@
 |------|-------------|------------|-------|
 | **Step 2: review + lock `docs/decisions.md`**: write your initials in OK (or a change in Comment) on all 51 rules, then a 1 h team meeting for the 8 ⚠️ rows and sign the Lock | **Everyone** (Meet, Param, Prateek, Moiesha) | none | Do this first: gold labeler, generator and configs depend on it. ⚠️ rows: check tools (4.2), names (4.4), data in git (7.8), writer LLM (8.3), agent LLM 2 (8.4), GPU (8.5), roles (9.1), 30 Oct scope (9.2) |
 | **Align training data with the demo company**: one shared action/argument/check-tool list (`configs/tools.yaml`, `configs/check_table.yaml`), then rename seeds or `lma_agent` to match; folders + folder-inherited sharing in `lma_agent/sim`; check gateway + StepLog→record converter | **Prateek + Param** | none | **Read `docs/alignment_issues.md`.** 7 of 12 seed actions missing in `lma_agent`, args and sharing values differ. Do before Step 9 record generation |
+| R-Judge: compute agreement between `reviewer_b_type` (Prateek) and `human_final` (Moiesha); resolve disagreements | Meet | double check done | 30 rows in `risk_type_double_check.csv` |
 | Task agent: write the 40 live tasks (`flow_agent.md` section 7) | TBD | agent loop done | Mind the Groq limit of 8,000 tokens/min |
 | Verify OOD CUST seeds (20) | Param: T1 (8), T5 (5); Moiesha: T2 (1), T3 (3), T4 (3) | seeds pushed | `data/seeds/ood/OOD-CUST-*.yaml`; set `reviewer:` to your name when done |
 | Verify OOD reworded-domain seeds (25) | Param: T1 (10), T4 (2), T5 (1); Moiesha: T2 (10), T3 (2) | seeds pushed | `OOD-{FILE,PRIV,ACC,FIN,REPO,CAL}-*.yaml`; Moiesha how-to in the note below |
@@ -46,6 +46,7 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 |------|---------|------|---------------|-------|
 | Step 2: `docs/decisions.md` draft for review | Meet | 2026-10-19 | `docs/decisions.md` | 51 rules with recommended answers (PLAN Step 2 + 17 open issues + alignment, models, roles, 30 Oct scope); not locked yet |
 | Step 8: OOD seeds authored (45 = 20 CUST + 25 reworded-domain) | Param | 2026-10-19 | `data/seeds/ood/*.yaml` (45) | All schema-valid (195/195). CUST = new domain (archive_record/export_customer_data; consent/retention/legal-hold facts; P_CUST_* policies). Reworded = 6 old domains, same policy logic/new wording+style+values; T2 staled via the real tools `share_file`/`transfer_money`. Type mix T1 18 / T2 11 / T3 5 / T4 5 / T5 6 = 112 records. `reviewer: TBD` pending verification (see Next Up) |
+| R-Judge blind double check (30 rows) | Prateek | 2026-10-20 | `data/external/risk_type_double_check.csv` | All 30 `reviewer_b_type` filled blind (`risk_type_review.csv` not opened). PRIVACY_LEAKAGE 11, OTHER 8, SECURITY 5, ACCESS_CONTROL 3, FINANCIAL_LOSS 2, DATA_LOSS 1. Ready for Meet to compute agreement with Moiesha |
 | Task agent loop phase 1 (`lma_agent/`, steps 1-14 of `flow_agent.md`) | Prateek | 2026-10-19 | `lma_agent/` (sim, tools, agent, tasks, scripts), `tests/agent/`, `STATUS.md`, `decisions.md`, `flow_agent.md`, `requirements.txt` | 143 offline tests pass. Live on Groq `openai/gpt-oss-120b` (Llama 3.3 70B not available): 7/7 smoke tasks done; block/ask/escalate gates behave as designed; expected tools 6/7. Results in `STATUS.md` |
 | R-Judge risk-type review (237 rows) | Moiesha | 2026-10-15 | `data/external/risk_type_review.csv` (237) | Reviewed all 237 unsafe R-Judge records (4 low, 50 med, 183 high confidence). 233 accepted suggestions, 4 overrides. Breakdown: PRIVACY_LEAKAGE 103, SECURITY 53, OTHER 37, FINANCIAL_LOSS 17, ACCESS_CONTROL 15, DATA_LOSS 12. Handed to Meet for jsonl sync & Prateek double-check. |
 | Step 8: in-domain T4 (15) + T5 (22) seeds reviewed | Param | 2026-10-12 | `data/seeds/in_domain/IND-*-T4-*.yaml` (15), `*-T5-*.yaml` (22) | T4 = clearly-unsafe/BLOCK (violation visible, no check); T5 = policy_conflict + facts_disagree/ESCALATE. All `reviewer: Param`. **All 150 in-domain seeds now reviewed (0 TBD).** |
@@ -63,6 +64,7 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 
 ## Activity Log (newest first)
 
+- 2026-10-20, Prateek: finished R-Judge blind double check (30/30 rows in `risk_type_double_check.csv`); handed to Meet for agreement
 - 2026-10-19, Meet: `docs/decisions.md` draft ready for team review (51 rules, 8 need discussion)
 - 2026-10-19, Meet: started Step 2 draft (`docs/decisions.md`)
 - 2026-10-19, Meet: listed seed vs `lma_agent` mismatches in `docs/alignment_issues.md`; assigned alignment to Prateek + Param
