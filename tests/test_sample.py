@@ -70,3 +70,30 @@ def test_split_stats_counts():
     where = {r["seed_id"]: "train" for r in records}
     st = split_stats(records, where)
     assert st["train"]["records"] == len(records) and st["test"]["records"] == 0
+
+
+def test_replace_excluded_keeps_rest_and_swaps_same_label():
+    from src.external.sample import replace_excluded
+    records = make_records(n_groups=120)
+    seed, where, _ = find_split(records, per_class=30)
+    train = [r for r in records if where[r["seed_id"]] == "train"]
+    cat = lambda r: r["meta"]["category"]
+    sample = sample_train(train, seed, cat, cat, per_class=30)
+    excluded = {sample[0]["record_id"], sample[-1]["record_id"]}
+    new, swaps = replace_excluded(sample, train, excluded, cat, cat, seed)
+    old_ids, new_ids = {r["record_id"] for r in sample}, {r["record_id"] for r in new}
+    assert len(new) == len(sample) and not (new_ids & excluded)
+    assert old_ids - excluded <= new_ids                      # everyone else stays
+    by_id = {r["record_id"]: r for r in records}
+    for out, inn in swaps:
+        assert by_id[out]["gold"]["risk_label"] == by_id[inn]["gold"]["risk_label"]
+        assert inn not in old_ids and where[by_id[inn]["seed_id"]] == "train"
+    assert replace_excluded(sample, train, excluded, cat, cat, seed) == (new, swaps)  # repeatable
+
+
+def test_load_excluded_ignores_comments(tmp_path):
+    from src.external.sample import load_excluded
+    f = tmp_path / "x.txt"
+    f.write_text("# header\nRJ-a-1  # robot\n\nATB-2\n")
+    assert load_excluded(f) == {"RJ-a-1", "ATB-2"}
+    assert load_excluded(tmp_path / "missing.txt") == set()

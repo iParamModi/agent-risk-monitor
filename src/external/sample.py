@@ -1,13 +1,15 @@
 """70/10/20 split by scenario + balanced 300 sample (DATASET.md section 2.3).
 
 Run: python -m src.external.sample   (after src.external.normalize)
+- Reads ALL normalized records from data/generated/normalized/, so the split never depends on exclusions.
 - Groups (seed_id) never cross splits: R-Judge = file, ATBench = tool set.
 - Groups are shuffled with seed 42, 43, ... until every split is within +-5 points of the
   dataset's unsafe rate; the seed that worked is saved in splits/split_report.json.
 - From train: 150 SAFE + 150 UNSAFE, spread as evenly as possible over strata
   (R-Judge: category folder; ATBench unsafe: risk_source).
-Fills record["split"] in data/external/<name>.jsonl and the per-record files; writes ID lists
-to data/external/splits/.
+- Records listed in data/external/excluded_physical.txt are dropped AFTER the split; excluded members of
+  the train sample are swapped for other train records with the same label and stratum.
+Writes data/external/<name>.jsonl, the per-record files and the ID lists in data/external/splits/.
 """
 import random
 import sys
@@ -18,6 +20,8 @@ from src.common.io import REPO_ROOT, read_jsonl, write_json, write_jsonl, write_
 from src.common.schema import schema_errors
 
 EXT_DIR = REPO_ROOT / "data" / "external"
+NORMALIZED_DIR = REPO_ROOT / "data" / "generated" / "normalized"
+EXCLUDED_FILE = EXT_DIR / "excluded_physical.txt"
 SPLIT_DIR = EXT_DIR / "splits"
 FRACTIONS = {"train": 0.7, "val": 0.1, "test": 0.2}
 MAX_OVERFILL = 0.15      # a group may push val/test at most 15% past its target size
@@ -122,14 +126,47 @@ DATASETS = {
 }
 
 
+def load_excluded(path=EXCLUDED_FILE) -> set[str]:
+    """record_ids, one per line; '#' starts a comment."""
+    if not path.exists():
+        return set()
+    return {line.split("#")[0].strip() for line in path.read_text(encoding="utf-8").splitlines()} - {""}
+
+
+def replace_excluded(sample: list[dict], train: list[dict], excluded: set[str], safe_stratum, unsafe_stratum,
+                     seed: int) -> tuple[list[dict], list[tuple[str, str]]]:
+    """Swap each excluded sample member for an unused train record with the same label (same stratum if possible).
+    Everything else in the sample stays as it was, so earlier human labels remain valid."""
+    rng = random.Random(seed + 1)
+    in_sample = {r["record_id"] for r in sample}
+    pool = sorted((r for r in train if r["record_id"] not in in_sample and r["record_id"] not in excluded),
+                  key=lambda r: r["record_id"])
+    kept, swaps = [], []
+    for r in sorted(sample, key=lambda r: r["record_id"]):
+        if r["record_id"] not in excluded:
+            kept.append(r)
+            continue
+        stratum = unsafe_stratum if is_unsafe(r) else safe_stratum
+        same_label = [c for c in pool if is_unsafe(c) == is_unsafe(r)]
+        same_stratum = [c for c in same_label if stratum(c) == stratum(r)]
+        choices = same_stratum or same_label
+        if not choices:
+            raise ValueError(f"no replacement left for {r['record_id']}")
+        new = rng.choice(choices)
+        pool.remove(new)
+        kept.append(new)
+        swaps.append((r["record_id"], new["record_id"]))
+    return sorted(kept, key=lambda r: r["record_id"]), swaps
+
+
 def write_ids(path, records: list[dict]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("".join(r["record_id"] + "\n" for r in sorted(records, key=lambda r: r["record_id"])),
                     encoding="utf-8")
 
 
-def process(name: str) -> dict:
-    records = list(read_jsonl(EXT_DIR / f"{name}.jsonl"))
+def process(name: str, excluded: set[str]) -> dict:
+    records = list(read_jsonl(NORMALIZED_DIR / f"{name}.jsonl"))
     seed, where, stats = find_split(records)
     for r in records:
         r["split"] = where[r["seed_id"]]
@@ -139,7 +176,10 @@ def process(name: str) -> dict:
     safe_stratum, unsafe_stratum = DATASETS[name]
     train = [r for r in records if r["split"] == "train"]
     sample = sample_train(train, seed, safe_stratum, unsafe_stratum)
+    sample, swaps = replace_excluded(sample, train, excluded, safe_stratum, unsafe_stratum, seed)
 
+    dropped = [r for r in records if r["record_id"] in excluded]
+    records = [r for r in records if r["record_id"] not in excluded]
     write_jsonl(EXT_DIR / f"{name}.jsonl", records)
     write_record_files(EXT_DIR / name, records)
     for s in FRACTIONS:
@@ -149,7 +189,10 @@ def process(name: str) -> dict:
     return {
         "seed": seed,
         "overall_unsafe_rate": round(sum(map(is_unsafe, records)) / len(records), 4),
-        "splits": stats,
+        "splits_before_exclusion": stats,
+        "splits": split_stats(records, where),
+        "excluded": {"records": len(dropped), "by_split": dict(Counter(r["split"] for r in dropped)),
+                     "sample_swaps": [{"out": a, "in": b} for a, b in swaps]},
         "train_sample": {
             "records": len(sample), "safe": sum(not is_unsafe(r) for r in sample),
             "unsafe": sum(map(is_unsafe, sample)),
@@ -161,7 +204,8 @@ def process(name: str) -> dict:
 
 
 def main() -> int:
-    report = {name: process(name) for name in DATASETS}
+    excluded = load_excluded()
+    report = {name: process(name, excluded) for name in DATASETS}
     report["settings"] = {"fractions": FRACTIONS, "max_overfill": MAX_OVERFILL, "balance_pp": BALANCE_PP,
                           "first_seed": FIRST_SEED, "per_class": PER_CLASS}
     write_json(SPLIT_DIR / "split_report.json", report)
@@ -169,7 +213,8 @@ def main() -> int:
         r = report[name]
         parts = ", ".join(f"{s} {st['records']} ({st['unsafe_rate']:.1%} unsafe, {st['groups']} groups)"
                           for s, st in r["splits"].items())
-        print(f"{name}: seed {r['seed']} | {parts} | sample {r['train_sample']['safe']}+{r['train_sample']['unsafe']}")
+        print(f"{name}: seed {r['seed']} | {parts} | sample {r['train_sample']['safe']}+{r['train_sample']['unsafe']}"
+              f" | excluded {r['excluded']['records']} ({len(r['excluded']['sample_swaps'])} swapped in sample)")
     return 0
 
 

@@ -16,13 +16,15 @@
 
 | Task | Who | Started | Status / Notes |
 |------|-----|---------|----------------|
-| Step 7: external data (record schema, normalize R-Judge + ATBench, split, sample, risk types) | Meet | 2026-10-07 | Done: schema, normalize, split + sample, ATBench risk types, R-Judge LLM suggestions (237 records). R-Judge human review handed to Moiesha (2026-10-12). Meet next: token counts, spot check |
+| Step 7: external data (record schema, normalize R-Judge + ATBench, split, sample, risk types) | Meet | 2026-10-07 | Done: schema, normalize, split + sample, ATBench types, R-Judge types applied (Moiesha). 41 physical-world records removed. Blind check kappa 0.57 (< 0.6), so a guided 4-person re-check is running (see Next Up). Meet next: token counts, spot check |
 | Step 8: in-domain seed specs (`data/seeds/in_domain/`) | Param, Moiesha | 2026-10-08 | **All 150 in-domain seeds reviewed + pushed** (T1/T4/T5 = Param 97, T2/T3 = Moiesha 53), schema-valid, 0 `reviewer: TBD`. Policies stubbed (P_*) until Step 5. **All 45 OOD seeds authored + pushed** (`data/seeds/ood/`), awaiting verification (see Next Up). Remaining Step 8: Step 9 record generation |
 
 ## Next Up
 
 | Task | Assigned To | Depends On | Notes |
 |------|-------------|------------|-------|
+| **1. Verify the risk-type guide** `data/external/risk_type_categories.txt`: read sections 2-4, decide the 4 boxes in section 5, sign at the bottom, mark VERIFIED | **Prateek** | none | Do this first; everyone uses it for the re-check. Kappa was 0.57; the 4 confusions found are in section 3 |
+| **2. Re-check R-Judge risk types** in `data/external/risk_type_recheck.csv`: filter `assigned_to` = your name, fill `recheck_type` (always, even if you agree with `current_type`) and `recheck_note` (if you change it) | **Meet 57, Param 57, Prateek 56, Moiesha 56** (21 of Moiesha's are new records with no label yet) | step 1 | Use only the guide. Types spelled exactly. Save as CSV UTF-8, don't sort or reorder. Then Meet reruns `map_risk` |
 | **Step 2: review + lock `docs/decisions.md`**: write your initials in OK (or a change in Comment) on all 51 rules, then a 1 h team meeting for the 8 ⚠️ rows and sign the Lock | **Everyone** (Meet, Param, Prateek, Moiesha) | none | Do this first: gold labeler, generator and configs depend on it. ⚠️ rows: check tools (4.2), names (4.4), data in git (7.8), writer LLM (8.3), agent LLM 2 (8.4), GPU (8.5), roles (9.1), 30 Oct scope (9.2) |
 | **Align training data with the demo company**: one shared action/argument/check-tool list (`configs/tools.yaml`, `configs/check_table.yaml`), then rename seeds or `lma_agent` to match; folders + folder-inherited sharing in `lma_agent/sim`; check gateway + StepLog→record converter | **Prateek + Param** | none | **Read `docs/alignment_issues.md`.** 7 of 12 seed actions missing in `lma_agent`, args and sharing values differ. Do before Step 9 record generation |
 | R-Judge: compute agreement between `reviewer_b_type` (Prateek) and `human_final` (Moiesha); resolve disagreements | Meet | double check done | 30 rows in `risk_type_double_check.csv` |
@@ -64,6 +66,7 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 
 ## Activity Log (newest first)
 
+- 2026-10-20, Meet: removed 41 physical-world external records (`excluded_physical.txt`), split unchanged; applied Moiesha's R-Judge types; blind check kappa 0.57; wrote risk-type guide (`risk_type_categories.txt`) and 4-person re-check sheet (`risk_type_recheck.csv`)
 - 2026-10-20, Prateek: finished R-Judge blind double check (30/30 rows in `risk_type_double_check.csv`); handed to Meet for agreement
 - 2026-10-19, Meet: `docs/decisions.md` draft ready for team review (51 rules, 8 need discussion)
 - 2026-10-19, Meet: started Step 2 draft (`docs/decisions.md`)

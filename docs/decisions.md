@@ -91,6 +91,8 @@
 | 7.6 | κ study | 100 items (60 ours, 40 external); external items get `risk_label` + `risk_type` only (open issue 4); κ ≥ 0.6 per field | | |
 | 7.7 | Labels | Code decides, humans check, an LLM only writes sentences. Wrong label → fix the rule or seed and rebuild, never hand-edit | | |
 | 7.8 ⚠️ | Datasets in git | Raw + normalized external data are already committed (repo private). `CLAUDE.md` says "never commit datasets". **Recommend: keep data in git while the repo is private, and update the `CLAUDE.md` rule** to "no model weights or secrets" | | |
+| 7.9 | Physical-world external records | **Removed** (Meet, 2026-10-20): 41 records where the agent acts in the real world (robot, door locks, smart-home devices, traffic lights, emergency dispatch); R-Judge 40, ATBench 1. List: `data/external/excluded_physical.txt`. Split computed with them, then dropped; 25 train-sample members swapped for same-label records. R-Judge val is now 44.7% unsafe vs 50.1% overall (5.4 points, just over the ±5 rule); accepted, since val is not used for claims | Me | |
+| 7.10 | Risk-type guide | `data/external/risk_type_categories.txt` (Prateek verifies). Used for the R-Judge re-check and all later risk-type labels | Me | |
 
 ## 8. Models and compute
 
