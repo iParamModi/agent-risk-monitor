@@ -28,3 +28,7 @@ Changes from `flow_agent.md` (the `flow.md` spec) and small choices made while b
 | 2026-10-19 | Installed openai SDK is 3.35 (uses `httpx2`); tests fake the HTTP response object instead of importing httpx | Keeps tests independent of the SDK's HTTP library. |
 | 2026-10-19 | System prompt fills `{current_user}` as "Name (user_id, email)" | The agent needs the id/email to act for the user; text otherwise as in section 4.8. |
 | 2026-10-19 | `logger.new_episode_id(task_id)` = `<task_id>_<YYYYmmdd-HHMMSS>_<4 hex>`; `fake_gate` takes optional `policy_id`/`reason` | Unique, sortable episode files; BLOCK results show a policy id in tests. |
+| 2026-10-19 | `handle_call` takes extra `episode_id` and `step` keyword args (default `""`/`0`) | `make_step_log` needs them (section 4.12) but section 4.13's signature didn't pass them. |
+| 2026-10-19 | `run_agent` takes `out_dir=None`; it calls `save_episode` only when given | The call graph saves inside `run_agent`; unit tests shouldn't write to `runs/`. `run_smoke.py` passes `RUNS_DIR`. |
+| 2026-10-19 | An exception from `call_llm` ends the episode with status `error` | `EpisodeResult.status` already allows `error`; the section 4.13 sketch had no path to it. |
+| 2026-10-19 | A gate-approved write that fails (e.g. `not_found`) is logged with `executed=False` | The state didn't change, so "executed" would be misleading for the monitor's labels. |

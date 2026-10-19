@@ -16,7 +16,7 @@ Package: `lma_agent/` at the repo root. Tests: `tests/agent/`. Run tests with `.
 | 8 | tools/write_tools.py + apply_action | done | lma_agent/tools/write_tools.py, tests/agent/test_write_tools.py | each write tested for exact change + input state untouched |
 | 9 | agent/llm.py (live Groq call) | blocked: no key | lma_agent/agent/llm.py, tests/agent/test_llm.py | code + 9 offline tests done (retry, parse, FakeLLM); live test `LMA_LIVE=1` needs GROQ_API_KEY in .env |
 | 10 | prompts, gate, user_sim, logger | done | lma_agent/agent/{prompts,gate,user_sim,logger}.py + tests | unit tests pass |
-| 11 | agent/loop.py + FakeLLM tests | missing | | |
+| 11 | agent/loop.py + FakeLLM tests | done | lma_agent/agent/loop.py, tests/agent/test_loop.py | all 7 required FakeLLM tests + multi-call, LLM failure, OOD schema tests; no Groq calls |
 | 12 | smoke tasks + run_smoke.py (real Groq) | missing | | |
 | 13 | branch tests (--gate block/ask/escalate) | missing | | |
 | 14 | tool-choice check vs expected_tools | missing | | |

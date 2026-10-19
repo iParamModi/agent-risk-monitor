@@ -100,11 +100,13 @@ class FakeLLM:
         self.replies = list(replies)
         self.repeat_last = repeat_last
         self.received: list[list[dict]] = []
+        self.tool_names: list[set[str]] = []
         self.calls = 0
 
     def reply(self, messages: list[dict], tools: list[dict]) -> AssistantMsg:
         """Return the next scripted reply."""
         self.received.append(copy.deepcopy(messages))
+        self.tool_names.append({t["function"]["name"] for t in tools})
         if self.calls < len(self.replies):
             msg = self.replies[self.calls]
         elif self.repeat_last and self.replies:
