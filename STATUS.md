@@ -7,7 +7,7 @@ Package: `lma_agent/` at the repo root. Tests: `tests/agent/`. Run tests with `.
 | # | Step | Status | Files | Notes |
 |---|------|--------|-------|-------|
 | 1 | config + skeleton | done | lma_agent/config.py, __init__.py files, requirements.txt, .env.example, .gitignore | `import lma_agent.config` works |
-| 2 | sim/models.py | missing | | |
+| 2 | sim/models.py | done | lma_agent/sim/models.py, tests/agent/test_models.py | added `exports` and `invalid` tool_type (decisions.md) |
 | 3 | sim/seed_state.py | missing | | |
 | 4 | sim/readers.py | missing | | |
 | 5 | tools.yaml + tools/registry.py | missing | | |
