@@ -1,7 +1,7 @@
 # Project Progress
 
 > Check this file before starting any work. Update it and push to GitHub after every change.
-> Last updated: 2026-10-15 by Moiesha
+> Last updated: 2026-10-19 by Prateek
 
 ## Team
 
@@ -17,6 +17,7 @@
 | Task | Who | Started | Status / Notes |
 |------|-----|---------|----------------|
 | Step 7: external data (record schema, normalize R-Judge + ATBench, split, sample, risk types) | Meet | 2026-10-07 | Done: schema, normalize, split + sample, ATBench risk types, R-Judge LLM suggestions (237 records). R-Judge human review handed to Moiesha (2026-10-12). Meet next: token counts, spot check |
+| Task agent loop phase 1 (`lma_agent/`, per `flow_agent.md` + `INSTRUCTIONS.md`, Llama 3.3 70B on Groq) | Prateek | 2026-10-19 | Started: building steps 1-14 bottom-up, status in `STATUS.md` |
 | Step 8: in-domain seed specs (`data/seeds/in_domain/`) | Param, Moiesha | 2026-10-08 | **All 150 in-domain seeds reviewed + pushed** (T1/T4/T5 = Param 97, T2/T3 = Moiesha 53), schema-valid, 0 `reviewer: TBD`. Policies stubbed (P_*) until Step 5. Remaining Step 8: 45 OOD seeds, then Step 9 record generation |
 
 ## Next Up
