@@ -17,7 +17,7 @@
 | Task | Who | Started | Status / Notes |
 |------|-----|---------|----------------|
 | Step 7: external data (record schema, normalize R-Judge + ATBench, split, sample, risk types) | Meet | 2026-10-07 | Done: schema, normalize, split + sample, ATBench risk types, R-Judge LLM suggestions (237 records). R-Judge human review handed to Moiesha (2026-10-12). Meet next: token counts, spot check |
-| Task agent loop phase 1 (`lma_agent/`, per `flow_agent.md` + `INSTRUCTIONS.md`, Llama 3.3 70B on Groq) | Prateek | 2026-10-19 | Started: building steps 1-14 bottom-up, status in `STATUS.md` |
+| Task agent loop phase 1 (`lma_agent/`, per `flow_agent.md` + `INSTRUCTIONS.md`, Llama 3.3 70B on Groq) | Prateek | 2026-10-19 | Steps 1-11 done (offline, 143 tests pass); 12-14 code done + tested with FakeLLM. Blocked: live Groq runs need `GROQ_API_KEY` in `.env`. See `STATUS.md`, `decisions.md` |
 | Step 8: in-domain seed specs (`data/seeds/in_domain/`) | Param, Moiesha | 2026-10-08 | **All 150 in-domain seeds reviewed + pushed** (T1/T4/T5 = Param 97, T2/T3 = Moiesha 53), schema-valid, 0 `reviewer: TBD`. Policies stubbed (P_*) until Step 5. Remaining Step 8: 45 OOD seeds, then Step 9 record generation |
 
 ## Next Up
@@ -25,6 +25,7 @@
 | Task | Assigned To | Depends On | Notes |
 |------|-------------|------------|-------|
 | R-Judge blind double check: fill `reviewer_b_type` in `data/external/risk_type_double_check.csv` (30 rows) | Prateek | none | Do NOT open `risk_type_review.csv` first; read each record file and pick one type |
+| Task agent: add `GROQ_API_KEY` to `.env`, run live test + `run_smoke` with all 4 gates, record Llama tool-choice rate | Prateek | Groq key | `LMA_LIVE=1 .venv/bin/python -m pytest -q -m live`; `python -m lma_agent.scripts.run_smoke --gate allow/block/ask/escalate` |
 | Step 8: write 45 OOD seeds (`data/seeds/ood/`) | Param | in-domain seeds done | New CUST domain + reworded policies, new styles/values; test-only (DATASET 3.7) |
 | Step 2: lock all definitions (`docs/decisions.md` + configs) | Everyone (M1 writes) | none | Resolve the 17 open issues in PLAN.md; pick writer LLM + 2 agent LLMs; assign M1-M4 roles |
 
@@ -47,6 +48,7 @@
 
 ## Activity Log (newest first)
 
+- 2026-10-19, Prateek: built task agent loop `lma_agent/` (simulator, 21 phase-1 tools, Groq client, gates, loop, smoke runner) per `flow_agent.md`; 143 tests pass offline; live Groq run pending a key
 - 2026-10-15, Moiesha: completed R-Judge risk-type review (237 records in `data/external/risk_type_review.csv`); 233 accepted suggestions, 4 overrides; ready for Meet to map to `r_judge.jsonl`
 - 2026-10-12, Param: robustness-checked all 150 in-domain seeds (0 issues). Fixed 3 FIN seeds (T1-005, T5-001, T5-003) where `key_fact`/the authorization check pointed at a vendor name that was only an account's `owner` label (not a modelled entity) — repointed to the account (`acct_77`/`acct_79`) so the simulator can resolve it; decisions unchanged
 - 2026-10-12, Param: reviewed T4 (15) + T5 (22) in-domain seeds; all 150 in-domain seeds now reviewed (0 `reviewer: TBD`); extended gen_seeds REVIEWED guard to all cells
