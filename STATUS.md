@@ -1,0 +1,30 @@
+# Agent loop — build status
+Last updated: 2026-10-19
+
+Spec: `flow_agent.md` (this is `flow.md`; it also stands in for `agent_flow.md`, which was merged into it). Build guide: `INSTRUCTIONS.md`.
+Package: `lma_agent/` at the repo root. Tests: `tests/agent/`. Run tests with `.venv/bin/python -m pytest -q`.
+
+| # | Step | Status | Files | Notes |
+|---|------|--------|-------|-------|
+| 1 | config + skeleton | done | lma_agent/config.py, __init__.py files, requirements.txt, .env.example, .gitignore | `import lma_agent.config` works |
+| 2 | sim/models.py | missing | | |
+| 3 | sim/seed_state.py | missing | | |
+| 4 | sim/readers.py | missing | | |
+| 5 | tools.yaml + tools/registry.py | missing | | |
+| 6 | tools/validate.py | missing | | |
+| 7 | tools/read_tools.py + run_read | missing | | |
+| 8 | tools/write_tools.py + apply_action | missing | | |
+| 9 | agent/llm.py (live Groq call) | missing | | |
+| 10 | prompts, gate, user_sim, logger | missing | | |
+| 11 | agent/loop.py + FakeLLM tests | missing | | |
+| 12 | smoke tasks + run_smoke.py (real Groq) | missing | | |
+| 13 | branch tests (--gate block/ask/escalate) | missing | | |
+| 14 | tool-choice check vs expected_tools | missing | | |
+
+## Differences from flow.md
+- `agent_flow.md` does not exist; the user confirmed `flow_agent.md` is the single spec. The 21 phase-1 tools are taken from its sections 4.6 and 4.7.
+- The repo already has stub modules for the same ideas (`src/env/`, `src/gateway/`, `src/live/agent_runner.py`, `configs/tools.yaml`). They are one-line placeholders, so `lma_agent/` was built as a separate package and they were left untouched.
+- See `decisions.md` for every naming/signature change.
+
+## Open questions for the user
+- No `GROQ_API_KEY` in the environment and no `.env` file, so live steps (9, 12–14) can't run yet.
