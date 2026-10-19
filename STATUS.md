@@ -12,7 +12,7 @@ Package: `lma_agent/` at the repo root. Tests: `tests/agent/`. Run tests with `.
 | 4 | sim/readers.py | done | lma_agent/sim/readers.py, tests/agent/test_readers.py | NotFound is a LookupError; 2 extra helpers |
 | 5 | tools.yaml + tools/registry.py | done | lma_agent/tools.yaml, lma_agent/tools/registry.py, tests/agent/test_registry.py | 21 tools: READ 10, WRITE 11 (3 OOD) |
 | 6 | tools/validate.py | done | lma_agent/tools/validate.py, tests/agent/test_validate.py | jsonschema Draft 2020-12; catches unknown tool, missing arg, wrong type, extra args |
-| 7 | tools/read_tools.py + run_read | missing | | |
+| 7 | tools/read_tools.py + run_read | done | lma_agent/tools/read_tools.py, tests/agent/test_read_tools.py | hidden-field test runs over every read tool; state hash unchanged |
 | 8 | tools/write_tools.py + apply_action | missing | | |
 | 9 | agent/llm.py (live Groq call) | missing | | |
 | 10 | prompts, gate, user_sim, logger | missing | | |

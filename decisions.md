@@ -17,3 +17,4 @@ Changes from `flow_agent.md` (the `flow.md` spec) and small choices made while b
 | 2026-10-19 | `tools.yaml` lives in `lma_agent/`; OOD tools carry `ood: true` (domain `CUST`) | `get_agent_tool_schemas(include_ood=...)` filters on that flag. The old `configs/tools.yaml` stub is left alone. |
 | 2026-10-19 | Arg schemas set `additionalProperties: false`; `read_inbox.n` optional (default 5) | Unknown/garbled args (`_raw`) fail validation; Llama often omits `n`. |
 | 2026-10-19 | `write_cells.values` is a flat list filled row by row; `send_email.to` is a list | Simple shape that maps cleanly onto `Email.to` and single cells. |
+| 2026-10-19 | `list_files` includes subfolders and returns `not_found` for an empty/unknown folder; `list_permissions` returns `roles: {}` for an existing resource with no roles; `read_inbox` is newest first | Clearer feedback for the agent. |
