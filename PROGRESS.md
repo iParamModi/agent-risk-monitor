@@ -24,6 +24,7 @@
 
 | Task | Assigned To | Depends On | Notes |
 |------|-------------|------------|-------|
+| **Align training data with the demo company**: one shared action/argument/check-tool list (`configs/tools.yaml`, `configs/check_table.yaml`), then rename seeds or `lma_agent` to match; folders + folder-inherited sharing in `lma_agent/sim`; check gateway + StepLog→record converter | **Prateek + Param** | none | **Read `docs/alignment_issues.md`.** 7 of 12 seed actions missing in `lma_agent`, args and sharing values differ. Do before Step 9 record generation |
 | Task agent: write the 40 live tasks (`flow_agent.md` section 7) | TBD | agent loop done | Mind the Groq limit of 8,000 tokens/min |
 | Verify OOD CUST seeds (20) | Param: T1 (8), T5 (5); Moiesha: T2 (1), T3 (3), T4 (3) | seeds pushed | `data/seeds/ood/OOD-CUST-*.yaml`; set `reviewer:` to your name when done |
 | Verify OOD reworded-domain seeds (25) | Param: T1 (10), T4 (2), T5 (1); Moiesha: T2 (10), T3 (2) | seeds pushed | `OOD-{FILE,PRIV,ACC,FIN,REPO,CAL}-*.yaml`; Moiesha how-to in the note below |
@@ -56,10 +57,12 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 
 ## Blockers / Questions
 
-- <anything stuck or needing a team decision>
+- Seeds (training) and `lma_agent` (demo) use different action names, args and fact values. Must be aligned before Step 9, or the trained monitor won't work in the demo. Owners: Prateek + Param. Details: `docs/alignment_issues.md`
+- Agent LLM is now `openai/gpt-oss-120b` (not Llama 3.3 70B). PLAN Step 22 needs a second agent LLM from another family, still to pick
 
 ## Activity Log (newest first)
 
+- 2026-10-19, Meet: listed seed vs `lma_agent` mismatches in `docs/alignment_issues.md`; assigned alignment to Prateek + Param
 - 2026-10-19, Param: pushed 45 OOD seeds to `data/seeds/ood/` (20 CUST new-domain + 25 reworded-old-domain), all schema-valid; verification split assigned — CUST: Param T1/T5, Moiesha T2/T3/T4; reworded: Param T1/T4/T5, Moiesha T2/T3 (how-to in Next Up)
 - 2026-10-19, Prateek: task agent loop live on Groq; agent model switched to `openai/gpt-oss-120b` (Llama 3.3 70B not on Groq); 7/7 smoke tasks done, all 4 gate branches verified
 - 2026-10-19, Prateek: built task agent loop `lma_agent/` (simulator, 21 phase-1 tools, Groq client, gates, loop, smoke runner) per `flow_agent.md`; 143 tests pass offline; live Groq run pending a key
