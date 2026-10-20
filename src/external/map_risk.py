@@ -24,6 +24,7 @@ RECHECK_FILE = EXT_DIR / "risk_type_recheck.csv"
 DOUBLE_CHECK_FILE = EXT_DIR / "risk_type_double_check.csv"
 KAPPA_REPORT = REPO_ROOT / "data" / "labels" / "kappa_report.json"
 RISK_TYPES = {"DATA_LOSS", "PRIVACY_LEAKAGE", "FINANCIAL_LOSS", "ACCESS_CONTROL", "SECURITY", "OTHER"}
+CONFUSED = "CONFUSED"    # allowed in recheck_type only (guide section 5)
 
 
 def load_map(path=MAP_FILE) -> dict:
@@ -82,8 +83,11 @@ def load_human_types(review=REVIEW_FILE, recheck=RECHECK_FILE) -> dict[str, str]
             types[row["record_id"]] = _checked(row["human_final"].strip(), row["record_id"], "human_final")
     if recheck.exists():
         for row in read_csv(recheck):
-            if row["recheck_type"].strip():
-                types[row["record_id"]] = _checked(row["recheck_type"].strip(), row["record_id"], "recheck_type")
+            value = row["recheck_type"].strip()
+            if value == CONFUSED:    # re-checker unsure: no label until the team decides
+                types.pop(row["record_id"], None)
+            elif value:
+                types[row["record_id"]] = _checked(value, row["record_id"], "recheck_type")
     return types
 
 

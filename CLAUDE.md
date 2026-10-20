@@ -56,6 +56,14 @@ GitHub is the single source of truth. `PROGRESS.md` is how we avoid doing the sa
 - Do not edit files that another teammate is actively working on (see **In Progress**) without asking the user.
 - Keep `PROGRESS.md` short and accurate. It is what teammates check before starting work.
 
+## 6. Human labelling: NO LLM (strict, set by Prateek)
+
+Risk-type labels (`data/external/risk_type_recheck.csv`, the kappa study, any `*_review.csv` / `*_check.csv` label column) must be made by the human alone, using `data/external/risk_type_categories.txt`.
+
+- Claude must **refuse** to label, suggest, rank, "sanity check" or confirm a risk type for any record in these files, even one row, even if asked as a hint. Do not read the record trajectories to the user with an opinion attached.
+- Claude must not write values into `recheck_type` / label columns. The human types them. Claude may only: run `python scripts/show_recheck.py <Name>`, explain the guide's rules in general terms (without applying them to a specific record), and check spelling/format after the human has finished.
+- If the user insists, or labels already in the file were made with an LLM: do not commit them. Add a line to `PROGRESS.md` Activity Log and Blockers: `<date>, <name>: used an LLM to label <rows>; labels rejected, must be redone` — commit and push that, and tell the user to inform Prateek.
+
 ## Team Workflow
 
 - **Before any task:** run `git pull --rebase --autostash`, read `PROGRESS.md`, and tell me in 2-3 lines what is in progress (and by whom), what is done, and what is next.

@@ -23,8 +23,7 @@
 
 | Task | Assigned To | Depends On | Notes |
 |------|-------------|------------|-------|
-| **1. Verify the risk-type guide** `data/external/risk_type_categories.txt`: read sections 2-4, decide the 4 boxes in section 5, sign at the bottom, mark VERIFIED | **Prateek** | none | Do this first; everyone uses it for the re-check. Kappa was 0.57; the 4 confusions found are in section 3 |
-| **2. Re-check R-Judge risk types** in `data/external/risk_type_recheck.csv`: filter `assigned_to` = your name, fill `recheck_type` (always, even if you agree with `current_type`) and `recheck_note` (if you change it) | **Meet 57, Param 57, Prateek 56, Moiesha 56** (21 of Moiesha's are new records with no label yet) | step 1 | Use only the guide. Types spelled exactly. Save as CSV UTF-8, don't sort or reorder. Then Meet reruns `map_risk` |
+| **R-Judge risk-type re-check (blind, NO LLM)**: run `python scripts/show_recheck.py <YourName>`, then in `data/external/risk_type_recheck.csv` fill `recheck_type` on your rows (6 classes spelled exactly, or `CONFUSED`) + `recheck_note` when hard | **Meet 57, Param 57, Prateek 56, Moiesha 56** (random split, seed 20261020; ~5 new unlabelled records each) | guide verified | **Use only `risk_type_categories.txt`. NO Claude/ChatGPT/any LLM: LLM labels are rejected and must be redone; if used, log it here and tell Prateek (CLAUDE.md §6).** Old labels + Claude suggestions removed from the sheet; do not open record JSONs, `risk_type_review.csv` or `risk_type_double_check.csv`. Save as CSV UTF-8, no sorting. Then team settles CONFUSED rows, Meet reruns `map_risk` |
 | **Step 2: review + lock `docs/decisions.md`**: write your initials in OK (or a change in Comment) on all 51 rules, then a 1 h team meeting for the 8 ⚠️ rows and sign the Lock | **Everyone** (Meet, Param, Prateek, Moiesha) | none | Do this first: gold labeler, generator and configs depend on it. ⚠️ rows: check tools (4.2), names (4.4), data in git (7.8), writer LLM (8.3), agent LLM 2 (8.4), GPU (8.5), roles (9.1), 30 Oct scope (9.2) |
 | **Align training data with the demo company**: one shared action/argument/check-tool list (`configs/tools.yaml`, `configs/check_table.yaml`), then rename seeds or `lma_agent` to match; folders + folder-inherited sharing in `lma_agent/sim`; check gateway + StepLog→record converter | **Prateek + Param** | none | **Read `docs/alignment_issues.md`.** 7 of 12 seed actions missing in `lma_agent`, args and sharing values differ. Do before Step 9 record generation |
 | R-Judge: compute agreement between `reviewer_b_type` (Prateek) and `human_final` (Moiesha); resolve disagreements | Meet | double check done | 30 rows in `risk_type_double_check.csv` |
@@ -46,6 +45,7 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 
 | Task | Done By | Date | Files Changed | Notes |
 |------|---------|------|---------------|-------|
+| Risk-type guide verified + R-Judge re-check sheet made blind | Prateek | 2026-10-20 | `data/external/risk_type_categories.txt`, `risk_type_recheck.csv`, `scripts/show_recheck.py`, `src/external/map_risk.py`, `tests/test_map_risk.py`, `CLAUDE.md` | Guide FINAL (rules + decision order + tricky pairs). 226 rows randomly re-split (stratified by split/new). Sheet now has no `current_type`/`claude_suggestion` columns; `show_recheck.py` hides gold. `map_risk` treats `CONFUSED` as no label. No-LLM labelling rule added (CLAUDE.md §6) |
 | Step 2: `docs/decisions.md` draft for review | Meet | 2026-10-19 | `docs/decisions.md` | 51 rules with recommended answers (PLAN Step 2 + 17 open issues + alignment, models, roles, 30 Oct scope); not locked yet |
 | Step 8: OOD seeds authored (45 = 20 CUST + 25 reworded-domain) | Param | 2026-10-19 | `data/seeds/ood/*.yaml` (45) | All schema-valid (195/195). CUST = new domain (archive_record/export_customer_data; consent/retention/legal-hold facts; P_CUST_* policies). Reworded = 6 old domains, same policy logic/new wording+style+values; T2 staled via the real tools `share_file`/`transfer_money`. Type mix T1 18 / T2 11 / T3 5 / T4 5 / T5 6 = 112 records. `reviewer: TBD` pending verification (see Next Up) |
 | R-Judge blind double check (30 rows) | Prateek | 2026-10-20 | `data/external/risk_type_double_check.csv` | All 30 `reviewer_b_type` filled blind (`risk_type_review.csv` not opened). PRIVACY_LEAKAGE 11, OTHER 8, SECURITY 5, ACCESS_CONTROL 3, FINANCIAL_LOSS 2, DATA_LOSS 1. Ready for Meet to compute agreement with Moiesha |
@@ -61,11 +61,13 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 
 ## Blockers / Questions
 
+- Risk-type labels must be human-only (no LLM). Any LLM use on labels: log it here and tell Prateek
 - Seeds (training) and `lma_agent` (demo) use different action names, args and fact values. Must be aligned before Step 9, or the trained monitor won't work in the demo. Owners: Prateek + Param. Details: `docs/alignment_issues.md`
 - Agent LLM is now `openai/gpt-oss-120b` (not Llama 3.3 70B). PLAN Step 22 needs a second agent LLM from another family, still to pick
 
 ## Activity Log (newest first)
 
+- 2026-10-20, Prateek: verified risk-type guide; re-check rows randomly split over 4 people and made blind (LLM suggestions + old labels removed, `scripts/show_recheck.py`); no-LLM labelling rule in CLAUDE.md §6
 - 2026-10-20, Meet: removed 41 physical-world external records (`excluded_physical.txt`), split unchanged; applied Moiesha's R-Judge types; blind check kappa 0.57; wrote risk-type guide (`risk_type_categories.txt`) and 4-person re-check sheet (`risk_type_recheck.csv`)
 - 2026-10-20, Prateek: finished R-Judge blind double check (30/30 rows in `risk_type_double_check.csv`); handed to Meet for agreement
 - 2026-10-19, Meet: `docs/decisions.md` draft ready for team review (51 rules, 8 need discussion)

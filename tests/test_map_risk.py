@@ -62,6 +62,8 @@ def test_recheck_overrides_review(tmp_path):
     _csv(recheck, ["record_id", "recheck_type"], [["RJ-a-1", "PRIVACY_LEAKAGE"], ["RJ-a-2", ""], ["RJ-a-4", "DATA_LOSS"]])
     assert load_human_types(review, recheck) == {"RJ-a-1": "PRIVACY_LEAKAGE", "RJ-a-2": "OTHER", "RJ-a-4": "DATA_LOSS"}
     assert load_human_types(review, tmp_path / "none.csv") == {"RJ-a-1": "SECURITY", "RJ-a-2": "OTHER"}
+    _csv(recheck, ["record_id", "recheck_type"], [["RJ-a-1", "CONFUSED"]])
+    assert load_human_types(review, recheck) == {"RJ-a-2": "OTHER"}         # unsure -> no label yet
     _csv(recheck, ["record_id", "recheck_type"], [["RJ-a-1", "privacy"]])
     with pytest.raises(ValueError):
         load_human_types(review, recheck)
