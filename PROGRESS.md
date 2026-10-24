@@ -1,7 +1,7 @@
 # Project Progress
 
 > Check this file before starting any work. Update it and push to GitHub after every change.
-> Last updated: 2026-10-24 by Prateek
+> Last updated: 2026-10-24 by Meet
 
 ## Team
 
@@ -16,7 +16,7 @@
 
 | Task | Who | Started | Status / Notes |
 |------|-----|---------|----------------|
-| Step 7: external data (record schema, normalize R-Judge + ATBench, split, sample, risk types) | Meet | 2026-10-07 | Done: schema, normalize, split + sample, ATBench types, R-Judge types applied (Moiesha). 41 physical-world records removed. Blind check kappa 0.57 (< 0.6), so a guided 4-person re-check is running (see Next Up). Meet next: token counts, spot check |
+| Step 7: external data (record schema, normalize R-Judge + ATBench, split, sample, risk types) | Meet | 2026-10-07 | Done: schema, normalize, split + sample, ATBench types, R-Judge types applied (Moiesha). 41 physical-world records removed. Blind check kappa 0.57 (< 0.6), so a guided 4-person re-check is running (see Next Up). Token counts done (`meta.n_tokens`, `data/external/token_report.json`). Meet next: 20-record spot check per source |
 | Step 8: in-domain seed specs (`data/seeds/in_domain/`) | Param, Moiesha | 2026-10-08 | **All 150 in-domain seeds reviewed + pushed** (T1/T4/T5 = Param 97, T2/T3 = Moiesha 53), schema-valid, 0 `reviewer: TBD`. Policies stubbed (P_*) until Step 5. **All 45 OOD seeds authored + pushed** (`data/seeds/ood/`), awaiting verification (see Next Up). Remaining Step 8: Step 9 record generation |
 
 ## Next Up
@@ -64,10 +64,12 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 
 - Risk-type labels must be human-only (no LLM). Any LLM use on labels: log it here and tell Prateek
 - Seeds (training) and `lma_agent` (demo) use different action names, args and fact values. Must be aligned before Step 9, or the trained monitor won't work in the demo. Owners: Prateek + Param. Details: `docs/alignment_issues.md`
+- Long ATBench records are almost all UNSAFE: over 4,096 tokens = 51 UNSAFE / 5 SAFE, over 8,192 = 36 UNSAFE / 0 SAFE (longest 100,824, raw HTML pages in tool outputs). Dropping them (PLAN Step 16) shifts the label balance and lets the model learn "long = unsafe". Team to decide: drop, or shorten very long tool outputs. Details: `data/external/token_report.json`
 - Agent LLM is now `openai/gpt-oss-120b` (not Llama 3.3 70B). PLAN Step 22 needs a second agent LLM from another family, still to pick
 
 ## Activity Log (newest first)
 
+- 2026-10-24, Meet: Qwen3 token counts for all external records (`src/external/count_tokens.py`, `make external` step). R-Judge median 406 / max 1,444; ATBench median 1,304 / p95 4,509 / max 100,824 (56 over 4,096, 36 over 8,192, nearly all UNSAFE; see Blockers)
 - 2026-10-24, Meet: `docs/decisions.md` v2 ready for sign-off (clean rule file, 62 rules, 6 need the meeting; R14.1: datasets not in git; R3.6 settled per record)
 - 2026-10-24, Prateek: finished blind R-Judge re-check of own 56 rows by hand using the guide (no LLM); format checked
 - 2026-10-24, Meet: labelled the 25 ATBench misinformation-harm records by hand (no LLM) and applied them

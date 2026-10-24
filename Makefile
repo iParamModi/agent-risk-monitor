@@ -10,3 +10,4 @@ external:
 	$(PYTHON) -m src.external.normalize
 	$(PYTHON) -m src.external.sample
 	$(PYTHON) -m src.external.map_risk
+	$(PYTHON) -m src.external.count_tokens
