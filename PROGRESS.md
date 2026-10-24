@@ -18,6 +18,7 @@
 |------|-----|---------|----------------|
 | Step 7: external data (record schema, normalize R-Judge + ATBench, split, sample, risk types) | Meet | 2026-10-07 | Done: schema, normalize, split + sample, ATBench types, R-Judge types applied (Moiesha). 41 physical-world records removed. Blind check kappa 0.57 (< 0.6), so a guided 4-person re-check is running (see Next Up). Token counts done (`meta.n_tokens`, `data/external/token_report.json`). Meet next: 20-record spot check per source |
 | Step 8: in-domain seed specs (`data/seeds/in_domain/`) | Param, Moiesha | 2026-10-08 | **All 150 in-domain seeds reviewed + pushed** (T1/T4/T5 = Param 97, T2/T3 = Moiesha 53), schema-valid, 0 `reviewer: TBD`. Policies stubbed (P_*) until Step 5. **All 45 OOD seeds authored + pushed** (`data/seeds/ood/`), awaiting verification (see Next Up). Remaining Step 8: Step 9 record generation |
+| Align demo company (`lma_agent`) with seed vocabulary: actions, args, folders, fact values; then seed cleanup with Param | Prateek | 2026-10-24 | Approach: change `lma_agent` to follow the seeds (seeds stay, small cleanup after). Details: `docs/alignment_issues.md` |
 
 ## Next Up
 
@@ -25,7 +26,6 @@
 |------|-------------|------------|-------|
 | **R-Judge risk-type re-check (blind, NO LLM)**: run `python scripts/show_recheck.py <YourName>`, then in `data/external/risk_type_recheck.csv` fill `recheck_type` on your rows (6 classes spelled exactly, or `CONFUSED`) + `recheck_note` when hard | **Meet 57 ✅ done (2026-10-21)**, **Prateek 56 ✅ done (2026-10-24)**, Param 57, Moiesha 56 (random split, seed 20261020; ~5 new unlabelled records each) | guide verified | **Use only `risk_type_categories.txt`. NO Claude/ChatGPT/any LLM: LLM labels are rejected and must be redone; if used, log it here and tell Prateek (CLAUDE.md §6).** Old labels + Claude suggestions removed from the sheet; do not open record JSONs, `risk_type_review.csv` or `risk_type_double_check.csv`. Save as CSV UTF-8, no sorting. Then team settles CONFUSED rows, Meet reruns `map_risk` |
 | **Step 2: review + lock `docs/decisions.md` (v2)**: read all 15 sections (62 rules). For any change, add a row to the Changelog at the bottom with your reason. Then a 1 h team meeting on the 6 ⚠️ rules, and all four tick **Sign to lock** | **Everyone** (Meet, Param, Prateek, Moiesha) | none | Blocks configs, gold labeler and record generator. ⚠️ rules: R5.1 names = `lma_agent`'s (Param + Prateek), R7.1 first check-tool set (**Prateek**), R11.6 writer LLM, R13.2 second agent LLM, R13.3 **GPU**, R15.2 30 Oct scope |
-| **Align training data with the demo company**: one shared action/argument/check-tool list (`configs/tools.yaml`, `configs/check_table.yaml`), then rename seeds or `lma_agent` to match; folders + folder-inherited sharing in `lma_agent/sim`; check gateway + StepLog→record converter | **Prateek + Param** | none | **Read `docs/alignment_issues.md`.** 7 of 12 seed actions missing in `lma_agent`, args and sharing values differ. Do before Step 9 record generation |
 | Task agent: write the 40 live tasks (`flow_agent.md` section 7) | TBD | agent loop done | Mind the Groq limit of 8,000 tokens/min |
 | Verify OOD CUST seeds (20) | Param: T1 (8), T5 (5); Moiesha: T2 (1), T3 (3), T4 (3) | seeds pushed | `data/seeds/ood/OOD-CUST-*.yaml`; set `reviewer:` to your name when done |
 | Verify OOD reworded-domain seeds (25) | Param: T1 (10), T4 (2), T5 (1); Moiesha: T2 (10), T3 (2) | seeds pushed | `OOD-{FILE,PRIV,ACC,FIN,REPO,CAL}-*.yaml`; Moiesha how-to in the note below |
@@ -69,6 +69,7 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 
 ## Activity Log (newest first)
 
+- 2026-10-24, Prateek: started aligning `lma_agent` with the seed vocabulary (company follows seeds)
 - 2026-10-24, Meet: Qwen3 token counts for all external records (`src/external/count_tokens.py`, `make external` step). R-Judge median 406 / max 1,444; ATBench median 1,304 / p95 4,509 / max 100,824 (56 over 4,096, 36 over 8,192, nearly all UNSAFE; see Blockers)
 - 2026-10-24, Meet: `docs/decisions.md` v2 ready for sign-off (clean rule file, 62 rules, 6 need the meeting; R14.1: datasets not in git; R3.6 settled per record)
 - 2026-10-24, Prateek: finished blind R-Judge re-check of own 56 rows by hand using the guide (no LLM); format checked
