@@ -25,6 +25,7 @@
 | Task | Assigned To | Depends On | Notes |
 |------|-------------|------------|-------|
 | **R-Judge risk-type re-check (blind, NO LLM)**: run `python scripts/show_recheck.py <YourName>`, then in `data/external/risk_type_recheck.csv` fill `recheck_type` on your rows (6 classes spelled exactly, or `CONFUSED`) + `recheck_note` when hard | **Meet 57 ✅ done (2026-10-21)**, **Prateek 56 ✅ done (2026-10-24)**, Param 57, Moiesha 56 (random split, seed 20261020; ~5 new unlabelled records each) | guide verified | **Use only `risk_type_categories.txt`. NO Claude/ChatGPT/any LLM: LLM labels are rejected and must be redone; if used, log it here and tell Prateek (CLAUDE.md §6).** Old labels + Claude suggestions removed from the sheet; do not open record JSONs, `risk_type_review.csv` or `risk_type_double_check.csv`. Save as CSV UTF-8, no sorting. Then team settles CONFUSED rows, Meet reruns `map_risk` |
+| **Seed cleanup: make seeds use the company tool names** (174 seeds: move `requested_by` out of tool args, 8 `share_file` `to`→`with`, 24 OOD seeds back from old `lma_agent` names) | **Param** | none | **Read `docs/seed_cleanup.md`** (exact list + 3 questions). Fix in `scripts/gen_seeds.py` too. Done when `python scripts/check_seed_vocab.py` says 0 and `validate_seeds.py` passes. Prateek changes `lma_agent` to the same list in parallel |
 | **Step 2: review + lock `docs/decisions.md` (v2)**: read all 15 sections (62 rules). For any change, add a row to the Changelog at the bottom with your reason. Then a 1 h team meeting on the 6 ⚠️ rules, and all four tick **Sign to lock** | **Everyone** (Meet, Param, Prateek, Moiesha) | none | Blocks configs, gold labeler and record generator. ⚠️ rules: R5.1 names = `lma_agent`'s (Param + Prateek), R7.1 first check-tool set (**Prateek**), R11.6 writer LLM, R13.2 second agent LLM, R13.3 **GPU**, R15.2 30 Oct scope |
 | Task agent: write the 40 live tasks (`flow_agent.md` section 7) | TBD | agent loop done | Mind the Groq limit of 8,000 tokens/min |
 | Verify OOD CUST seeds (20) | Param: T1 (8), T5 (5); Moiesha: T2 (1), T3 (3), T4 (3) | seeds pushed | `data/seeds/ood/OOD-CUST-*.yaml`; set `reviewer:` to your name when done |
@@ -69,6 +70,7 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 
 ## Activity Log (newest first)
 
+- 2026-10-24, Prateek: wrote seed cleanup guide (`docs/seed_cleanup.md`) + checker (`scripts/check_seed_vocab.py`); assigned seed cleanup to Param
 - 2026-10-24, Prateek: started aligning `lma_agent` with the seed vocabulary (company follows seeds)
 - 2026-10-24, Meet: Qwen3 token counts for all external records (`src/external/count_tokens.py`, `make external` step). R-Judge median 406 / max 1,444; ATBench median 1,304 / p95 4,509 / max 100,824 (56 over 4,096, 36 over 8,192, nearly all UNSAFE; see Blockers)
 - 2026-10-24, Meet: `docs/decisions.md` v2 ready for sign-off (clean rule file, 62 rules, 6 need the meeting; R14.1: datasets not in git; R3.6 settled per record)
