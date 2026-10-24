@@ -77,6 +77,7 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 - 2026-10-24, Prateek: finished blind R-Judge re-check of own 56 rows by hand using the guide (no LLM); format checked
 - 2026-10-24, Meet: labelled the 25 ATBench misinformation-harm records by hand (no LLM) and applied them
 - 2026-10-24, Meet: added blind per-record re-check for the 25 used ATBench misinformation-harm records (`atbench_h5_recheck.csv`, `scripts/show_atbench_recheck.py`); `map_risk` applies it
+- 2026-10-24, Param: filled recheck_type for 49 of 57 assigned rows in `data/external/risk_type_recheck.csv`; 2 rows marked CONFUSED (RJ-webbrowser-135: OTHER vs SECURITY; RJ-code_agentmonitor-142: PRIVACY_LEAKAGE vs SECURITY); 8 rows left blank (unsure — rows: RJ-trafficdispatch-128, RJ-terminal-0, RJ-software-10, RJ-socialapp-112, RJ-software-55, RJ-socialapp-104, RJ-moneymanagement-18, RJ-ds_app-2132); CONFUSED + blank rows flagged for Prateek to settle
 - 2026-10-21, Meet: finished blind R-Judge re-check of own 57 rows by hand using the guide (no LLM); format checked
 - 2026-10-20, Meet: marked R-Judge agreement task completed (kappa 0.57, see `data/labels/kappa_report.json`)
 - 2026-10-20, Prateek: verified risk-type guide; re-check rows randomly split over 4 people and made blind (LLM suggestions + old labels removed, `scripts/show_recheck.py`); no-LLM labelling rule in CLAUDE.md §6
