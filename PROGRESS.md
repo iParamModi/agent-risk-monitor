@@ -45,6 +45,7 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 
 | Task | Done By | Date | Files Changed | Notes |
 |------|---------|------|---------------|-------|
+| Tool phases + seed split (phase 1 / phase 2 / ood) | Prateek | 2026-10-25 | `configs/tool_phases.yaml`, `scripts/split_by_phase.py`, `tests/test_split_by_phase.py`, `data/training/seed_phases.json`, `lma_agent/tools.yaml` (`create_event` → phase 2), `STATUS.md`, `decisions.md` | Phase 1 agent = 20 tools (9 read + 11 write). Seeds: phase 1 146, phase 2 4 (`create_event`), ood 39, rejected 6 (OOD-ACC `grant_access`, fixed by Param's cleanup). Same script splits records into `data/training/phase*_*.jsonl` once Step 9 makes them. revoke_permission has only 2 seeds |
 | Demo company (`lma_agent`) changed to the seed vocabulary | Prateek | 2026-10-25 | `lma_agent/tools.yaml`, `sim/models.py`, `sim/readers.py`, `sim/seed_state.py`, `tools/read_tools.py`, `tools/write_tools.py`, `tasks/smoke_tasks.yaml`, `tests/agent/*`, `decisions.md`, `scripts/check_seed_vocab.py` | 14 actions with seed names/args (`grant_permission`, `file`, `with`, `amount_inr`, ...) + new `move_file`, `edit_file`, `archive_repository`, `create_event`; folders with inherited sharing (`internal`/`public`/`external:<org>`), `restricted`, hidden `attrs` for the ~80 seed facts. 113 agent tests pass (+ a test that fails if company and seed list drift). Live Groq smoke: 7/7 done, 0 errors, calls in seed format |
 | ATBench misinformation-harm re-check (25 used records, blind, by hand) | Meet | 2026-10-24 | `data/external/atbench_h5_recheck.csv`, `atbench.jsonl` | decisions.md R3.6: labelled one by one with the guide (no LLM); applied by `map_risk` over the map default |
 | R-Judge agreement Prateek vs Moiesha (30-row blind check) | Meet | 2026-10-20 | `data/labels/kappa_report.json`, `src/external/map_risk.py` | 26 comparable rows (4 were removed physical records): agreement 69%, Cohen's kappa 0.57 < 0.6, so the guided blind re-check was started |
@@ -71,6 +72,7 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 
 ## Activity Log (newest first)
 
+- 2026-10-25, Prateek: split tools and seeds into phase 1 / phase 2 (`configs/tool_phases.yaml`, `scripts/split_by_phase.py`); phase 1 = 20 tools, 146 in-domain seeds
 - 2026-10-25, Prateek: demo company `lma_agent` now uses the seed vocabulary (actions, args, folders, fact values, hidden attrs); 113 tests pass, live smoke 7/7
 - 2026-10-24, Prateek: wrote seed cleanup guide (`docs/seed_cleanup.md`) + checker (`scripts/check_seed_vocab.py`); assigned seed cleanup to Param
 - 2026-10-24, Prateek: started aligning `lma_agent` with the seed vocabulary (company follows seeds)

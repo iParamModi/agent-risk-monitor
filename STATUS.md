@@ -41,3 +41,10 @@ Rate limit: this Groq key allows 8,000 tokens/min for gpt-oss-120b, and each req
 ## Open questions for the user
 - Llama 3.3 70B isn't available on Groq for this key, so the agent now uses `openai/gpt-oss-120b` (your choice). Tell the team, since PLAN/DATASET may name Llama.
 - The 8,000 tokens/min limit will slow the 40 live tasks; a paid Groq tier or shorter tool descriptions would help.
+
+## Phase split — record format (2026-10-25)
+- Tool lists per phase: `configs/tool_phases.yaml`. Phase 1 = 9 read + 11 write in-domain tools (the agent gets these 20; OOD CUST tools only on CUST tasks); phase 2 adds 3 read + 11 write; 12 tools dropped. `lma_agent/tools.yaml` `phase` agrees (`create_event` is phase 2); a test checks it.
+- Records (`configs/schemas/record.schema.json`): action tool = `visible.proposed_action.name`; trajectory tools = `visible.trajectory[*].tool_call.name`; `split` (train/val/test, null until split); `seed_id`; `set` (in_domain/ood/external); `source` (ours/r_judge/atbench).
+- `data/records/` is still empty (Step 9 not run), so `scripts/split_by_phase.py` splits the **seeds** now (`data/training/seed_phases.json`) and writes `phase{1,2}_{train,val,test}.jsonl`, `ood_test.jsonl`, `rejected.jsonl`, `split_summary.json` once records exist.
+- Seeds today: phase 1 **146** (all in-domain except the 4 `create_event` seeds), phase 2 **4**, ood **39**, rejected **6** (OOD-ACC seeds still use `grant_access`; they become ood after Param's seed cleanup).
+- Phase 1 write tools by seed count: grant_permission 28, transfer_money 25, share_file 19, send_email 18, delete_file 15, delete_repository 15, write_cells 8, edit_file 6, archive_repository 5, move_file 5 (+ T2c later writes), **revoke_permission 2 (under 5)**.

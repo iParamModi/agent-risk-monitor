@@ -132,5 +132,5 @@ def test_ood_tools_only_for_cust_tasks():
     fake = FakeLLM([assistant_msg("ok", [])] * 2)
     run_agent(TASK, build_seed_state(0), fake)
     run_agent(Task(task_id="o", domain="CUST", prompt="x"), build_seed_state(0), fake)
-    assert len(fake.tool_names[0]) == 21 and "archive_record" not in fake.tool_names[0]
-    assert len(fake.tool_names[1]) == 24 and "archive_record" in fake.tool_names[1]
+    assert len(fake.tool_names[0]) == 20 and "archive_record" not in fake.tool_names[0]
+    assert len(fake.tool_names[1]) == 23 and "archive_record" in fake.tool_names[1]

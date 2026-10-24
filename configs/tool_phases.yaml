@@ -1,0 +1,16 @@
+# Which agent tools each build phase supports. Source of truth for scripts/split_by_phase.py.
+# Phase 1 = the working project (monitor trained on these); phase 2 adds tools later
+# (retrain on phase1_train + phase2_train from the base model).
+# Names follow the seeds / lma_agent/tools.yaml (docs/seed_cleanup.md).
+# A tool must be in exactly one list; a tool in no list makes a seed/record "rejected".
+
+phase1_in_domain:
+  read:  [list_files, get_file_info, read_file, lookup_contact, get_user, list_permissions, get_account, get_repo, read_inbox]
+  write: [delete_file, edit_file, move_file, write_cells, share_file, send_email, grant_permission, revoke_permission, transfer_money, delete_repository, archive_repository]
+ood_test_only:
+  read:  [get_customer_record]
+  write: [archive_record, export_customer_data]
+phase2:
+  read:  [search_files, list_repos, list_transactions]
+  write: [send_message, create_share_link, delete_folder, pay_bill, delete_user, reset_password, upload_file, create_event, cancel_event, forward_email, unshare_file]
+dropped: [post_public, create_user, issue_refund, create_repository, add_collaborator, list_users, search_payees, search_emails, write_file, search_customers, update_customer_record, delete_customer_record]

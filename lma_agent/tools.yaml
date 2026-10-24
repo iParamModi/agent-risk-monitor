@@ -1,6 +1,7 @@
 # The agent's tools: single source of truth for schemas, read/write type, domain and build phase.
 # ood: true marks out-of-domain tools (CUST), only given to the agent on CUST tasks.
 # Action and argument names follow the seeds (docs/seed_cleanup.md, scripts/check_seed_vocab.py).
+# phase must agree with configs/tool_phases.yaml (tests/agent/test_registry.py checks it).
 
 # ---------- read tools (10) ----------
 list_files:
@@ -94,7 +95,7 @@ get_customer_record:
     customer_id: {type: string, description: "Customer id, e.g. C-1001"}
   required: [customer_id]
 
-# ---------- write tools (14) ----------
+# ---------- write tools (14: 13 phase 1 + create_event phase 2) ----------
 delete_file:
   type: write
   domain: FILE
@@ -164,7 +165,7 @@ send_email:
 create_event:
   type: write
   domain: CAL
-  phase: 1
+  phase: 2
   description: Create a calendar event and invite the attendees.
   params:
     title: {type: string, description: "Event title"}

@@ -11,11 +11,11 @@ def test_counts():
     assert len(READ_TOOLS) == 10 and len(WRITE_TOOLS) == 14
     assert {n for n, s in SPECS.items() if s.get("ood")} == {
         "get_customer_record", "archive_record", "export_customer_data"}
-    assert all(s["phase"] == 1 for s in SPECS.values())
+    assert {n for n, s in SPECS.items() if s["phase"] == 2} == {"create_event"}
 
 
 def test_schemas_are_openai_format_and_valid_json_schema():
-    schemas = get_agent_tool_schemas(phase=1, include_ood=True)
+    schemas = get_agent_tool_schemas(phase=2, include_ood=True)
     assert len(schemas) == 24
     for s in schemas:
         assert s["type"] == "function"
@@ -27,7 +27,8 @@ def test_schemas_are_openai_format_and_valid_json_schema():
 
 def test_ood_filter():
     names = {s["function"]["name"] for s in get_agent_tool_schemas()}
-    assert len(names) == 21 and "archive_record" not in names
+    assert len(names) == 20 and "archive_record" not in names and "create_event" not in names
+    assert len(get_agent_tool_schemas(phase=2)) == 21
     assert get_agent_tool_schemas(phase=0) == []
 
 
