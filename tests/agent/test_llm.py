@@ -128,4 +128,4 @@ def test_live_groq_returns_parsed_tool_call():
                 {"role": "user", "content": "Who owns /project/report_7.pdf?"}]
     out = call_llm(llm.make_client(), messages, tools)
     assert out.tool_calls and out.tool_calls[0].name == "get_file_info"
-    assert out.tool_calls[0].args == {"path": "/project/report_7.pdf"}
+    assert out.tool_calls[0].args == {"file": "/project/report_7.pdf"}

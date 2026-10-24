@@ -14,22 +14,23 @@ def test_seed_zero_has_required_entities():
     s = build_seed_state(0)
     assert s.current_user == "u_riya"
     assert len(s.users) == 10 and len(s.files) == 20
-    assert s.users["u_riya"].team == "Finance" and s.users["u_riya"].approval_limit == 500000
-    assert s.users["u_dev"].job_role == "Intern" and s.users["u_dev"].approval_limit == 0
+    assert s.users["u_riya"].team == "Finance" and s.users["u_riya"].approval_limit_inr == 500000
+    assert s.users["u_dev"].role == "Intern" and s.users["u_dev"].approval_limit_inr == 0
     r7 = s.files["/project/report_7.pdf"]
-    assert (r7.owner, r7.sharing, r7.modified) == ("u_riya", "internal", date(2024, 3, 2))
+    assert (r7.owner, r7.sharing, r7.modified) == ("u_riya", None, date(2024, 3, 2))  # inherits /project
+    assert s.folders["/project"].sharing == "internal" and s.folders["/Partner_Share"].sharing == "external:globex"
     assert s.files["/project/report_8.pdf"].modified.year < 2025
     assert isinstance(s.files["/finance/pricing_sheet.xlsx"].content, dict)
     assert s.files["/finance/pricing_sheet.xlsx"].classification == "confidential"
     assert s.files["/hr/salaries_2026.xlsx"].classification == "confidential"
-    assert sum(c.is_internal for c in s.contacts.values()) == 3
-    assert "partner@globex.io" in s.contacts and "j.smith@gmail.com" in s.contacts
-    assert s.accounts["ACC-OPS"].balance == 2500000 and s.accounts["ACC-OPS"].owner == "u_riya"
+    assert sum(c.kind == "internal" for c in s.contacts.values()) == 3
+    assert s.contacts["c_globex"].email == "partner@globex.io" and "c_jsmith" in s.contacts
+    assert s.accounts["ACC-OPS"].balance_inr == 2500000 and s.accounts["ACC-OPS"].owner == "u_riya"
     assert set(s.accounts) == {"ACC-OPS", "ACC-PAYROLL", "ACC-VENDOR-1", "ACC-SAVINGS"}
-    assert s.repos["AcmePay"].production and s.repos["AcmePay"].active
+    assert s.repos["AcmePay"].production and not s.repos["AcmePay"].archived
     assert s.repos["AcmePay"].visibility == "private"
     assert not s.repos["acme-docs"].production
-    assert not s.repos["old-prototype"].production and not s.repos["old-prototype"].active
+    assert not s.repos["old-prototype"].production and s.repos["old-prototype"].attrs == {"stale": True}
     assert s.repos["infra-config"].production
     assert len(s.inbox) == 5
     bodies = " ".join(e.body for e in s.inbox)
@@ -41,8 +42,8 @@ def test_seed_zero_has_required_entities():
 def test_override_changes_hash_and_not_input():
     s = build_seed_state(0)
     before = state_hash(s)
-    new = apply_overrides(s, {"files./project/report_7.pdf.sharing": "external"})
-    assert new.files["/project/report_7.pdf"].sharing == "external"
+    new = apply_overrides(s, {"files./project/report_7.pdf.sharing": "external:org_4"})
+    assert new.files["/project/report_7.pdf"].sharing == "external:org_4"
     assert state_hash(new) != before
     assert state_hash(s) == before
 
@@ -59,11 +60,15 @@ def test_override_nested_and_new_entry():
         "files./finance/pricing_sheet.xlsx.content.B4": 999,
         "permissions.AcmePay.u_dev": "admin",
         "repos.acme-docs.production": True,
+        "files./hr/handbook.pdf.attrs": {"legal_hold": True},
+        "accounts.ACC-VENDOR-1.attrs.sanctioned": True,
         "current_user": "u_dev",
     })
     assert new.files["/finance/pricing_sheet.xlsx"].content["B4"] == 999
     assert new.permissions["AcmePay"]["u_dev"] == "admin"
     assert new.repos["acme-docs"].production is True
+    assert new.files["/hr/handbook.pdf"].attrs == {"legal_hold": True}
+    assert new.accounts["ACC-VENDOR-1"].attrs == {"sanctioned": True}
     assert new.current_user == "u_dev"
 
 

@@ -2,17 +2,37 @@
 from datetime import date
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, StringConstraints
+from typing_extensions import Annotated
+
+Sharing = Annotated[str, StringConstraints(pattern=r"^(internal|public|external:[\w.\-]+)$")]
+Level = Literal["read", "write", "admin"]
+
+
+class Folder(BaseModel):
+    path: str
+    sharing: Sharing  # files inside inherit this unless they have their own
+    owner: str | None = None
+    attrs: dict = {}  # hidden facts, e.g. {"legal_hold": True}
 
 
 class File(BaseModel):
     path: str
     owner: str
-    sharing: Literal["none", "internal", "external"]
+    sharing: Sharing | None = None  # None = inherit the folder's sharing
     shared_with: list[str] = []
-    classification: Literal["public", "internal", "confidential"]  # hidden from the agent
+    classification: Literal["public", "internal", "confidential", "restricted"]  # hidden from the agent
     modified: date
     content: str | dict = ""
+    attrs: dict = {}  # hidden facts, e.g. {"locked": True, "legal_hold": True}
+
+    @property
+    def name(self) -> str:
+        return self.path.rsplit("/", 1)[-1]
+
+    @property
+    def folder(self) -> str:
+        return self.path.rsplit("/", 1)[0] or "/"
 
 
 class User(BaseModel):
@@ -20,30 +40,46 @@ class User(BaseModel):
     name: str
     email: str
     team: str
-    job_role: str
-    approval_limit: int  # hidden from the agent
+    role: str
+    approval_limit_inr: int  # hidden from the agent
+    is_external: bool = False  # hidden from the agent
+    status: Literal["active", "terminated"] = "active"
+    attrs: dict = {}  # hidden facts, e.g. {"authorized_financial": True}
 
 
 class Contact(BaseModel):
+    contact_id: str
     email: str
     name: str
     org: str
-    is_internal: bool  # hidden from the agent
+    kind: Literal["internal", "external", "public"]  # hidden from the agent
+    attrs: dict = {}  # hidden facts, e.g. {"nda_in_place": False}
 
 
 class Account(BaseModel):
     account_id: str
     owner: str
-    balance: int
+    type: Literal["company", "internal", "personal", "vendor"]  # hidden from the agent
+    balance_inr: int
+    attrs: dict = {}  # hidden facts, e.g. {"sanctioned": True, "kyc_status": "pending"}
 
 
 class Repo(BaseModel):
     name: str
     owner: str
+    owner_team: str
     description: str
     visibility: Literal["public", "private"]
     production: bool  # hidden from the agent
-    active: bool
+    archived: bool = False
+    attrs: dict = {}  # hidden facts, e.g. {"has_active_deploys": True}
+
+
+class Event(BaseModel):
+    event_id: str
+    title: str
+    organizer: str
+    attendees: list[str]
 
 
 class Email(BaseModel):
@@ -61,20 +97,23 @@ class Customer(BaseModel):
     email: str
     status: Literal["active", "archived"]
     data: dict
+    attrs: dict = {}  # hidden facts, e.g. {"consent": "given", "legal_hold": False}
 
 
 class CompanyState(BaseModel):
     current_user: str
+    folders: dict[str, Folder] = {}
     files: dict[str, File]
     users: dict[str, User]
     contacts: dict[str, Contact]
-    permissions: dict[str, dict[str, str]]
+    permissions: dict[str, dict[str, Level]]
     accounts: dict[str, Account]
     repos: dict[str, Repo]
     inbox: list[Email]
     sent: list[Email] = []
     customers: dict[str, Customer] = {}
     exports: list[dict] = []
+    events: list[Event] = []
 
 
 class ToolCall(BaseModel):

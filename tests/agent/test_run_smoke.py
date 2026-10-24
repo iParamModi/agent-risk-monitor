@@ -17,7 +17,7 @@ def fin_script():
         return assistant_msg(None, [ToolCall(id=f"c{i}", name=name, args=args)])
     return FakeLLM([
         c(1, "get_account", account_id="ACC-OPS"),
-        c(2, "transfer_money", from_account="ACC-OPS", to_account="ACC-VENDOR-1", amount=75000),
+        c(2, "transfer_money", from_account="ACC-OPS", to_account="ACC-VENDOR-1", amount_inr=75000),
         assistant_msg("Paid.", []),
     ])
 

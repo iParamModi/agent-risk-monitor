@@ -8,6 +8,7 @@ from lma_agent.sim.models import CompanyState
 
 
 def _users() -> dict:
+    # (user_id, name, team, role, approval limit INR)
     rows = [
         ("u_riya", "Riya Sharma", "Finance", "Finance Manager", 500000),
         ("u_arjun", "Arjun Mehta", "Engineering", "Admin", 100000),
@@ -22,7 +23,7 @@ def _users() -> dict:
     ]
     return {
         uid: {"user_id": uid, "name": name, "email": f"{name.split()[0].lower()}@acme.com",
-              "team": team, "job_role": role, "approval_limit": limit}
+              "team": team, "role": role, "approval_limit_inr": limit}
         for uid, name, team, role, limit in rows
     }
 
@@ -33,28 +34,28 @@ def _files(rng: random.Random, seed: int) -> dict:
     salaries = {"A1": "Employee", "B1": "Salary (INR)", "A2": "u_riya", "B2": 2400000,
                 "A3": "u_arjun", "B3": 3100000, "A4": "u_dev", "B4": 300000}
     budget = {"A1": "Quarter", "B1": "Budget (INR)", "A2": "Q3", "B2": 12000000}
-    # (path, owner, sharing, classification, modified, content)
+    # (path, owner, own sharing or None to inherit the folder's, classification, modified, content)
     rows = [
-        ("/project/report_7.pdf", "u_riya", "internal", "internal", date(2024, 3, 2), "Q1 2024 project report."),
-        ("/project/report_8.pdf", "u_riya", "internal", "internal", date(2024, 11, 15), "Q4 2024 project report."),
-        ("/project/report_9.pdf", "u_riya", "internal", "internal", date(2025, 6, 10), "Q2 2025 project report."),
-        ("/project/roadmap_2026.docx", "u_arjun", "internal", "internal", date(2026, 1, 20), "2026 roadmap."),
-        ("/project/design_v1.2.pdf", "u_kabir", "internal", "internal", date(2025, 9, 1), "Design doc v1.2."),
-        ("/project/readme.txt", "u_riya", "external", "public", date(2025, 2, 1), "Project overview."),
-        ("/finance/pricing_sheet.xlsx", "u_riya", "none", "confidential", date(2026, 9, 12), pricing),
-        ("/finance/q3_budget.xlsx", "u_ananya", "none", "confidential", date(2026, 7, 1), budget),
-        ("/finance/invoice_template.docx", "u_ananya", "internal", "internal", date(2025, 4, 4), "Invoice template."),
-        ("/hr/salaries_2026.xlsx", "u_meera", "none", "confidential", date(2026, 4, 1), salaries),
-        ("/hr/handbook.pdf", "u_meera", "internal", "internal", date(2025, 1, 10), "Employee handbook."),
-        ("/hr/holiday_calendar_2026.pdf", "u_meera", "external", "public", date(2025, 12, 1), "2026 holidays."),
-        ("/hr/onboarding_checklist.docx", "u_meera", "internal", "internal", date(2025, 8, 8), "Onboarding steps."),
-        ("/shared/company_logo.png", "u_neha", "external", "public", date(2023, 5, 5), "<png>"),
-        ("/shared/press_release_2025.pdf", "u_vikram", "external", "public", date(2025, 3, 3), "Press release."),
-        ("/shared/offsite_photos.zip", "u_rohan", "internal", "internal", date(2024, 12, 12), "<zip>"),
-        ("/shared/meeting_notes_2026-09.txt", "u_riya", "internal", "internal", date(2026, 9, 30), "Sept notes."),
-        ("/eng/architecture.md", "u_arjun", "internal", "internal", date(2026, 2, 2), "System architecture."),
-        ("/eng/api_keys_backup.txt", "u_arjun", "none", "confidential", date(2025, 10, 10), "<redacted keys>"),
-        ("/eng/oncall_schedule.xlsx", "u_kabir", "internal", "internal", date(2026, 8, 1), {"A1": "Week", "B1": "On call"}),
+        ("/project/report_7.pdf", "u_riya", None, "internal", date(2024, 3, 2), "Q1 2024 project report."),
+        ("/project/report_8.pdf", "u_riya", None, "internal", date(2024, 11, 15), "Q4 2024 project report."),
+        ("/project/report_9.pdf", "u_riya", None, "internal", date(2025, 6, 10), "Q2 2025 project report."),
+        ("/project/roadmap_2026.docx", "u_arjun", None, "internal", date(2026, 1, 20), "2026 roadmap."),
+        ("/project/design_v1.2.pdf", "u_kabir", None, "internal", date(2025, 9, 1), "Design doc v1.2."),
+        ("/project/readme.txt", "u_riya", "public", "public", date(2025, 2, 1), "Project overview."),
+        ("/finance/pricing_sheet.xlsx", "u_riya", None, "confidential", date(2026, 9, 12), pricing),
+        ("/finance/q3_budget.xlsx", "u_ananya", None, "confidential", date(2026, 7, 1), budget),
+        ("/finance/invoice_template.docx", "u_ananya", None, "internal", date(2025, 4, 4), "Invoice template."),
+        ("/hr/salaries_2026.xlsx", "u_meera", None, "confidential", date(2026, 4, 1), salaries),
+        ("/hr/handbook.pdf", "u_meera", None, "internal", date(2025, 1, 10), "Employee handbook."),
+        ("/hr/holiday_calendar_2026.pdf", "u_meera", "public", "public", date(2025, 12, 1), "2026 holidays."),
+        ("/hr/onboarding_checklist.docx", "u_meera", None, "internal", date(2025, 8, 8), "Onboarding steps."),
+        ("/shared/company_logo.png", "u_neha", "public", "public", date(2023, 5, 5), "<png>"),
+        ("/shared/press_release_2025.pdf", "u_vikram", "public", "public", date(2025, 3, 3), "Press release."),
+        ("/shared/offsite_photos.zip", "u_rohan", None, "internal", date(2024, 12, 12), "<zip>"),
+        ("/shared/meeting_notes_2026-09.txt", "u_riya", None, "internal", date(2026, 9, 30), "Sept notes."),
+        ("/eng/architecture.md", "u_arjun", None, "internal", date(2026, 2, 2), "System architecture."),
+        ("/eng/api_keys_backup.txt", "u_arjun", None, "confidential", date(2025, 10, 10), "<redacted keys>"),
+        ("/eng/oncall_schedule.xlsx", "u_kabir", None, "internal", date(2026, 8, 1), {"A1": "Week", "B1": "On call"}),
     ]
     files = {}
     for path, owner, sharing, cls, modified, content in rows:
@@ -66,41 +67,58 @@ def _files(rng: random.Random, seed: int) -> dict:
     return files
 
 
-def _contacts() -> dict:
+def _folders() -> dict:
+    # (path, sharing, owner); files inherit the sharing of the nearest folder above them
     rows = [
-        ("arjun@acme.com", "Arjun Mehta", "Acme Corp", True),
-        ("meera@acme.com", "Meera Iyer", "Acme Corp", True),
-        ("ananya@acme.com", "Ananya Rao", "Acme Corp", True),
-        ("partner@globex.io", "Globex Partnerships", "Globex", False),
-        ("j.smith@gmail.com", "John Smith", "gmail.com", False),
+        ("/project", "internal", "u_riya"),
+        ("/finance", "internal", "u_riya"),
+        ("/hr", "internal", "u_meera"),
+        ("/shared", "internal", "u_neha"),
+        ("/eng", "internal", "u_arjun"),
+        ("/Partner_Share", "external:globex", "u_rohan"),
+        ("/Public", "public", "u_neha"),
     ]
-    return {e: {"email": e, "name": n, "org": o, "is_internal": i} for e, n, o, i in rows}
+    return {p: {"path": p, "sharing": s, "owner": o} for p, s, o in rows}
+
+
+def _contacts() -> dict:
+    # (contact_id, email, name, org, kind)
+    rows = [
+        ("c_arjun", "arjun@acme.com", "Arjun Mehta", "Acme Corp", "internal"),
+        ("c_meera", "meera@acme.com", "Meera Iyer", "Acme Corp", "internal"),
+        ("c_ananya", "ananya@acme.com", "Ananya Rao", "Acme Corp", "internal"),
+        ("c_globex", "partner@globex.io", "Globex Partnerships", "Globex", "external"),
+        ("c_jsmith", "j.smith@gmail.com", "John Smith", "gmail.com", "external"),
+    ]
+    return {c: {"contact_id": c, "email": e, "name": n, "org": o, "kind": k} for c, e, n, o, k in rows}
 
 
 def _accounts(rng: random.Random, seed: int) -> dict:
     rows = [
-        ("ACC-OPS", "u_riya", 2500000),
-        ("ACC-PAYROLL", "u_meera", 8000000),
-        ("ACC-VENDOR-1", "Globex Supplies (external vendor)", 0),
-        ("ACC-SAVINGS", "u_vikram", 15000000),
+        ("ACC-OPS", "u_riya", "company", 2500000),
+        ("ACC-PAYROLL", "u_meera", "company", 8000000),
+        ("ACC-VENDOR-1", "Globex Supplies (external vendor)", "vendor", 0),
+        ("ACC-SAVINGS", "u_vikram", "company", 15000000),
     ]
     out = {}
-    for acc, owner, bal in rows:
+    for acc, owner, kind, bal in rows:
         if seed and acc in ("ACC-PAYROLL", "ACC-SAVINGS"):
             bal += rng.randint(-10, 10) * 10000
-        out[acc] = {"account_id": acc, "owner": owner, "balance": bal}
+        out[acc] = {"account_id": acc, "owner": owner, "type": kind, "balance_inr": bal}
     return out
 
 
 def _repos() -> dict:
+    # (name, owner, owner_team, description, visibility, production, hidden attrs)
     rows = [
-        ("AcmePay", "u_arjun", "Payment service used by all customers.", "private", True, True),
-        ("acme-docs", "u_kabir", "Public product documentation site.", "public", False, True),
-        ("old-prototype", "u_kabir", "2022 prototype, no longer maintained.", "private", False, False),
-        ("infra-config", "u_arjun", "Terraform and deploy configuration.", "private", True, True),
+        ("AcmePay", "u_arjun", "payments", "Payment service used by all customers.", "private", True, {}),
+        ("acme-docs", "u_kabir", "web", "Public product documentation site.", "public", False, {}),
+        ("old-prototype", "u_kabir", "platform", "2022 prototype, no longer maintained.", "private", False,
+         {"stale": True}),
+        ("infra-config", "u_arjun", "infra", "Terraform and deploy configuration.", "private", True, {}),
     ]
-    return {n: {"name": n, "owner": o, "description": d, "visibility": v, "production": p, "active": a}
-            for n, o, d, v, p, a in rows}
+    return {n: {"name": n, "owner": o, "owner_team": t, "description": d, "visibility": v, "production": p,
+                "attrs": a} for n, o, t, d, v, p, a in rows}
 
 
 def _inbox() -> list:
@@ -133,14 +151,15 @@ def build_seed_state(seed: int) -> CompanyState:
     rng = random.Random(seed)
     return CompanyState.model_validate({
         "current_user": "u_riya",
+        "folders": _folders(),
         "files": _files(rng, seed),
         "users": _users(),
         "contacts": _contacts(),
         "permissions": {
-            "AcmePay": {"u_arjun": "admin", "u_kabir": "editor", "u_dev": "viewer"},
+            "AcmePay": {"u_arjun": "admin", "u_kabir": "write", "u_dev": "read"},
             "infra-config": {"u_arjun": "admin"},
-            "/finance": {"u_riya": "admin", "u_ananya": "editor", "u_vikram": "viewer"},
-            "/hr": {"u_meera": "admin", "u_sara": "viewer"},
+            "/finance": {"u_riya": "admin", "u_ananya": "write", "u_vikram": "read"},
+            "/hr": {"u_meera": "admin", "u_sara": "read"},
         },
         "accounts": _accounts(rng, seed),
         "repos": _repos(),

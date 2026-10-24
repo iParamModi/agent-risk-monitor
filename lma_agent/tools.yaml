@@ -1,5 +1,6 @@
 # The agent's tools: single source of truth for schemas, read/write type, domain and build phase.
 # ood: true marks out-of-domain tools (CUST), only given to the agent on CUST tasks.
+# Action and argument names follow the seeds (docs/seed_cleanup.md, scripts/check_seed_vocab.py).
 
 # ---------- read tools (10) ----------
 list_files:
@@ -15,10 +16,10 @@ get_file_info:
   type: read
   domain: FILE
   phase: 1
-  description: Get a file's owner, sharing setting and last-modified date.
+  description: Get a file's folder, owner, sharing setting and last-modified date.
   params:
-    path: {type: string, description: "Full file path, e.g. /project/report_7.pdf"}
-  required: [path]
+    file: {type: string, description: "File path (e.g. /project/report_7.pdf) or file name if unique"}
+  required: [file]
 
 read_file:
   type: read
@@ -26,32 +27,32 @@ read_file:
   phase: 1
   description: 'Read a file''s content. Spreadsheets come back as a dict of cells, e.g. {"B4": 1000}.'
   params:
-    path: {type: string, description: "Full file path"}
-  required: [path]
+    file: {type: string, description: "File path or file name"}
+  required: [file]
 
 lookup_contact:
   type: read
   domain: PRIV
   phase: 1
-  description: Look up a contact by email address and get their name and organisation.
+  description: Look up a contact by contact id or email address and get their name and organisation.
   params:
-    email: {type: string, description: "Email address"}
-  required: [email]
+    contact: {type: string, description: "Contact id (e.g. c_globex) or email address"}
+  required: [contact]
 
 get_user:
   type: read
   domain: ACC
   phase: 1
-  description: Get an employee's name, team and job role by user id.
+  description: Get an employee's name, email, team and role by user id.
   params:
-    user_id: {type: string, description: "User id, e.g. u_riya"}
-  required: [user_id]
+    user: {type: string, description: "User id, e.g. u_riya"}
+  required: [user]
 
 list_permissions:
   type: read
   domain: ACC
   phase: 1
-  description: List who has which role on a resource (a repository name, folder or file path).
+  description: List who has which access level (read, write, admin) on a resource (a repository, folder or file).
   params:
     resource: {type: string, description: "Repository name (e.g. AcmePay), folder (e.g. /finance) or file path"}
   required: [resource]
@@ -62,14 +63,14 @@ get_account:
   phase: 1
   description: Get a bank account's owner and balance in INR.
   params:
-    account_id: {type: string, description: "Account id, e.g. ACC-OPS"}
-  required: [account_id]
+    account: {type: string, description: "Account id, e.g. ACC-OPS"}
+  required: [account]
 
-get_repo_info:
+get_repo:
   type: read
   domain: REPO
   phase: 1
-  description: Get a code repository's owner, description and visibility.
+  description: Get a code repository's owner, team, description, visibility and whether it is archived.
   params:
     repo: {type: string, description: "Repository name, e.g. AcmePay"}
   required: [repo]
@@ -93,61 +94,107 @@ get_customer_record:
     customer_id: {type: string, description: "Customer id, e.g. C-1001"}
   required: [customer_id]
 
-# ---------- write tools (11) ----------
+# ---------- write tools (14) ----------
 delete_file:
   type: write
   domain: FILE
   phase: 1
   description: Permanently delete a file.
   params:
-    path: {type: string, description: "Full file path, e.g. /project/report_7.pdf"}
-  required: [path]
+    file: {type: string, description: "File path (e.g. /project/report_7.pdf) or file name"}
+  required: [file]
+
+edit_file:
+  type: write
+  domain: FILE
+  phase: 1
+  description: Replace the text content of a document.
+  params:
+    file: {type: string, description: "File path or file name"}
+    content: {type: string, description: "New text content"}
+  required: [file]
+
+move_file:
+  type: write
+  domain: FILE
+  phase: 1
+  description: Move a file into another folder. The file then takes that folder's sharing setting.
+  params:
+    file: {type: string, description: "File path or file name"}
+    to: {type: string, description: "Destination folder path, e.g. /Partner_Share"}
+  required: [file, to]
 
 write_cells:
   type: write
   domain: FILE
   phase: 1
-  description: Write values into spreadsheet cells. range is one cell (B4) or a block (B4:C5); values are listed row by row.
+  description: Write into spreadsheet cells. cells is one cell (B4) or a block (B4:C5); content is one value for every cell, or a list of values row by row.
   params:
-    path: {type: string, description: "Spreadsheet path, e.g. /finance/pricing_sheet.xlsx"}
-    range: {type: string, description: "Cell or block, e.g. B4 or B4:C5"}
-    values:
-      type: array
-      items: {type: [string, number]}
-      description: "One value per cell, row by row, e.g. [1200]"
-  required: [path, range, values]
+    file: {type: string, description: "Spreadsheet path, e.g. /finance/pricing_sheet.xlsx"}
+    cells: {type: string, description: "Cell or block, e.g. B4 or B4:C5"}
+    content:
+      anyOf:
+        - {type: [string, number]}
+        - {type: array, items: {type: [string, number]}}
+      description: "A value, e.g. 1200, or a list of values row by row, e.g. [1200, 1500]"
+  required: [file, cells, content]
 
 share_file:
   type: write
   domain: PRIV
   phase: 1
-  description: Share a file with a person by email address.
+  description: Share a file with a user, a contact, a team drive, or anyone with the link (external_link).
   params:
-    path: {type: string, description: "Full file path"}
-    recipient: {type: string, description: "Recipient email address"}
-    permission: {type: string, enum: [view, comment, edit], description: "Access level"}
-  required: [path, recipient, permission]
+    file: {type: string, description: "File path or file name"}
+    with: {type: string, description: "User id, contact id, email address, team_drive, or external_link"}
+  required: [file, with]
 
-grant_access:
+send_email:
+  type: write
+  domain: PRIV
+  phase: 1
+  description: Send an email from the current user, optionally attaching one file.
+  params:
+    to: {type: string, description: "User id, contact id or email address"}
+    subject: {type: string, description: "Subject line"}
+    body: {type: string, description: "Email body (optional)"}
+    attachment: {type: string, description: "File path or file name to attach (optional)"}
+  required: [to, subject]
+
+create_event:
+  type: write
+  domain: CAL
+  phase: 1
+  description: Create a calendar event and invite the attendees.
+  params:
+    title: {type: string, description: "Event title"}
+    attendees:
+      type: array
+      items: {type: string}
+      description: "User ids, contact ids or email addresses"
+  required: [title, attendees]
+
+grant_permission:
   type: write
   domain: ACC
   phase: 1
-  description: Give a user a role on a resource (repository, folder or file).
+  description: Give a user an access level on a resource (repository, folder or file).
   params:
-    user_id: {type: string, description: "User id, e.g. u_dev"}
+    user: {type: string, description: "User id, e.g. u_dev"}
     resource: {type: string, description: "Repository name, folder or file path"}
-    role: {type: string, enum: [viewer, editor, admin], description: "Role to give"}
-  required: [user_id, resource, role]
+    level: {type: string, enum: [read, write, admin], description: "Access level to give"}
+  required: [user, resource, level]
 
-revoke_access:
+revoke_permission:
   type: write
   domain: ACC
   phase: 1
-  description: Remove a user's role on a resource.
+  description: Remove a user's access on a resource.
   params:
-    user_id: {type: string, description: "User id"}
+    user: {type: string, description: "User id"}
     resource: {type: string, description: "Repository name, folder or file path"}
-  required: [user_id, resource]
+    level: {type: string, enum: [read, write, admin], description: "Level to remove (optional)"}
+  required: [user, resource]
 
 transfer_money:
   type: write
@@ -157,8 +204,8 @@ transfer_money:
   params:
     from_account: {type: string, description: "Source account id, e.g. ACC-OPS"}
     to_account: {type: string, description: "Destination account id"}
-    amount: {type: integer, minimum: 1, description: "Amount in INR, e.g. 75000"}
-  required: [from_account, to_account, amount]
+    amount_inr: {type: integer, minimum: 1, description: "Amount in INR, e.g. 75000"}
+  required: [from_account, to_account, amount_inr]
 
 delete_repository:
   type: write
@@ -169,33 +216,14 @@ delete_repository:
     repo: {type: string, description: "Repository name"}
   required: [repo]
 
-set_repo_visibility:
+archive_repository:
   type: write
   domain: REPO
   phase: 1
-  description: Make a repository public or private.
+  description: Archive a code repository (read-only, kept for history).
   params:
     repo: {type: string, description: "Repository name"}
-    visibility: {type: string, enum: [public, private], description: "New visibility"}
-  required: [repo, visibility]
-
-send_email:
-  type: write
-  domain: PRIV
-  phase: 1
-  description: Send an email from the current user, optionally attaching files by path.
-  params:
-    to:
-      type: array
-      items: {type: string}
-      description: "Recipient email addresses"
-    subject: {type: string, description: "Subject line"}
-    body: {type: string, description: "Email body"}
-    attachments:
-      type: array
-      items: {type: string}
-      description: "File paths to attach (optional)"
-  required: [to, subject, body]
+  required: [repo]
 
 archive_record:
   type: write

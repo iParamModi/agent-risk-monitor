@@ -14,11 +14,11 @@ ROOT = Path(__file__).resolve().parents[1]
 # action -> (required args, optional args)
 ACTIONS = {
     "delete_file": ({"file"}, set()),
-    "edit_file": ({"file"}, set()),
+    "edit_file": ({"file"}, {"content"}),
     "move_file": ({"file", "to"}, set()),
     "share_file": ({"file", "with"}, set()),
     "write_cells": ({"file", "cells", "content"}, set()),
-    "send_email": ({"to", "subject"}, {"attachment"}),
+    "send_email": ({"to", "subject"}, {"body", "attachment"}),
     "grant_permission": ({"user", "resource", "level"}, set()),
     "revoke_permission": ({"user", "resource"}, {"level"}),
     "transfer_money": ({"from_account", "to_account", "amount_inr"}, set()),

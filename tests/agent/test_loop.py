@@ -17,8 +17,8 @@ def calls(*specs):
 
 def read_write_done():
     return FakeLLM([
-        calls(("get_file_info", {"path": PATH})),
-        calls(("delete_file", {"path": PATH})),
+        calls(("get_file_info", {"file": PATH})),
+        calls(("delete_file", {"file": PATH})),
         assistant_msg("Deleted the report.", []),
     ])
 
@@ -81,9 +81,9 @@ def test_escalate_stops_episode():
 def test_unknown_tool_and_bad_args_are_returned_and_counted():
     fake = FakeLLM([
         calls(("run_command", {"cmd": "rm -rf /"})),
-        calls(("delete_file", {"_raw": '{"path": '})),
-        calls(("transfer_money", {"from_account": "ACC-OPS", "to_account": "ACC-VENDOR-1", "amount": "lots"})),
-        calls(("get_file_info", {"path": PATH})),
+        calls(("delete_file", {"_raw": '{"file": '})),
+        calls(("transfer_money", {"from_account": "ACC-OPS", "to_account": "ACC-VENDOR-1", "amount_inr": "lots"})),
+        calls(("get_file_info", {"file": PATH})),
         assistant_msg("ok", []),
     ])
     res = run_agent(TASK, build_seed_state(0), fake)
@@ -104,7 +104,7 @@ def test_reads_never_call_the_gate():
         raise AssertionError("gate called for a read")
 
     fake = FakeLLM([
-        calls(("list_files", {"folder": "/project"}), ("get_file_info", {"path": PATH})),
+        calls(("list_files", {"folder": "/project"}), ("get_file_info", {"file": PATH})),
         calls(("read_inbox", {})),
         assistant_msg("done", []),
     ])
@@ -114,7 +114,7 @@ def test_reads_never_call_the_gate():
 
 def test_several_calls_in_one_message_and_write_errors():
     fake = FakeLLM([
-        calls(("delete_file", {"path": "/nope.pdf"}), ("delete_file", {"path": PATH})),
+        calls(("delete_file", {"file": "/nope.pdf"}), ("delete_file", {"file": PATH})),
         assistant_msg("done", []),
     ])
     res = run_agent(TASK, build_seed_state(0), fake)
@@ -132,5 +132,5 @@ def test_ood_tools_only_for_cust_tasks():
     fake = FakeLLM([assistant_msg("ok", [])] * 2)
     run_agent(TASK, build_seed_state(0), fake)
     run_agent(Task(task_id="o", domain="CUST", prompt="x"), build_seed_state(0), fake)
-    assert len(fake.tool_names[0]) == 18 and "archive_record" not in fake.tool_names[0]
-    assert len(fake.tool_names[1]) == 21 and "archive_record" in fake.tool_names[1]
+    assert len(fake.tool_names[0]) == 21 and "archive_record" not in fake.tool_names[0]
+    assert len(fake.tool_names[1]) == 24 and "archive_record" in fake.tool_names[1]

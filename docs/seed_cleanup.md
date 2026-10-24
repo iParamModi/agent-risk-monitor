@@ -24,11 +24,11 @@ Write actions (`?` = optional):
 | Action | Args |
 |---|---|
 | `delete_file` | `file` |
-| `edit_file` | `file` |
+| `edit_file` | `file`, `content?` |
 | `move_file` | `file`, `to` (folder path) |
 | `share_file` | `file`, `with` (user id, contact id, `external_link`, `team_drive`, ...) |
 | `write_cells` | `file`, `cells` (range like `C1:C20`), `content` |
-| `send_email` | `to`, `subject`, `attachment?` |
+| `send_email` | `to`, `subject`, `body?`, `attachment?` |
 | `grant_permission` | `user`, `resource`, `level` |
 | `revoke_permission` | `user`, `resource`, `level?` |
 | `transfer_money` | `from_account`, `to_account`, `amount_inr` |
@@ -78,7 +78,7 @@ and gold stay the same.
 | `share_file(path, recipient, permission)` | `share_file(file, with)`: `path` -> `file`, `recipient` -> `with`, drop `permission` |
 | `delete_file(path)` | `delete_file(file)` |
 | `write_cells(path, range, values)` | `write_cells(file, cells, content)` |
-| `send_email(to, subject, body, attachments)` | `send_email(to, subject, attachment)`: one attachment, `body` goes (story text) |
+| `send_email(to, subject, body, attachments)` | `send_email(to, subject, body, attachment)`: one attachment (a string, not a list); `body` may stay |
 | `transfer_money(amount, ...)` | `transfer_money(amount_inr, ...)` |
 | `get_file_info(path)` | `get_file_info(file)` |
 | `get_account(account_id)` | `get_account(account)` |
