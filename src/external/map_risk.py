@@ -1,7 +1,8 @@
 """Risk-type mapping + LLM suggestions (DATASET.md section 2.5).
 
 Run: python -m src.external.map_risk   (after src.external.sample)
-ATBench: fills gold.risk_type for UNSAFE records from data/external/risk_type_map.yaml.
+ATBench: fills gold.risk_type for UNSAFE records from data/external/risk_type_map.yaml; per-record human
+labels in data/external/atbench_h5_recheck.csv (decisions.md R3.6) override the map.
 R-Judge: fills gold.risk_type for UNSAFE records from human labels: recheck_type in
 data/external/risk_type_recheck.csv if filled, else human_final in risk_type_review.csv
 (LLM suggests, humans decide; guide: risk_type_categories.txt). Used records still without a
@@ -21,6 +22,7 @@ EXT_DIR = REPO_ROOT / "data" / "external"
 MAP_FILE = EXT_DIR / "risk_type_map.yaml"
 REVIEW_FILE = EXT_DIR / "risk_type_review.csv"
 RECHECK_FILE = EXT_DIR / "risk_type_recheck.csv"
+ATBENCH_RECHECK_FILE = EXT_DIR / "atbench_h5_recheck.csv"
 DOUBLE_CHECK_FILE = EXT_DIR / "risk_type_double_check.csv"
 KAPPA_REPORT = REPO_ROOT / "data" / "labels" / "kappa_report.json"
 RISK_TYPES = {"DATA_LOSS", "PRIVACY_LEAKAGE", "FINANCIAL_LOSS", "ACCESS_CONTROL", "SECURITY", "OTHER"}
@@ -52,12 +54,29 @@ def atbench_risk_type(rec: dict, m: dict) -> str:
     return risk_type
 
 
-def map_atbench(records: list[dict], m: dict) -> Counter:
+def load_atbench_recheck(path=ATBENCH_RECHECK_FILE) -> tuple[dict[str, str], set[str]]:
+    """Human per-record ATBench labels; CONFUSED ids get no label until the team decides."""
+    types, confused = {}, set()
+    if path.exists():
+        for row in read_csv(path):
+            value = row["recheck_type"].strip()
+            if value == CONFUSED:
+                confused.add(row["record_id"])
+            elif value:
+                types[row["record_id"]] = _checked(value, row["record_id"], "recheck_type")
+    return types, confused
+
+
+def map_atbench(records: list[dict], m: dict, human: dict[str, str] | None = None,
+                confused: set[str] = frozenset()) -> Counter:
+    human = human or {}
     counts = Counter()
     for rec in records:
         if rec["gold"]["risk_label"] == "UNSAFE":
-            rec["gold"]["risk_type"] = atbench_risk_type(rec, m)
-            counts[rec["gold"]["risk_type"]] += 1
+            rid = rec["record_id"]
+            rec["gold"]["risk_type"] = None if rid in confused else human.get(rid) or atbench_risk_type(rec, m)
+            if rec["gold"]["risk_type"]:
+                counts[rec["gold"]["risk_type"]] += 1
         errors = schema_errors(rec)
         if errors:
             raise ValueError(f"{rec['record_id']}: {errors}")
@@ -148,7 +167,7 @@ def show(name: str, counts: Counter) -> None:
 
 def main() -> int:
     records = list(read_jsonl(EXT_DIR / "atbench.jsonl"))
-    counts = map_atbench(records, load_map())
+    counts = map_atbench(records, load_map(), *load_atbench_recheck())
     write_jsonl(EXT_DIR / "atbench.jsonl", records)
     write_record_files(EXT_DIR / "atbench", records)
     show("atbench", counts)

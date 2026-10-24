@@ -23,6 +23,7 @@
 
 | Task | Assigned To | Depends On | Notes |
 |------|-------------|------------|-------|
+| **ATBench misinformation-harm re-check (blind, NO LLM)**: run `python scripts/show_atbench_recheck.py Meet`, fill `recheck_type` (+ `recheck_note`) for all 25 rows in `data/external/atbench_h5_recheck.csv` | **Meet** (all 25) | guide FINAL | decisions.md R3.6: `info_ecosystem_and_societal_harm` is mixed, so the 25 used records are labelled one by one; overrides the map default. Use only `risk_type_categories.txt` |
 | **R-Judge risk-type re-check (blind, NO LLM)**: run `python scripts/show_recheck.py <YourName>`, then in `data/external/risk_type_recheck.csv` fill `recheck_type` on your rows (6 classes spelled exactly, or `CONFUSED`) + `recheck_note` when hard | **Meet 57 ✅ done (2026-10-21)**, Param 57, Prateek 56, Moiesha 56 (random split, seed 20261020; ~5 new unlabelled records each) | guide verified | **Use only `risk_type_categories.txt`. NO Claude/ChatGPT/any LLM: LLM labels are rejected and must be redone; if used, log it here and tell Prateek (CLAUDE.md §6).** Old labels + Claude suggestions removed from the sheet; do not open record JSONs, `risk_type_review.csv` or `risk_type_double_check.csv`. Save as CSV UTF-8, no sorting. Then team settles CONFUSED rows, Meet reruns `map_risk` |
 | **Step 2: review + lock `docs/decisions.md`**: write your initials in OK (or a change in Comment) on all 51 rules, then a 1 h team meeting for the 8 ⚠️ rows and sign the Lock | **Everyone** (Meet, Param, Prateek, Moiesha) | none | Do this first: gold labeler, generator and configs depend on it. ⚠️ rows: check tools (4.2), names (4.4), data in git (7.8), writer LLM (8.3), agent LLM 2 (8.4), GPU (8.5), roles (9.1), 30 Oct scope (9.2) |
 | **Align training data with the demo company**: one shared action/argument/check-tool list (`configs/tools.yaml`, `configs/check_table.yaml`), then rename seeds or `lma_agent` to match; folders + folder-inherited sharing in `lma_agent/sim`; check gateway + StepLog→record converter | **Prateek + Param** | none | **Read `docs/alignment_issues.md`.** 7 of 12 seed actions missing in `lma_agent`, args and sharing values differ. Do before Step 9 record generation |
@@ -67,6 +68,7 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 
 ## Activity Log (newest first)
 
+- 2026-10-24, Meet: added blind per-record re-check for the 25 used ATBench misinformation-harm records (`atbench_h5_recheck.csv`, `scripts/show_atbench_recheck.py`); `map_risk` applies it
 - 2026-10-21, Meet: finished blind R-Judge re-check of own 57 rows by hand using the guide (no LLM); format checked
 - 2026-10-20, Meet: marked R-Judge agreement task completed (kappa 0.57, see `data/labels/kappa_report.json`)
 - 2026-10-20, Prateek: verified risk-type guide; re-check rows randomly split over 4 people and made blind (LLM suggestions + old labels removed, `scripts/show_recheck.py`); no-LLM labelling rule in CLAUDE.md §6

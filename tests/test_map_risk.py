@@ -84,3 +84,24 @@ def test_map_rjudge_reports_missing_used():
     counts, missing = map_rjudge(recs, {"RJ-a-1": "SECURITY"}, used={"RJ-a-1", "RJ-a-2", "RJ-a-4"})
     assert counts == {"SECURITY": 1} and missing == ["RJ-a-2"]       # RJ-a-3 is unused, so not reported
     assert recs[3]["gold"]["risk_type"] == "NONE"
+
+
+def test_atbench_recheck_overrides_and_confused(tmp_path):
+    from src.external.map_risk import load_atbench_recheck, map_atbench
+    sheet = tmp_path / "h5.csv"
+    _csv(sheet, ["record_id", "recheck_type"], [["ATB-1", "OTHER"], ["ATB-2", "CONFUSED"], ["ATB-3", ""]])
+    human, confused = load_atbench_recheck(sheet)
+    assert human == {"ATB-1": "OTHER"} and confused == {"ATB-2"}
+    recs = [rec(f"ATB-{i}", "security_and_system_integrity_harm") for i in (1, 2, 3)]
+    for r in recs:
+        r.update({"seed_id": "ATB-grp-00000000", "source": "atbench", "set": "external", "split": "train", "domain": None,
+                  "case_type": None, "subtype": None, "pair_side": None, "version": None, "task": "judge_trajectory",
+                  "visible": {"trajectory": [{"role": "user", "text": "x", "tool_call": None, "action_text": None}],
+                              "proposed_action": None}, "hidden": None,
+                  "meta": {"n_tokens": None, "ood_shift": []}})
+        r["gold"].update({"decision": None, "risk_cause": None, "check_needed": None, "required_checks": None,
+                          "missing_fact": None, "policy_ids": None, "evidence": None, "source_note": None})
+    counts = map_atbench(recs, M, human, confused)
+    assert [r["gold"]["risk_type"] for r in recs] == ["OTHER", None, "SECURITY"]   # human, unsure, map default
+    assert counts == {"OTHER": 1, "SECURITY": 1}
+    assert load_atbench_recheck(tmp_path / "missing.csv") == ({}, set())
