@@ -16,7 +16,6 @@
 
 | Task | Who | Started | Status / Notes |
 |------|-----|---------|----------------|
-| Step 12: evaluation code (`src/eval/`: metrics, bootstrap by seed, paired tests, hypothesis check, tables) | Meet | 2026-10-25 | ✅ `metrics.py` (all R10 metrics, case-row format in its docstring) + 17 tests. ✅ `bootstrap.py` (by seed, paired, hypothesis check) + 11 tests. ✅ `stats_tests.py` (Wilcoxon checks, exact McNemar, per case + per seed) + 8 tests. Next: `tables.py` + dummy run. Done when a dummy run gives a full report |
 | Step 8: in-domain seed specs (`data/seeds/in_domain/`) | Param, Moiesha | 2026-10-08 | **All 150 in-domain seeds reviewed + pushed** (T1/T4/T5 = Param 97, T2/T3 = Moiesha 53), schema-valid, 0 `reviewer: TBD`. Policies stubbed (P_*) until Step 5. **All 45 OOD seeds authored + pushed** (`data/seeds/ood/`), awaiting verification (see Next Up). Remaining Step 8: Step 9 record generation |
 
 ## Next Up
@@ -47,6 +46,7 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 
 | Task | Done By | Date | Files Changed | Notes |
 |------|---------|------|---------------|-------|
+| Step 12: evaluation code | Meet | 2026-10-25 | `src/eval/metrics.py`, `bootstrap.py`, `stats_tests.py`, `tables.py`, `scripts/make_dummy_runs.py`, `tests/test_metrics.py`, `test_bootstrap.py`, `test_stats_tests.py`, `test_tables.py`, `Makefile` | All R10 metrics, bootstrap by seed (2,000, 95% CI), R10.4 hypothesis check, Wilcoxon + exact McNemar (per record + per seed), report `outputs/tables/main.md|json`. Input = one case row per record per setting in `outputs/runs/<id>/predictions.jsonl` (format in `metrics.py`). `make eval-dummy` gives a full report on fake data. Note: with ~150 test records the Δ interval is about ±7 points, so the hypothesis can fail even when selective is only ~1 point worse |
 | Step 7: external data (schema, normalize, split + sample, risk types, token counts, spot check) | Meet | 2026-10-25 | `configs/schemas/record.schema.json`, `src/external/*`, `data/external/*`, `scripts/make_spot_check.py`, `data/external/spot_check.md` | R-Judge 531 + ATBench 999 records (41 physical removed), split 70/10/20 by group, 150+150 train samples, risk types set. Token counts in `meta.n_tokens`. Spot check: automatic compare of all 1,530 records = 0 mismatches; 40 read by hand = 40 correct. Still open: apply the R-Judge re-check once the 8 blank + 2 CONFUSED rows are settled (Next Up) |
 | Tool phases + seed split (phase 1 / phase 2 / ood) | Prateek | 2026-10-25 | `configs/tool_phases.yaml`, `scripts/split_by_phase.py`, `tests/test_split_by_phase.py`, `data/training/seed_phases.json`, `lma_agent/tools.yaml` (`create_event` → phase 2), `STATUS.md`, `decisions.md` | Phase 1 agent = 20 tools (9 read + 11 write). Seeds: phase 1 146, phase 2 4 (`create_event`), ood 39, rejected 6 (OOD-ACC `grant_access`, fixed by Param's cleanup). Same script splits records into `data/training/phase*_*.jsonl` once Step 9 makes them. revoke_permission has only 2 seeds |
 | Demo company (`lma_agent`) changed to the seed vocabulary | Prateek | 2026-10-25 | `lma_agent/tools.yaml`, `sim/models.py`, `sim/readers.py`, `sim/seed_state.py`, `tools/read_tools.py`, `tools/write_tools.py`, `tasks/smoke_tasks.yaml`, `tests/agent/*`, `decisions.md`, `scripts/check_seed_vocab.py` | 14 actions with seed names/args (`grant_permission`, `file`, `with`, `amount_inr`, ...) + new `move_file`, `edit_file`, `archive_repository`, `create_event`; folders with inherited sharing (`internal`/`public`/`external:<org>`), `restricted`, hidden `attrs` for the ~80 seed facts. 113 agent tests pass (+ a test that fails if company and seed list drift). Live Groq smoke: 7/7 done, 0 errors, calls in seed format |
@@ -75,6 +75,7 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 
 ## Activity Log (newest first)
 
+- 2026-10-25, Meet: Step 12 completed: `src/eval/tables.py` report + `make eval-dummy` (fake runs for 4 settings → full report); 37 eval tests
 - 2026-10-25, Meet: `src/eval/stats_tests.py`: Wilcoxon on checks per case and exact McNemar on correctness (R10.4), per record and per seed
 - 2026-10-25, Meet: `src/eval/bootstrap.py`: bootstrap by seed (2,000 resamples, 95% CI), paired differences between settings, R10.4 hypothesis check
 - 2026-10-25, Meet: `src/eval/metrics.py`: every R10 metric (unsafe-action, wrong-block, check precision/recall, missing fact, savings, F1s, pair + T2 accuracy, call quality) with hand-checked tests; invalid output counts as wrong (R9.6)
