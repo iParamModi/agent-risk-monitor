@@ -16,7 +16,7 @@
 
 | Task | Who | Started | Status / Notes |
 |------|-----|---------|----------------|
-| **Monitor loop + Qwen3-8B fine-tuning** (`src/monitor/`: prompt builder, parser, 4 settings `never`/`always`/`selective`/`oracle`, gateway calls; writes `outputs/runs/<run_id>/predictions.jsonl` per `docs/evaluation_metrics.md` §2 + §8; then SFT file + QLoRA, R13.1) | Prateek | 2026-10-25 | Taken over from M3 role (Meet), see `decisions.md` Changelog. Models: prompted base Qwen3-8B + one QLoRA run. Starting with the loop |
+| **Monitor loop + Qwen3-8B fine-tuning** (`src/monitor/`: prompt builder, parser, 4 settings `never`/`always`/`selective`/`oracle`, gateway calls; writes `outputs/runs/<run_id>/predictions.jsonl` per `docs/evaluation_metrics.md` §2 + §8; then SFT file + QLoRA, R13.1) | Prateek, Meet | 2026-10-25 | Shared M3 work (see `decisions.md` Changelog); split of parts to agree with Meet. Models: prompted base Qwen3-8B + one QLoRA run. Starting with the loop |
 | Step 8: in-domain seed specs (`data/seeds/in_domain/`) | Param, Moiesha | 2026-10-08 | **All 150 in-domain seeds reviewed + pushed** (T1/T4/T5 = Param 97, T2/T3 = Moiesha 53), schema-valid, 0 `reviewer: TBD`. Policies stubbed (P_*) until Step 5. **All 45 OOD seeds authored + pushed** (`data/seeds/ood/`), awaiting verification (see Next Up). Remaining Step 8: Step 9 record generation |
 
 ## Next Up
@@ -77,7 +77,7 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 
 ## Activity Log (newest first)
 
-- 2026-10-25, Prateek: started monitor loop + Qwen3-8B fine-tuning (took over from M3/Meet; includes the `predictions.jsonl` output)
+- 2026-10-25, Prateek: monitor loop + Qwen3-8B fine-tuning now shared by Prateek and Meet (includes the `predictions.jsonl` output); Prateek starts with the loop
 - 2026-10-25, Meet: assigned Prateek to follow `docs/evaluation_metrics.md` for the `predictions.jsonl` output; added test-size question to Blockers
 - 2026-10-25, Meet: `docs/evaluation_metrics.md`: how every metric and test is computed, the `predictions.jsonl` input format, how to run; Prateek to follow §2 + §8 for the monitor loop and gateway
 - 2026-10-25, Meet: Step 12 completed: `src/eval/tables.py` report + `make eval-dummy` (fake runs for 4 settings → full report); 37 eval tests
