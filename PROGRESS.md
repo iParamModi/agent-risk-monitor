@@ -74,7 +74,6 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 ## Blockers / Questions
 
 - Risk-type labels must be human-only (no LLM). Any LLM use on labels: log it here and tell Prateek
-- Seeds (training) and `lma_agent` (demo) use different action names, args and fact values. Must be aligned before Step 9, or the trained monitor won't work in the demo. Owners: Prateek + Param. Details: `docs/alignment_issues.md`
 - Long ATBench records are almost all UNSAFE: over 4,096 tokens = 51 UNSAFE / 5 SAFE, over 8,192 = 36 UNSAFE / 0 SAFE (longest 100,824, raw HTML pages in tool outputs). Dropping them (PLAN Step 16) shifts the label balance and lets the model learn "long = unsafe". Team to decide: drop, or shorten very long tool outputs. Details: `data/external/token_report.json`
 - Test size vs the main hypothesis: on dummy data with ~150 test records, the 95% interval of Δ unsafe rate is about ±7 points, so the hypothesis can fail even when selective is only ~1 point worse than always. Decide at the meeting, before locking the test set: more test seeds, or OOD records as a second check. Details: `docs/evaluation_metrics.md` §6
 - AgentRisk: ask the organisers about the licence and the external-data rules for the final submission
@@ -82,6 +81,7 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 
 ## Activity Log (newest first)
 
+- 2026-10-25, Prateek: removed the seeds vs `lma_agent` alignment blocker: both sides done (`check_seed_vocab.py` 0 problems, `validate_seeds` 195/195, agent tests pass)
 - 2026-10-26, Meet: AgentRisk severity 2 (41 items) left out as unclear; 1 → SAFE, 3–5 → UNSAFE; 670 records kept, split unchanged
 - 2026-10-26, Meet: AgentRisk (SemEval) data converted (711 items, pinned revision, not in git), label-map review sheet for Meet + Prateek, 6 Changelog rows in `docs/decisions.md`
 - 2026-10-26, Meet: started AgentRisk (SemEval shared-task data) integration
