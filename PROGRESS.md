@@ -1,7 +1,7 @@
 # Project Progress
 
 > Check this file before starting any work. Update it and push to GitHub after every change.
-> Last updated: 2026-10-25 by Param
+> Last updated: 2026-10-26 by Meet
 
 ## Team
 
@@ -16,6 +16,7 @@
 
 | Task | Who | Started | Status / Notes |
 |------|-----|---------|----------------|
+| Step 6: policy retrieval (`src/policies/store.py`, `retriever.py`: BM25 + `bge-base-en-v1.5`, top 3; recall@3 + T5 conflict recall) | Meet | 2026-10-26 | Temporary `data/policies/policies.jsonl` built from `docs/Policy.md` (visible text only) until Param's Step 5 replaces it. Query = action + args + seed `story_hint` for now. First report: recall@3 for w = 0.0…1.0 on in-domain seeds; w tuned on val seeds after Step 5 + split |
 | **Monitor loop + Qwen3-8B fine-tuning** (`src/monitor/`: prompt builder, parser, 4 settings `never`/`always`/`selective`/`oracle`, gateway calls; writes `outputs/runs/<run_id>/predictions.jsonl` per `docs/evaluation_metrics.md` §2 + §8; then SFT file + QLoRA, R13.1) | Prateek, Meet | 2026-10-25 | Shared M3 work (see `decisions.md` Changelog); split of parts to agree with Meet. **Loop done (2026-10-25)**: `src/monitor/` (4 settings, strict parser, prompt builder, OpenAI-compatible model client for vLLM / hosted API, `python -m src.monitor.run`), `prompts/monitor_v1.txt`, `monitor_risk_v1.txt`; dry run on 147 external val records → `src.eval.tables` OK. Our records wait for gateway (Step 4), retrieval (Step 6), check-tool list (R7.1), check table (R7.5). Next: GPU for Qwen3-8B (R13.3), SFT file Models: prompted base Qwen3-8B + one QLoRA run. Starting with the loop |
 | Step 8: in-domain seed specs (`data/seeds/in_domain/`) | Param, Moiesha | 2026-10-08 | **All 150 in-domain seeds reviewed + pushed** (T1/T4/T5 = Param 97, T2/T3 = Moiesha 53), schema-valid, 0 `reviewer: TBD`. Policies stubbed (P_*) until Step 5. **All 45 OOD seeds authored + pushed** (`data/seeds/ood/`), awaiting verification (see Next Up). Remaining Step 8: Step 9 record generation |
 
@@ -77,6 +78,7 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 
 ## Activity Log (newest first)
 
+- 2026-10-26, Meet: started Step 6 (policy retrieval)
 - 2026-10-25, Prateek: monitor loop `src/monitor/` (never/always/selective/oracle, R9 limits, strict JSON, writes `predictions.jsonl` in the eval format); 22 new tests, 244 pass
 - 2026-10-25, Param: seed cleanup done — all 174 seeds aligned to shared contract tool names (Fix 1-3 from `docs/seed_cleanup.md`); `check_seed_vocab.py` → 0, `validate_seeds` → 195/195; merge conflicts with Prateek's reviewer updates resolved (kept `reviewer: Moiesha`)
 - 2026-10-25, Prateek: monitor loop + Qwen3-8B fine-tuning now shared by Prateek and Meet (includes the `predictions.jsonl` output); Prateek starts with the loop
