@@ -29,9 +29,15 @@ ACTIONS = {
     "export_customer_data": ({"customer_id", "destination"}, set()),
 }
 READS = {
+    "list_files": {"folder"},
     "get_file_info": {"file"},
+    "read_file": {"file"},
+    "lookup_contact": {"contact"},
+    "get_user": {"user"},
+    "list_permissions": {"resource"},
     "get_account": {"account"},
     "get_repo": {"repo"},
+    "read_inbox": set(),
     "get_customer_record": {"customer_id"},
 }
 
