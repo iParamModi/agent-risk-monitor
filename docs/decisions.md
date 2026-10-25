@@ -319,4 +319,4 @@ After locking: `configs/decisions.yaml`, `risk_types.yaml`, `tools.yaml`, `check
 
 | Date | Rule | Change | Why | Who | Agreed by |
 |---|---|---|---|---|---|
-| | | | | | |
+| 2026-10-25 | R15.1 | Monitor loop, prompts, SFT file and LoRA move from Meet (M3) to Prateek | Meet finished eval code; Prateek takes the monitor so it is ready for R15.2 item 5 | Prateek | pending Meet |

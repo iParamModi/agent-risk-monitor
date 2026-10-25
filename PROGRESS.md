@@ -1,7 +1,7 @@
 # Project Progress
 
 > Check this file before starting any work. Update it and push to GitHub after every change.
-> Last updated: 2026-10-25 by Meet
+> Last updated: 2026-10-25 by Prateek
 
 ## Team
 
@@ -16,13 +16,13 @@
 
 | Task | Who | Started | Status / Notes |
 |------|-----|---------|----------------|
+| **Monitor loop + Qwen3-8B fine-tuning** (`src/monitor/`: prompt builder, parser, 4 settings `never`/`always`/`selective`/`oracle`, gateway calls; writes `outputs/runs/<run_id>/predictions.jsonl` per `docs/evaluation_metrics.md` §2 + §8; then SFT file + QLoRA, R13.1) | Prateek | 2026-10-25 | Taken over from M3 role (Meet), see `decisions.md` Changelog. Models: prompted base Qwen3-8B + one QLoRA run. Starting with the loop |
 | Step 8: in-domain seed specs (`data/seeds/in_domain/`) | Param, Moiesha | 2026-10-08 | **All 150 in-domain seeds reviewed + pushed** (T1/T4/T5 = Param 97, T2/T3 = Moiesha 53), schema-valid, 0 `reviewer: TBD`. Policies stubbed (P_*) until Step 5. **All 45 OOD seeds authored + pushed** (`data/seeds/ood/`), awaiting verification (see Next Up). Remaining Step 8: Step 9 record generation |
 
 ## Next Up
 
 | Task | Assigned To | Depends On | Notes |
 |------|-------------|------------|-------|
-| **Read `docs/evaluation_metrics.md`** and make the monitor loop + gateway write `outputs/runs/<run_id>/predictions.jsonl` in its format (§2 input format, §8 checklist): one line per record, `output` = final parsed JSON or `null` if invalid (no fallback), every gateway call in `calls` with `error` = `unknown_tool` / `invalid_args` / `not_found` / `write_not_allowed`, `gold` copied from the record | **Prateek** | Step 12 done (Meet) | Check with `make eval-dummy` (example report) and `python -m src.eval.tables --run <setting>=outputs/runs/<id>`. Ask Meet if a field is unclear |
 | **R-Judge risk-type re-check (blind, NO LLM)**: run `python scripts/show_recheck.py <YourName>`, then in `data/external/risk_type_recheck.csv` fill `recheck_type` on your rows (6 classes spelled exactly, or `CONFUSED`) + `recheck_note` when hard | **Meet 57 ✅ done (2026-10-21)**, **Prateek 56 ✅ done (2026-10-24)**, **Param 49/57 (2026-10-24; 8 left blank as unsure, 2 CONFUSED)**, **Moiesha 56 done (2026-10-25)** (random split, seed 20261020; ~5 new unlabelled records each) | guide verified | **Use only `risk_type_categories.txt`. NO Claude/ChatGPT/any LLM: LLM labels are rejected and must be redone; if used, log it here and tell Prateek (CLAUDE.md §6).** Old labels + Claude suggestions removed from the sheet; do not open record JSONs, `risk_type_review.csv` or `risk_type_double_check.csv`. Save as CSV UTF-8, no sorting. Then Prateek fills Param's 8 blank rows, team settles the 2 CONFUSED rows, Meet reruns `map_risk` + kappa |
 | **Seed cleanup: make seeds use the company tool names** (174 seeds: move `requested_by` out of tool args, 8 `share_file` `to`→`with`, 24 OOD seeds back from old `lma_agent` names) | **Param** | none | **Read `docs/seed_cleanup.md`** (exact list + 3 questions). Fix in `scripts/gen_seeds.py` too. Done when `python scripts/check_seed_vocab.py` says 0 and `validate_seeds.py` passes. Prateek changes `lma_agent` to the same list in parallel |
 | **More phase 1 seeds for thin tools**: `revoke_permission` has 2 seeds, `archive_repository` 5, `move_file` 5 (as proposed action). Aim for **≥ 8 each** (+6 / +3 / +3), spread over T1-T5 with A/B counter-direction cases like the existing ones | **Param** | seed cleanup (use the new names) | Use the names in `docs/seed_cleanup.md`. Check: `python scripts/validate_seeds.py`, `python scripts/check_seed_vocab.py` (0 problems), then `python scripts/split_by_phase.py` must show the new seeds in phase 1 |
@@ -77,6 +77,7 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 
 ## Activity Log (newest first)
 
+- 2026-10-25, Prateek: started monitor loop + Qwen3-8B fine-tuning (took over from M3/Meet; includes the `predictions.jsonl` output)
 - 2026-10-25, Meet: assigned Prateek to follow `docs/evaluation_metrics.md` for the `predictions.jsonl` output; added test-size question to Blockers
 - 2026-10-25, Meet: `docs/evaluation_metrics.md`: how every metric and test is computed, the `predictions.jsonl` input format, how to run; Prateek to follow §2 + §8 for the monitor loop and gateway
 - 2026-10-25, Meet: Step 12 completed: `src/eval/tables.py` report + `make eval-dummy` (fake runs for 4 settings → full report); 37 eval tests
