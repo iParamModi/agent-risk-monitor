@@ -16,6 +16,7 @@
 
 | Task | Who | Started | Status / Notes |
 |------|-----|---------|----------------|
+| Step 12: evaluation code (`src/eval/`: metrics, bootstrap by seed, paired tests, hypothesis check, tables) | Meet | 2026-10-25 | Starting with `metrics.py` + `tests/test_metrics.py`; done when a dummy run gives a full report |
 | Step 8: in-domain seed specs (`data/seeds/in_domain/`) | Param, Moiesha | 2026-10-08 | **All 150 in-domain seeds reviewed + pushed** (T1/T4/T5 = Param 97, T2/T3 = Moiesha 53), schema-valid, 0 `reviewer: TBD`. Policies stubbed (P_*) until Step 5. **All 45 OOD seeds authored + pushed** (`data/seeds/ood/`), awaiting verification (see Next Up). Remaining Step 8: Step 9 record generation |
 
 ## Next Up
@@ -74,6 +75,7 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 
 ## Activity Log (newest first)
 
+- 2026-10-25, Meet: started Step 12 (evaluation code)
 - 2026-10-25, Meet: Step 7 completed. Spot check: all 1,530 external records match the raw files automatically (0 mismatches), 40 read by hand (20 per source) all correct (`data/external/spot_check.md`)
 - 2026-10-25, Prateek: assigned Param more seeds for revoke_permission / archive_repository / move_file; added phase 2 start task to Next Up
 - 2026-10-25, Moiesha: finished blind R-Judge re-check of own 56 rows by hand using the guide (no LLM); format checked
