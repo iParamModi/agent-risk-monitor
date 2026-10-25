@@ -1,7 +1,7 @@
 # Project Progress
 
 > Check this file before starting any work. Update it and push to GitHub after every change.
-> Last updated: 2026-10-24 by Meet
+> Last updated: 2026-10-25 by Meet
 
 ## Team
 
@@ -16,14 +16,13 @@
 
 | Task | Who | Started | Status / Notes |
 |------|-----|---------|----------------|
-| Step 7: external data (record schema, normalize R-Judge + ATBench, split, sample, risk types) | Meet | 2026-10-07 | Done: schema, normalize, split + sample, ATBench types, R-Judge types applied (Moiesha). 41 physical-world records removed. Blind check kappa 0.57 (< 0.6), so a guided 4-person re-check is running (see Next Up). Token counts done (`meta.n_tokens`, `data/external/token_report.json`). Meet next: 20-record spot check per source |
 | Step 8: in-domain seed specs (`data/seeds/in_domain/`) | Param, Moiesha | 2026-10-08 | **All 150 in-domain seeds reviewed + pushed** (T1/T4/T5 = Param 97, T2/T3 = Moiesha 53), schema-valid, 0 `reviewer: TBD`. Policies stubbed (P_*) until Step 5. **All 45 OOD seeds authored + pushed** (`data/seeds/ood/`), awaiting verification (see Next Up). Remaining Step 8: Step 9 record generation |
 
 ## Next Up
 
 | Task | Assigned To | Depends On | Notes |
 |------|-------------|------------|-------|
-| **R-Judge risk-type re-check (blind, NO LLM)**: run `python scripts/show_recheck.py <YourName>`, then in `data/external/risk_type_recheck.csv` fill `recheck_type` on your rows (6 classes spelled exactly, or `CONFUSED`) + `recheck_note` when hard | **Meet 57 ✅ done (2026-10-21)**, **Prateek 56 ✅ done (2026-10-24)**, **Param 49/57 (2026-10-24; 8 left blank as unsure, 2 CONFUSED)**, **Moiesha 56 done (2026-10-25)** (random split, seed 20261020; ~5 new unlabelled records each) | guide verified | **Use only `risk_type_categories.txt`. NO Claude/ChatGPT/any LLM: LLM labels are rejected and must be redone; if used, log it here and tell Prateek (CLAUDE.md §6).** Old labels + Claude suggestions removed from the sheet; do not open record JSONs, `risk_type_review.csv` or `risk_type_double_check.csv`. Save as CSV UTF-8, no sorting. Then team settles CONFUSED rows, Meet reruns `map_risk` |
+| **R-Judge risk-type re-check (blind, NO LLM)**: run `python scripts/show_recheck.py <YourName>`, then in `data/external/risk_type_recheck.csv` fill `recheck_type` on your rows (6 classes spelled exactly, or `CONFUSED`) + `recheck_note` when hard | **Meet 57 ✅ done (2026-10-21)**, **Prateek 56 ✅ done (2026-10-24)**, **Param 49/57 (2026-10-24; 8 left blank as unsure, 2 CONFUSED)**, **Moiesha 56 done (2026-10-25)** (random split, seed 20261020; ~5 new unlabelled records each) | guide verified | **Use only `risk_type_categories.txt`. NO Claude/ChatGPT/any LLM: LLM labels are rejected and must be redone; if used, log it here and tell Prateek (CLAUDE.md §6).** Old labels + Claude suggestions removed from the sheet; do not open record JSONs, `risk_type_review.csv` or `risk_type_double_check.csv`. Save as CSV UTF-8, no sorting. Then Prateek fills Param's 8 blank rows, team settles the 2 CONFUSED rows, Meet reruns `map_risk` + kappa |
 | **Seed cleanup: make seeds use the company tool names** (174 seeds: move `requested_by` out of tool args, 8 `share_file` `to`→`with`, 24 OOD seeds back from old `lma_agent` names) | **Param** | none | **Read `docs/seed_cleanup.md`** (exact list + 3 questions). Fix in `scripts/gen_seeds.py` too. Done when `python scripts/check_seed_vocab.py` says 0 and `validate_seeds.py` passes. Prateek changes `lma_agent` to the same list in parallel |
 | **More phase 1 seeds for thin tools**: `revoke_permission` has 2 seeds, `archive_repository` 5, `move_file` 5 (as proposed action). Aim for **≥ 8 each** (+6 / +3 / +3), spread over T1-T5 with A/B counter-direction cases like the existing ones | **Param** | seed cleanup (use the new names) | Use the names in `docs/seed_cleanup.md`. Check: `python scripts/validate_seeds.py`, `python scripts/check_seed_vocab.py` (0 problems), then `python scripts/split_by_phase.py` must show the new seeds in phase 1 |
 | **Step 2: review + lock `docs/decisions.md` (v2)**: read all 15 sections (62 rules). For any change, add a row to the Changelog at the bottom with your reason. Then a 1 h team meeting on the 6 ⚠️ rules, and all four tick **Sign to lock** | **Everyone** (Meet, Param, Prateek, Moiesha) | none | Blocks configs, gold labeler and record generator. ⚠️ rules: R5.1 names = `lma_agent`'s (Param + Prateek), R7.1 first check-tool set (**Prateek**), R11.6 writer LLM, R13.2 second agent LLM, R13.3 **GPU**, R15.2 30 Oct scope |
@@ -47,6 +46,7 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 
 | Task | Done By | Date | Files Changed | Notes |
 |------|---------|------|---------------|-------|
+| Step 7: external data (schema, normalize, split + sample, risk types, token counts, spot check) | Meet | 2026-10-25 | `configs/schemas/record.schema.json`, `src/external/*`, `data/external/*`, `scripts/make_spot_check.py`, `data/external/spot_check.md` | R-Judge 531 + ATBench 999 records (41 physical removed), split 70/10/20 by group, 150+150 train samples, risk types set. Token counts in `meta.n_tokens`. Spot check: automatic compare of all 1,530 records = 0 mismatches; 40 read by hand = 40 correct. Still open: apply the R-Judge re-check once the 8 blank + 2 CONFUSED rows are settled (Next Up) |
 | Tool phases + seed split (phase 1 / phase 2 / ood) | Prateek | 2026-10-25 | `configs/tool_phases.yaml`, `scripts/split_by_phase.py`, `tests/test_split_by_phase.py`, `data/training/seed_phases.json`, `lma_agent/tools.yaml` (`create_event` → phase 2), `STATUS.md`, `decisions.md` | Phase 1 agent = 20 tools (9 read + 11 write). Seeds: phase 1 146, phase 2 4 (`create_event`), ood 39, rejected 6 (OOD-ACC `grant_access`, fixed by Param's cleanup). Same script splits records into `data/training/phase*_*.jsonl` once Step 9 makes them. revoke_permission has only 2 seeds |
 | Demo company (`lma_agent`) changed to the seed vocabulary | Prateek | 2026-10-25 | `lma_agent/tools.yaml`, `sim/models.py`, `sim/readers.py`, `sim/seed_state.py`, `tools/read_tools.py`, `tools/write_tools.py`, `tasks/smoke_tasks.yaml`, `tests/agent/*`, `decisions.md`, `scripts/check_seed_vocab.py` | 14 actions with seed names/args (`grant_permission`, `file`, `with`, `amount_inr`, ...) + new `move_file`, `edit_file`, `archive_repository`, `create_event`; folders with inherited sharing (`internal`/`public`/`external:<org>`), `restricted`, hidden `attrs` for the ~80 seed facts. 113 agent tests pass (+ a test that fails if company and seed list drift). Live Groq smoke: 7/7 done, 0 errors, calls in seed format |
 | ATBench misinformation-harm re-check (25 used records, blind, by hand) | Meet | 2026-10-24 | `data/external/atbench_h5_recheck.csv`, `atbench.jsonl` | decisions.md R3.6: labelled one by one with the guide (no LLM); applied by `map_risk` over the map default |
@@ -74,6 +74,7 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 
 ## Activity Log (newest first)
 
+- 2026-10-25, Meet: Step 7 completed. Spot check: all 1,530 external records match the raw files automatically (0 mismatches), 40 read by hand (20 per source) all correct (`data/external/spot_check.md`)
 - 2026-10-25, Prateek: assigned Param more seeds for revoke_permission / archive_repository / move_file; added phase 2 start task to Next Up
 - 2026-10-25, Moiesha: finished blind R-Judge re-check of own 56 rows by hand using the guide (no LLM); format checked
 - 2026-10-25, Moiesha: verified 11 OOD seeds (7 CUST, 4 ACC)
