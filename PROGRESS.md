@@ -16,7 +16,7 @@
 
 | Task | Who | Started | Status / Notes |
 |------|-----|---------|----------------|
-| Step 12: evaluation code (`src/eval/`: metrics, bootstrap by seed, paired tests, hypothesis check, tables) | Meet | 2026-10-25 | ✅ `metrics.py` (all R10 metrics, case-row format in its docstring) + 17 tests. ✅ `bootstrap.py` (by seed, paired, hypothesis check) + 11 tests. Next: `stats_tests.py`, `tables.py`, dummy run. Done when a dummy run gives a full report |
+| Step 12: evaluation code (`src/eval/`: metrics, bootstrap by seed, paired tests, hypothesis check, tables) | Meet | 2026-10-25 | ✅ `metrics.py` (all R10 metrics, case-row format in its docstring) + 17 tests. ✅ `bootstrap.py` (by seed, paired, hypothesis check) + 11 tests. ✅ `stats_tests.py` (Wilcoxon checks, exact McNemar, per case + per seed) + 8 tests. Next: `tables.py` + dummy run. Done when a dummy run gives a full report |
 | Step 8: in-domain seed specs (`data/seeds/in_domain/`) | Param, Moiesha | 2026-10-08 | **All 150 in-domain seeds reviewed + pushed** (T1/T4/T5 = Param 97, T2/T3 = Moiesha 53), schema-valid, 0 `reviewer: TBD`. Policies stubbed (P_*) until Step 5. **All 45 OOD seeds authored + pushed** (`data/seeds/ood/`), awaiting verification (see Next Up). Remaining Step 8: Step 9 record generation |
 
 ## Next Up
@@ -75,6 +75,7 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 
 ## Activity Log (newest first)
 
+- 2026-10-25, Meet: `src/eval/stats_tests.py`: Wilcoxon on checks per case and exact McNemar on correctness (R10.4), per record and per seed
 - 2026-10-25, Meet: `src/eval/bootstrap.py`: bootstrap by seed (2,000 resamples, 95% CI), paired differences between settings, R10.4 hypothesis check
 - 2026-10-25, Meet: `src/eval/metrics.py`: every R10 metric (unsafe-action, wrong-block, check precision/recall, missing fact, savings, F1s, pair + T2 accuracy, call quality) with hand-checked tests; invalid output counts as wrong (R9.6)
 - 2026-10-25, Meet: started Step 12 (evaluation code)
