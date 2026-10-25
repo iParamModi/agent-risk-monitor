@@ -15,7 +15,7 @@ from src.common.tokens import TOKENIZER_REPO, TOKENIZER_REVISION, count_tokens, 
 EXT_DIR = REPO_ROOT / "data" / "external"
 SPLIT_DIR = EXT_DIR / "splits"
 REPORT = EXT_DIR / "token_report.json"
-DATASETS = ("r_judge", "atbench")
+DATASETS = ("r_judge", "atbench", "agentrisk")
 LIMITS = (2048, 4096, 8192)
 
 
@@ -34,7 +34,9 @@ def report_for(records: list[dict], name: str) -> dict:
     n_tokens = {r["record_id"]: r["meta"]["n_tokens"] for r in records}
     parts = {"all": list(n_tokens)}
     for part in ("train", "train_sample300", "val", "test"):
-        parts[part] = (SPLIT_DIR / f"{name}_{part}.txt").read_text(encoding="utf-8").split()
+        path = SPLIT_DIR / f"{name}_{part}.txt"
+        if path.exists():      # AgentRisk has no 300 sample
+            parts[part] = path.read_text(encoding="utf-8").split()
     out = {part: length_stats([n_tokens[i] for i in ids]) for part, ids in parts.items()}
     longest = sorted(records, key=lambda r: -r["meta"]["n_tokens"])[:5]
     out["longest"] = [{"record_id": r["record_id"], "n_tokens": r["meta"]["n_tokens"]} for r in longest]
@@ -46,6 +48,9 @@ def main() -> int:
     report = {"tokenizer": {"repo": TOKENIZER_REPO, "revision": TOKENIZER_REVISION},
               "counts": "visible part only (src/common/tokens.py render_visible); prompt template not included"}
     for name in DATASETS:
+        if not (EXT_DIR / f"{name}.jsonl").exists():
+            print(f"{name}: no records, skipped")
+            continue
         records = list(read_jsonl(EXT_DIR / f"{name}.jsonl"))
         for rec in records:
             rec["meta"]["n_tokens"] = count_tokens(rec, tokenizer)

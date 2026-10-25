@@ -44,5 +44,23 @@ curl -fL --retry 3 -o "$RAW/atbench/README.md" \
   echo "licence: apache-2.0"
 } > "$RAW/atbench/VERSION.txt"
 
+# ---- AgentRisk (SemEval shared task, Hugging Face; no licence stated: never commit, see .gitignore) ----
+AR_REPO=AgentRisk/agentrisk-data-2027
+AR_REV=${AR_REV:-bc7cbf702846e53ecbb31abcdb387ae4ec9f9392}    # checked 2026-10-25; change only on purpose
+mkdir -p "$RAW/agentrisk/data" "$RAW/agentrisk/metadata"
+for f in data/train.jsonl data/dev.jsonl metadata/split_manifest.jsonl README.md; do
+  curl -fL --retry 3 -o "$RAW/agentrisk/$f" "https://huggingface.co/datasets/$AR_REPO/resolve/$AR_REV/$f"
+done
+{
+  echo "source: https://huggingface.co/datasets/$AR_REPO"
+  echo "revision: $AR_REV"
+  for f in data/train.jsonl data/dev.jsonl metadata/split_manifest.jsonl; do
+    echo "sha256 $f: $(sha256sum "$RAW/agentrisk/$f" | cut -d' ' -f1)"
+  done
+  echo "downloaded_utc: $NOW"
+  echo "licence: none stated (shared-task data; do not redistribute)"
+} > "$RAW/agentrisk/VERSION.txt"
+
 echo "R-Judge: $(find "$RAW/r_judge/data" -name '*.json' | wc -l) JSON files"
+echo "AgentRisk: $(cat "$RAW/agentrisk/data/train.jsonl" "$RAW/agentrisk/data/dev.jsonl" | wc -l) items"
 echo "ATBench: $(du -h "$RAW/atbench/ATBench/test.json" | cut -f1)"

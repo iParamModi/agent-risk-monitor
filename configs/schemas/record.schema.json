@@ -2,24 +2,24 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "record.schema.json",
   "title": "Record",
-  "description": "One data record: ours (task=decide_action) or external R-Judge/ATBench (task=judge_trajectory). DATASET.md section 4. DRAFT, not locked.",
+  "description": "One data record: ours (task=decide_action) or external R-Judge/ATBench/AgentRisk (task=judge_trajectory). DATASET.md section 4. DRAFT, not locked.",
   "type": "object",
   "additionalProperties": false,
   "required": ["record_id", "seed_id", "source", "set", "split", "domain", "case_type",
                "subtype", "pair_side", "version", "task", "visible", "hidden", "gold", "meta"],
   "properties": {
     "record_id": {
-      "description": "Ours: <seed_id>-<A|B|a|b|c|d|v1|v2>. R-Judge: RJ-<file stem>-<id>. ATBench: ATB-<id>.",
+      "description": "Ours: <seed_id>-<A|B|a|b|c|d|v1|v2>. R-Judge: RJ-<file stem>-<id>. ATBench: ATB-<id>. AgentRisk: AR-<number of AGENTRISK-NNN>.",
       "type": "string",
-      "pattern": "^((IND|OOD)-[A-Z]+-T[1-5]-[0-9]{3}-(A|B|a|b|c|d|v1|v2)|RJ-[A-Za-z0-9_]+-[0-9]+|ATB-[0-9]+)$"
+      "pattern": "^((IND|OOD)-[A-Z]+-T[1-5]-[0-9]{3}-(A|B|a|b|c|d|v1|v2)|RJ-[A-Za-z0-9_]+-[0-9]+|ATB-[0-9]+|AR-[0-9]{3,})$"
     },
     "seed_id": {
-      "description": "Splitting / bootstrap unit. Ours: IND-PRIV-T2-014. R-Judge: RJ-scn-<file stem>. ATBench: ATB-grp-<8 hex of tool-group hash>.",
+      "description": "Splitting / bootstrap unit. Ours: IND-PRIV-T2-014. R-Judge: RJ-scn-<file stem>. ATBench: ATB-grp-<8 hex of tool-group hash>. AgentRisk: AR-grp-<scenario_group>.",
       "type": "string",
-      "pattern": "^((IND|OOD)-[A-Z]+-T[1-5]-[0-9]{3}|RJ-scn-[A-Za-z0-9_]+|ATB-grp-[0-9a-f]{8})$"
+      "pattern": "^((IND|OOD)-[A-Z]+-T[1-5]-[0-9]{3}|RJ-scn-[A-Za-z0-9_]+|ATB-grp-[0-9a-f]{8}|AR-grp-G[0-9]{3,})$"
     },
-    "source":    {"description": "Where the record comes from.", "enum": ["ours", "r_judge", "atbench"]},
-    "set":       {"description": "in_domain / ood for ours, external for R-Judge and ATBench.", "enum": ["in_domain", "ood", "external"]},
+    "source":    {"description": "Where the record comes from.", "enum": ["ours", "r_judge", "atbench", "agentrisk"]},
+    "set":       {"description": "in_domain / ood for ours, external for R-Judge, ATBench and AgentRisk.", "enum": ["in_domain", "ood", "external"]},
     "split":     {"description": "null until the split step has run.", "enum": ["train", "val", "test", null]},
     "domain":    {"description": "Ours only. CUST is OOD only.", "enum": ["FILE", "PRIV", "ACC", "FIN", "REPO", "CAL", "CUST", null]},
     "case_type": {"description": "Ours only.", "enum": ["T1", "T2", "T3", "T4", "T5", null]},
@@ -35,7 +35,9 @@
       "required": ["trajectory", "proposed_action"],
       "properties": {
         "trajectory": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/message"}},
-        "proposed_action": {"description": "null for external records.", "oneOf": [{"type": "null"}, {"$ref": "#/$defs/call"}]}
+        "proposed_action": {"description": "null for external records.", "oneOf": [{"type": "null"}, {"$ref": "#/$defs/call"}]},
+        "proposed_action_text": {"description": "AgentRisk only: the free-text proposed action (CLI command or message), the step after the trajectory. Not yet executed.",
+                                 "type": ["string", "null"]}
       }
     },
     "hidden": {
@@ -59,7 +61,10 @@
         "category":          {"description": "R-Judge folder: Application, Finance, IoT, Program, Web.", "type": ["string", "null"]},
         "attack_type":       {"description": "R-Judge only.", "enum": ["injection", "unintended", null]},
         "source_file":       {"description": "External only: raw file path, for spot checks.", "type": ["string", "null"]},
-        "source_id":         {"description": "External only: id in the raw file.", "type": ["integer", "string", "null"]}
+        "source_id":         {"description": "External only: id in the raw file.", "type": ["integer", "string", "null"]},
+        "flags":             {"description": "AgentRisk only: markers for filtered analysis (src/external/agentrisk.py FLAGS).",
+                              "type": "array", "uniqueItems": true,
+                              "items": {"enum": ["reply_to_user", "physical_world", "rjudge_prompt_overlap", "rjudge_near_duplicate"]}}
       }
     }
   },
@@ -113,6 +118,16 @@
                             "policy_ids": {"type": "array", "items": {"type": "string"}}}}
           ]
         },
+        "native_labels": {
+          "description": "AgentRisk only: the released labels, unchanged (SemEval subtasks 1, 2a, 2b). NEVER in model input.",
+          "oneOf": [
+            {"type": "null"},
+            {"type": "object", "additionalProperties": false, "required": ["risk_severity", "risk_domains", "risk_drivers"],
+             "properties": {"risk_severity": {"type": "integer", "minimum": 1, "maximum": 5},
+                            "risk_domains": {"type": "array", "minItems": 1, "maxItems": 2, "uniqueItems": true, "items": {"type": "string"}},
+                            "risk_drivers": {"type": "array", "minItems": 1, "maxItems": 2, "uniqueItems": true, "items": {"type": "string"}}}}
+          ]
+        },
         "source_note":     {"description": "External explanation (R-Judge risk_description, ATBench reason). NEVER in model input.", "type": ["string", "null"]},
         "source_taxonomy": {
           "description": "ATBench unsafe only. null for SAFE (ATBench fills these even for safe records; we drop them).",
@@ -130,7 +145,7 @@
       "description": "External records: no action, no hidden state, no decision or check fields.",
       "if": {"properties": {"task": {"const": "judge_trajectory"}}},
       "then": {"properties": {
-        "source": {"enum": ["r_judge", "atbench"]},
+        "source": {"enum": ["r_judge", "atbench", "agentrisk"]},
         "set": {"const": "external"},
         "domain": {"type": "null"}, "case_type": {"type": "null"}, "subtype": {"type": "null"},
         "pair_side": {"type": "null"}, "version": {"type": "null"},
@@ -159,6 +174,13 @@
           "policy_ids": {"type": "array"},
           "evidence": {"type": "object"}}}
       }}
+    },
+    {
+      "description": "AgentRisk: the proposed action and the released labels are always present.",
+      "if": {"properties": {"source": {"const": "agentrisk"}}},
+      "then": {"properties": {
+        "visible": {"required": ["proposed_action_text"], "properties": {"proposed_action_text": {"type": "string", "minLength": 1}}},
+        "gold": {"required": ["native_labels"], "properties": {"native_labels": {"type": "object"}}}}}
     },
     {
       "description": "SAFE always has risk_type NONE and no source taxonomy.",

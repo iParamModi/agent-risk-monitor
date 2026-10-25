@@ -30,6 +30,8 @@ def render_visible(rec: dict) -> str:
         blocks.append("\n".join(lines))
     if rec["visible"]["proposed_action"]:
         blocks.append("[proposed_action] " + render_call(rec["visible"]["proposed_action"]))
+    if rec["visible"].get("proposed_action_text"):
+        blocks.append("[proposed_action] " + rec["visible"]["proposed_action_text"])
     return "\n\n".join(blocks)
 
 
