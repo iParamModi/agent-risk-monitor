@@ -121,6 +121,7 @@ def read_labels(text: str) -> dict[str, str]:
 
 def import_labels(name: str, path: Path) -> int:
     labels = read_labels(path.read_text(encoding="utf-8"))
+    todo = {r["record_id"] for recs in untyped().values() for r in recs}     # before writing: afterwards they are typed
     problems, updates = [], {}
     for source, (sheet, _) in SHEETS.items():
         columns, rows = read_sheet(sheet)
@@ -143,7 +144,6 @@ def import_labels(name: str, path: Path) -> int:
         return 1
     for sheet, (columns, rows) in updates.items():
         write_sheet(sheet, columns, rows)
-    todo = {r["record_id"] for recs in untyped().values() for r in recs}
     filled = sum(rid in labels for rid in todo)
     print(f"copied {len(labels)} labels; {filled}/{len(todo)} of the untyped records labelled. Next: python -m src.external.map_risk")
     return 0

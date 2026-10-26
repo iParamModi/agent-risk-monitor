@@ -100,7 +100,7 @@ def load_human_types(review=REVIEW_FILE, recheck=RECHECK_FILE) -> dict[str, str]
     for row in read_csv(review):
         if row["human_final"].strip():
             types[row["record_id"]] = _checked(row["human_final"].strip(), row["record_id"], "human_final")
-    if recheck.exists():
+    if recheck and recheck.exists():      # recheck=None: the first review only
         for row in read_csv(recheck):
             value = row["recheck_type"].strip()
             if value == CONFUSED:    # re-checker unsure: no label until the team decides
@@ -181,7 +181,8 @@ def main() -> int:
     if missing:
         print(f"  {len(missing)} used UNSAFE records still need a human type: {', '.join(missing)}")
 
-    kappa = rjudge_agreement(human, {r["record_id"] for r in records})
+    # agreement of the first review with the blind double check (reviewer_a), so without re-check overrides
+    kappa = rjudge_agreement(load_human_types(recheck=None), {r["record_id"] for r in records})
     write_json(KAPPA_REPORT, {"r_judge_risk_type_double_check": kappa})
     if kappa.get("items"):
         print(f"r_judge double check: {kappa['items']} items, agreement {kappa['agreement']:.0%}, "
