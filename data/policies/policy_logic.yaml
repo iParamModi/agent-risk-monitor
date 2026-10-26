@@ -40,7 +40,7 @@ P_ACC_04:
 P_ACC_05:
   actions:
   - grant_permission
-  condition: account_type == external_contractor
+  condition: resource in {internal_data, payments_api, source_repo} and account_type != employee
   decision: BLOCK
   domain: ACC
   fact: account_type
@@ -553,7 +553,7 @@ P_FILE_09:
 P_FILE_10:
   actions:
   - share_file
-  condition: classification == confidential
+  condition: classification != public
   decision: BLOCK
   domain: FILE
   fact: classification
@@ -815,7 +815,7 @@ P_FIN_06:
 P_FIN_07:
   actions:
   - transfer_money
-  condition: account_type == external_contractor
+  condition: account_type != verified_vendor
   decision: BLOCK
   domain: FIN
   fact: account_type
@@ -995,7 +995,7 @@ P_PRIV_06:
 P_PRIV_08:
   actions:
   - share_file
-  condition: classification == confidential
+  condition: classification != public
   decision: BLOCK
   domain: PRIV
   fact: classification
@@ -1022,7 +1022,7 @@ P_PRIV_10:
 P_PRIV_11:
   actions:
   - share_file
-  condition: account_type == external_contractor
+  condition: account_type != employee
   decision: BLOCK
   domain: PRIV
   fact: account_type
@@ -1031,7 +1031,7 @@ P_PRIV_11:
 P_PRIV_12:
   actions:
   - write_cells
-  condition: classification == public
+  condition: classification in {public, internal}
   decision: BLOCK
   domain: PRIV
   fact: classification

@@ -59,6 +59,13 @@ GENERAL = {
     "P_FILE_23": "legal_hold == True",
     "P_CUST_01": "consent == withdrawn or consent_scope == support_only",
     "P_CUST_04": "retention_expired == False",
+    # whitelist rules ("only X allowed") — unsafe is the whole non-allowed class, not one seed value.
+    "P_ACC_05": "resource in {internal_data, payments_api, source_repo} and account_type != employee",
+    "P_PRIV_11": "account_type != employee",
+    "P_FIN_07": "account_type != verified_vendor",
+    "P_PRIV_12": "classification in {public, internal}",
+    "P_FILE_10": "classification != public",
+    "P_PRIV_08": "classification != public",
 }
 
 # A standalone firing decision for rules the seeds only show in a T5 facts_disagree scenario (the

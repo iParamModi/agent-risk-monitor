@@ -54,6 +54,14 @@ def test_no_duplicate_or_empty_text():
         assert all(p["text"].strip() for p in pols), f"{name}: empty text"
 
 
+def test_no_two_policies_share_identical_text():
+    # distinct ids must read differently, else retrieval / "cite the right policy" is ambiguous
+    for name in ("policies.jsonl", "policies_ood.jsonl"):
+        texts = [p["text"] for p in read_jsonl(POL / name)]
+        dups = sorted({t for t in texts if texts.count(t) > 1})
+        assert not dups, f"{name}: duplicate policy text {dups}"
+
+
 def test_every_seed_policy_is_in_its_store():
     assert _seed_policy_ids("in_domain") <= set(_ids("policies.jsonl"))
     assert _seed_policy_ids("ood") <= set(_ids("policies_ood.jsonl"))

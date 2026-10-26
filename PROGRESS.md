@@ -98,6 +98,7 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 
 ## Activity Log (newest first)
 
+- 2026-10-27, Param: self-audit of the policy store fixed 2 more naive issues — (1) 2 pairs of policies had identical text (`P_CAL_02`=`P_PRIV_09`, `P_FILE_10`=`P_PRIV_08`): reworded the away-domain one in its seed notes (meeting-doc / personal-data), scenarios unchanged; (2) 6 whitelist conditions were too narrow (`== one value`): generalized in `GENERAL` (e.g. `P_ACC_05` scoped `resource in {...} and account_type != employee`, `P_PRIV_12` `classification in {public, internal}`). Coverage section 10 all 0; only the 3 requester-relative checker-limitation mismatches remain. New test: no two policy ids share identical text. 344 tests pass
 - 2026-10-27, Param: fixed all 6 policy_logic generator faults Prateek flagged; `check_tool_coverage.py` section 10 all 0; schema relaxed so `required_checks` may be null while `check_needed` true (D4); 3 section-5 mismatches are the checker not resolving `requested_by`/`requester_team` (conditions verified correct) — reply in `docs/messages/2026-10-27_from_Param_policy_logic_fixed.md`. 343 tests pass
 - 2026-10-27, Prateek: assigned Param the `policy_logic.yaml` generator fixes (6 faults, exact lines and fixes in `docs/messages/2026-10-27_to_Param_policy_logic.md`)
 - 2026-10-26, Prateek: check-tool coverage rerun against `policy_logic.yaml` + `conflicts.yaml`: 119/203 seeds pass, 3 gold mismatches, 7 check table rows added; policy-logic issues listed for Param in `docs/check_tools_coverage.md` §10-11
