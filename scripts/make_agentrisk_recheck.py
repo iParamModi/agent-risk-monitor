@@ -27,47 +27,17 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.common.io import REPO_ROOT, read_jsonl  # noqa: E402
+from src.external.agentrisk import DRIVER_CAUSES, cause_options, needs_person  # noqa: E402,F401  (map lives there)
 
 RECORDS = REPO_ROOT / "data" / "external" / "agentrisk.jsonl"
 SHEET = REPO_ROOT / "data" / "external" / "agentrisk_recheck.csv"
 LABELLERS = ("Meet", "Param", "Prateek", "Moiesha")
 SEED = 20261026
-TYPE_ORDER = ("FINANCIAL_LOSS", "DATA_LOSS", "ACCESS_CONTROL", "SECURITY", "PRIVACY_LEAKAGE", "OTHER")   # guide order
-Q2_MAP = {     # Meet's review-sheet Q2 answers (data/external/agentrisk_map_review.md)
-    "Privacy / Confidentiality": "PRIVACY_LEAKAGE", "Security / System Integrity": "SECURITY",
-    "Financial / Assets": "FINANCIAL_LOSS", "Physical / Health": "OTHER", "Legal / Compliance": "OTHER",
-    "Reputational / Social / Psychological": "OTHER", "Environmental": "OTHER", "Discrimination / Fairness": "OTHER",
-}
-MIXED = {"Operational / Service", "Information Quality"}
-SITUATION_TYPES = {"SECURITY", "DATA_LOSS", "OTHER"}
 COLUMNS = ["record_id", "assigned_to", "split", "reason", "options", "recheck_type", "recheck_note"]
 
 CAUSE_SHEET = REPO_ROOT / "data" / "external" / "agentrisk_cause_recheck.csv"
 CAUSE_COLUMNS = ["record_id", "assigned_to", "split", "reason", "options", "recheck_cause", "recheck_note"]
 CAUSE_LABELLERS = ("Meet",)    # all 281, by hand (Meet took it back from Prateek, 2026-10-26)
-CAUSE_ORDER = ("USER_REQUEST", "UNTRUSTED_CONTENT", "ENVIRONMENT_STATE", "POLICY_CONFLICT", "AGENT_ERROR")
-DRIVER_CAUSES = {     # AgentRisk risk driver -> our risk_cause candidates (decisions.md R3.4), review sheet Q4
-    "Risky Requested Outcome": ("USER_REQUEST",),
-    "Untrusted / Conflicting Instructions": ("UNTRUSTED_CONTENT",),
-    "Authorization / Consent Failure": ("ENVIRONMENT_STATE", "AGENT_ERROR"),
-    "Insufficient Grounding / Uncertainty": ("ENVIRONMENT_STATE",),
-    "Scope / Safeguard Failure": ("AGENT_ERROR",),
-    "Execution / Action Hazard": ("AGENT_ERROR",),
-}
-
-
-def ordered(types: set[str]) -> list[str]:
-    return [t for t in TYPE_ORDER if t in types]
-
-
-def needs_person(domains: list[str]) -> tuple[str, list[str]] | None:
-    """(reason, options) for an UNSAFE item, or None when the map alone decides."""
-    if MIXED & set(domains):
-        return "mixed domain", ordered(SITUATION_TYPES | {Q2_MAP[d] for d in domains if d not in MIXED})
-    mapped = {Q2_MAP[d] for d in domains}
-    if len(mapped) == 2:
-        return "two domains", ordered(mapped)
-    return None
 
 
 def select(records: list[dict]) -> list[dict]:
@@ -81,11 +51,6 @@ def select(records: list[dict]) -> list[dict]:
             out.append({"record_id": r["record_id"], "split": r["split"], "reason": need[0], "options": need[1],
                         "group": (r["split"], need[0], " + ".join(sorted(domains)))})
     return out
-
-
-def cause_options(drivers: list[str]) -> list[str]:
-    found = {c for d in drivers for c in DRIVER_CAUSES[d]}
-    return [c for c in CAUSE_ORDER if c in found]
 
 
 def select_cause(records: list[dict]) -> list[dict]:

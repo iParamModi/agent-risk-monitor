@@ -151,11 +151,56 @@ def test_build_and_review_sheet(tmp_path):
         {"example_id": "AGENTRISK-002", "split": "train", "scenario_group": "G001"},
         {"example_id": "AGENTRISK-003", "split": "dev", "scenario_group": "G002"},
         {"example_id": "AGENTRISK-004", "split": "dev", "scenario_group": "G003"}])
-    records, report = ar.build(raw, tmp_path / "no_rjudge.jsonl")
+    types = tmp_path / "types.csv"
+    types.write_text("record_id,recheck_type\nAR-003,PRIVACY_LEAKAGE\n", encoding="utf-8")
+    records, report = ar.build(raw, tmp_path / "no_rjudge.jsonl", types, tmp_path / "no_causes.csv")
     assert report["records"] == 3 and report["failed"] == [] and not report["rjudge_checked"]
     assert report["left_out_severity"] == ["AR-004"] and "AR-004" not in {r["record_id"] for r in records}
     assert report["severity_counts_all"] == {1: 1, 2: 1, 3: 2}
     assert report["splits"]["test"]["records"] == 1
+    assert report["risk_type_counts"] == {"FINANCIAL_LOSS": 1, "NONE": 1, "PRIVACY_LEAKAGE": 1}
+    assert report["risk_cause_counts"] == {"UNTRUSTED_CONTENT": 2, "NONE": 1}
     sheet = ar.review_sheet(records)
     assert "| Financial / Assets | 2 | AR-001, AR-003 |" in sheet
     assert "## Q3. Items with two harm domains (1 UNSAFE items)" in sheet and "- [ ] Prateek" in sheet
+
+
+def labelled(severity=3, domains=("Financial / Assets",), drivers=("Untrusted / Conflicting Instructions",), types=None, causes=None):
+    rec = ar.normalize_item(item(severity=severity, domains=domains, drivers=drivers), "train", "G1")
+    rec["split"] = "train"
+    ar.map_labels(rec, types or {}, causes or {})
+    return rec["gold"]["risk_type"], rec["gold"]["risk_cause"]
+
+
+def test_map_labels_uses_the_map_where_it_decides():
+    assert labelled(severity=1, domains=("No Material Harm",), drivers=("No Material Risk",)) == ("NONE", "NONE")
+    assert labelled() == ("FINANCIAL_LOSS", "UNTRUSTED_CONTENT")
+    assert labelled(domains=("Legal / Compliance", "Environmental"), drivers=("Scope / Safeguard Failure",)) == \
+        ("OTHER", "AGENT_ERROR")                                     # both domains map to OTHER
+
+
+def test_map_labels_takes_hand_labels_only_within_the_options():
+    two = ("Financial / Assets", "Privacy / Confidentiality")
+    consent = ("Authorization / Consent Failure",)
+    assert labelled(domains=two, drivers=consent, types={"AR-280": "PRIVACY_LEAKAGE"}, causes={"AR-280": "AGENT_ERROR"}) == \
+        ("PRIVACY_LEAKAGE", "AGENT_ERROR")
+    assert labelled(domains=("Operational / Service",), types={"AR-280": "DATA_LOSS"})[0] == "DATA_LOSS"
+    with pytest.raises(ValueError, match="needs a hand label"):
+        labelled(domains=two)                                        # no label in the sheet
+    with pytest.raises(ValueError, match="needs a hand label"):
+        labelled(domains=two, types={"AR-280": "CONFUSED"})
+    with pytest.raises(ValueError, match="not one of"):
+        labelled(domains=two, types={"AR-280": "SECURITY"})
+
+
+def test_build_drops_excluded_flags(tmp_path):
+    raw = tmp_path / "raw"
+    phys = item(eid="AGENTRISK-001", domains=("Physical / Health",), text=TEXT.replace("calendar", "smart lock"))
+    write_jsonl(raw / "data" / "train.jsonl", [phys, item(eid="AGENTRISK-002")])
+    write_jsonl(raw / "data" / "dev.jsonl", [])
+    write_jsonl(raw / "metadata" / "split_manifest.jsonl", [
+        {"example_id": "AGENTRISK-001", "split": "train", "scenario_group": "G001"},
+        {"example_id": "AGENTRISK-002", "split": "train", "scenario_group": "G002"}])
+    records, report = ar.build(raw, tmp_path / "no_rjudge.jsonl", tmp_path / "a.csv", tmp_path / "b.csv")
+    assert [r["record_id"] for r in records] == ["AR-002"]
+    assert report["excluded_flags"] == {"physical_world": ["AR-001"], "rjudge_near_duplicate": []}

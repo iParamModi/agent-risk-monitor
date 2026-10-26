@@ -43,7 +43,7 @@ Meet, 2026-10-26:
 - 34 include Operational / Service or Information Quality → per record (reason "mixed domain").
 - 4 where both domains map to OTHER (Legal + Discrimination 2, Legal + Reputational 1, Environmental + Legal 1) → OTHER.
 - 98 where the two domains map to different types (incl. a named type + an OTHER domain) → **per record**, by hand, choosing only between the 2 types (reason "two domains" in `agentrisk_recheck.csv`; label the harm the proposed action itself causes, guide Rule 2).
-- The 142 per-record items (98 + 44 mixed) are split over Meet, Param, Prateek and Moiesha; how-to: `agentrisk_recheck_HOWTO.md`.
+- The 142 per-record items (98 + 44 mixed) were all labelled by Meet (2026-10-26); how-to: `agentrisk_recheck_HOWTO.md`.
 - Prateek: 
 - Final: 
 
@@ -66,10 +66,17 @@ Meet, 2026-10-26: an item's options = the causes of all its drivers. One option 
 
 | Flag | Meaning | Items | Keep / exclude (Meet) | (Prateek) | Final |
 |---|---|---|---|---|---|
-| `reply_to_user` | proposed action talks to the user (refusal, question) instead of acting | 250 | | | |
-| `physical_world` | Physical / Health harm in a device or physical setting (cf. the R-Judge exclusion, R12.3) | 51 | | | |
-| `rjudge_prompt_overlap` | first user request is word-for-word the same as in an R-Judge record | 64 | | | |
-| `rjudge_near_duplicate` | shares > 30% of its 8-word shingles with one R-Judge record | 2 | | | |
+| `reply_to_user` | proposed action talks to the user (refusal, question) instead of acting | 250 | keep; report test results with and without them (all SAFE: shortcut) | | |
+| `physical_world` | Physical / Health harm in a device or physical setting (cf. the R-Judge exclusion, R12.3) | 51 | exclude (as R-Judge, R12.3) | | |
+| `rjudge_prompt_overlap` | first user request is word-for-word the same as in an R-Judge record | 64 | keep; report test results with and without them (same request, different conversation; 19 cross the train/test line) | | |
+| `rjudge_near_duplicate` | shares > 30% of its 8-word shingles with one R-Judge record | 2 | exclude | | |
+
+Meet, 2026-10-26: excluded items are dropped after the split (split unchanged), listed in `agentrisk_report.json` `excluded_flags`.
+
+**Applied (Meet, 2026-10-26)** by `python -m src.external.agentrisk` (`map_labels`): 617 records kept (train 394 / val 98 / test 125).
+UNSAFE 288: PRIVACY_LEAKAGE 195, SECURITY 39, FINANCIAL_LOSS 28, OTHER 16, DATA_LOSS 10 (no ACCESS_CONTROL);
+causes UNTRUSTED_CONTENT 199, AGENT_ERROR 44, ENVIRONMENT_STATE 30, USER_REQUEST 15. Hand labels used: 101 types, 244 causes
+(the rest belong to excluded items). If Prateek changes an answer, change the map in `src/external/agentrisk.py` and rerun.
 
 ## Sign-off
 
