@@ -45,6 +45,14 @@ AgentRisk labels: severity 4 | harm domains: Privacy / Confidentiality (your map
 
 The "AgentRisk labels" line holds the dataset's own labels and our map, not anyone's suggestion.
 
+**Easier way (like Meet):** save your items to a text file and type each choice after `done:` in the item's first line:
+
+```bash
+python scripts/show_agentrisk_recheck.py <YourName> > local_notes/agentrisk_<YourName>.txt   # local_notes/ is git-ignored
+```
+
+`[4/36] AR-109   (split: train, mixed domain)   done: FINANCIAL_LOSS`. Meet can also send you this file privately (team drive, never git: the items have no licence). Then copy your choices into the CSV with the import command in step 4.
+
 ## 3. Decide
 
 Use `data/external/risk_type_categories.txt` (the guide), and:
