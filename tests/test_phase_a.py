@@ -14,24 +14,27 @@ def rtype(r):
     return r["gold"]["risk_type"]
 
 
-def test_pick_unsafe_caps_each_type_and_spreads_over_sources():
+def test_pick_unsafe_cuts_only_privacy_to_the_largest_other_type():
     by_source = {
         "a": [rec(i, "UNSAFE", "PRIVACY_LEAKAGE", source="a") for i in range(80)]
              + [rec(100 + i, "UNSAFE", "DATA_LOSS", source="a") for i in range(5)],
         "b": [rec(200 + i, "UNSAFE", "PRIVACY_LEAKAGE", source="b") for i in range(10)]
-             + [rec(300 + i, "UNSAFE", "SECURITY", source="b") for i in range(70)],
+             + [rec(300 + i, "UNSAFE", "SECURITY", source="b") for i in range(40)],
     }
-    chosen = pick_unsafe(by_source, rtype, random.Random(1), cap=40, cause_sources=set())
+    chosen, cap = pick_unsafe(by_source, rtype, random.Random(1), cause_sources=set())
+    assert cap == 40                                              # SECURITY, the largest other type
     a, b = Counter(map(rtype, chosen["a"])), Counter(map(rtype, chosen["b"]))
     assert a == {"PRIVACY_LEAKAGE": 30, "DATA_LOSS": 5}           # b has only 10 privacy: a fills the rest of 40
-    assert b == {"PRIVACY_LEAKAGE": 10, "SECURITY": 40}
+    assert b == {"PRIVACY_LEAKAGE": 10, "SECURITY": 40}           # every SECURITY record kept
 
 
-def test_pick_unsafe_spreads_over_causes():
+def test_pick_unsafe_spreads_privacy_over_causes():
     pool = [rec(i, "UNSAFE", "PRIVACY_LEAKAGE", cause="UNTRUSTED_CONTENT") for i in range(50)]
     pool += [rec(100 + i, "UNSAFE", "PRIVACY_LEAKAGE", cause="AGENT_ERROR") for i in range(8)]
-    chosen = pick_unsafe({"agentrisk": pool}, rtype, random.Random(1), cap=20)
-    assert Counter(r["gold"]["risk_cause"] for r in chosen["agentrisk"]) == {"AGENT_ERROR": 8, "UNTRUSTED_CONTENT": 12}
+    pool += [rec(200 + i, "UNSAFE", "SECURITY", cause="AGENT_ERROR") for i in range(20)]
+    chosen, _ = pick_unsafe({"agentrisk": pool}, rtype, random.Random(1))
+    privacy = [r for r in chosen["agentrisk"] if rtype(r) == "PRIVACY_LEAKAGE"]
+    assert Counter(r["gold"]["risk_cause"] for r in privacy) == {"AGENT_ERROR": 8, "UNTRUSTED_CONTENT": 12}
 
 
 def test_downsample_drops_replies_first_and_is_repeatable():

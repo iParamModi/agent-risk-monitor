@@ -3,10 +3,10 @@
 Run: python -m src.external.phase_a   (after src.external.agentrisk)
 From the FULL train split of each source (Meet, 2026-10-26: the 300-samples of R12.2 were set when
 less data was expected; they stay as they are and still mark which records needed a human type):
-- UNSAFE: at most TYPE_CAP records per risk type over all sources together, split as evenly as possible
-  over the sources that have that type; inside a source, AgentRisk records are spread evenly over
-  risk_cause, the others are random
-- at most PER_SOURCE_MAX records per source, half SAFE and half UNSAFE
+- UNSAFE: every record of every risk type, except CAPPED_TYPE (PRIVACY_LEAKAGE), which is randomly cut
+  to the size of the largest other type (all sources together), split as evenly as possible over the
+  sources; inside a source, AgentRisk privacy records are spread evenly over risk_cause
+- no size limit per source (Meet: ATBench may pass 450 so every source stays 50/50)
 - SAFE: randomly cut to the source's UNSAFE count, so every source is 50/50; AgentRisk drops replies to
   the user (meta.flags reply_to_user, a SAFE shortcut) first
 - UNSAFE records without a final risk type are never used: R-Judge records the re-check did not cover,
@@ -27,8 +27,7 @@ EXT_DIR = REPO_ROOT / "data" / "external"
 SPLIT_DIR = EXT_DIR / "splits"
 OUT = SPLIT_DIR / "phase_a_train.txt"
 REPORT = EXT_DIR / "phase_a_report.json"
-TYPE_CAP = 100          # UNSAFE records per risk type, all sources together
-PER_SOURCE_MAX = 450    # records per source (225 SAFE + 225 UNSAFE)
+CAPPED_TYPE = "PRIVACY_LEAKAGE"    # the only type that is downsampled
 SEED = 20261026
 SOURCES = ("r_judge", "atbench", "agentrisk")
 CAUSE_SOURCES = {"agentrisk"}     # sources whose records carry a risk_cause
@@ -51,19 +50,22 @@ def downsample(records: list[dict], n: int, rng: random.Random, drop_first=None)
     return keep + rng.sample([r for r in ordered if drop_first(r)], n - len(keep))
 
 
-def pick_unsafe(by_source: dict[str, list[dict]], risk_type, rng: random.Random, cap: int = TYPE_CAP,
-                cause_sources=CAUSE_SOURCES) -> dict[str, list[dict]]:
-    """Per risk type: min(cap, available) records, spread evenly over the sources (and over causes inside
-    a cause source)."""
+def pick_unsafe(by_source: dict[str, list[dict]], risk_type, rng: random.Random, capped: str = CAPPED_TYPE,
+                cause_sources=CAUSE_SOURCES) -> tuple[dict[str, list[dict]], int]:
+    """All records of every type but `capped`, which is cut to the largest other type's size, spread evenly
+    over the sources (and over causes inside a cause source). Returns (chosen per source, cap)."""
+    sizes = Counter(risk_type(r) for rs in by_source.values() for r in rs)
+    cap = max((n for t, n in sizes.items() if t != capped), default=0)
     chosen = {s: [] for s in by_source}
-    for t in sorted({risk_type(r) for rs in by_source.values() for r in rs}):
+    for t in sorted(sizes):
         pools = {s: [r for r in rs if risk_type(r) == t] for s, rs in by_source.items()}
         pools = {s: p for s, p in pools.items() if p}
-        take = even_allocation({s: len(p) for s, p in pools.items()}, min(cap, sum(map(len, pools.values()))))
+        n = min(cap, sizes[t]) if t == capped else sizes[t]
+        take = even_allocation({s: len(p) for s, p in pools.items()}, n)
         for s, n in take.items():
             stratum = (lambda r: r["gold"]["risk_cause"]) if s in cause_sources else (lambda r: "all")
             chosen[s] += stratified_sample(pools[s], n, stratum, rng)
-    return chosen
+    return chosen, cap
 
 
 def risk_type_fn():
@@ -99,11 +101,9 @@ def build() -> tuple[list[dict], dict]:
         train[name] = [r for r in read_jsonl(path) if r["split"] == "train"]
     rng = random.Random(SEED)
     typed = {s: [r for r in rs if r["gold"]["risk_label"] == "UNSAFE" and risk_type(r)] for s, rs in train.items()}
-    unsafe = pick_unsafe(typed, risk_type, rng)
-    chosen, report = [], {"type_cap": TYPE_CAP, "per_source_max": PER_SOURCE_MAX, "seed": SEED, "sources": {}}
+    unsafe, cap = pick_unsafe(typed, risk_type, rng)
+    chosen, report = [], {"capped_type": CAPPED_TYPE, "cap": cap, "seed": SEED, "sources": {}}
     for name in SOURCES:
-        if len(unsafe[name]) > PER_SOURCE_MAX // 2:
-            raise ValueError(f"{name}: {len(unsafe[name])} UNSAFE > {PER_SOURCE_MAX // 2}; lower TYPE_CAP")
         safe = downsample([r for r in train[name] if r["gold"]["risk_label"] == "SAFE"], len(unsafe[name]), rng,
                           drop_first=is_reply)
         picked = sorted(safe + unsafe[name], key=lambda r: r["record_id"])
@@ -123,7 +123,7 @@ def main() -> int:
         b, a = part["train_split"], part["phase_a"]
         print(f"{name}: train {b['records']} -> {a['records']} ({a['safe']} SAFE / {a['unsafe']} UNSAFE)")
     t = report["total"]
-    print(f"phase A: {t['records']} records ({t['safe']} SAFE / {t['unsafe']} UNSAFE)")
+    print(f"phase A: {t['records']} records ({t['safe']} SAFE / {t['unsafe']} UNSAFE); {CAPPED_TYPE} capped at {report['cap']}")
     print("  risk_type: " + ", ".join(f"{k} {v} ({100 * v / t['unsafe']:.0f}%)" for k, v in t["risk_type"].items()))
     print("  risk_cause (AgentRisk): " + ", ".join(f"{k} {v}" for k, v in t.get("risk_cause", {}).items()))
     return 0
