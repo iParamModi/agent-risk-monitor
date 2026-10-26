@@ -2,9 +2,11 @@
 
 Run: python scripts/show_agentrisk_recheck.py <YourName>             (all your rows)
      python scripts/show_agentrisk_recheck.py <YourName> AR-123      (one record)
+     python scripts/show_agentrisk_recheck.py --check                (spelling / options check, all rows)
+How-to: data/external/agentrisk_recheck_HOWTO.md. Sheet made by scripts/make_agentrisk_recheck.py.
 Covers the UNSAFE AgentRisk items that need a person (review sheet Q2 + Q3):
   reason "mixed domain": harm domain Operational / Service or Information Quality (situation rule below)
-  reason "two domains":  two named harm domains (Privacy + Security, Financial + Privacy, Financial + Security)
+  reason "two domains":  two harm domains that Meet's Q2 map turns into two different types
 Prints the trajectory, the proposed action, and AgentRisk's released labels (severity, harm domains with
 Meet's Q2 map, risk drivers). The items are not in git: run `python -m src.external.agentrisk` first.
 Labels are typed by hand into data/external/agentrisk_recheck.csv with
@@ -17,7 +19,7 @@ Situation rule (Meet, 2026-10-26):
   physical or emergency harm (dispatch, health)             -> OTHER
   none of these: use the guide's decision order (any of the 6 types), or CONFUSED
 Two domains (Meet, 2026-10-26): read the conversation and pick the type of the harm the proposed action
-itself causes (guide Rule 2). (Named type + an OTHER domain is not here: the named type wins.)
+itself causes (guide Rule 2). Pick ONLY from the row's options (or CONFUSED).
 """
 import csv
 import json
@@ -54,16 +56,36 @@ def show(row: dict, n: int, total: int) -> None:
         if step.get("action_text"):
             print(f"ACTION: {step['action_text']}")
     print(f"\n>>> PROPOSED ACTION (not yet run): {rec['visible']['proposed_action_text']}")
+    print(f">>> CHOOSE ONE OF: {row['options']}   (or CONFUSED)")
     labels = rec["gold"]["native_labels"]
     domains = ", ".join(f"{d} (your map: {Q2_MAP.get(d, '?')})" for d in labels["risk_domains"])
     print(f"\nAgentRisk labels: severity {labels['risk_severity']} | harm domains: {domains} | "
           f"risk drivers: {', '.join(labels['risk_drivers'])}\n")
 
 
+def check() -> int:
+    """Every filled recheck_type must be one of the row's options or CONFUSED."""
+    with open(SHEET, encoding="utf-8", newline="") as f:
+        rows = list(csv.DictReader(f))
+    bad = [(r["record_id"], r["assigned_to"], r["recheck_type"]) for r in rows
+           if r["recheck_type"].strip() and r["recheck_type"].strip() not in r["options"].split(" | ") + ["CONFUSED"]]
+    spaces = [r["record_id"] for r in rows if r["recheck_type"] != r["recheck_type"].strip()]
+    for name in sorted({r["assigned_to"] for r in rows}):
+        mine = [r for r in rows if r["assigned_to"] == name]
+        print(f"{name}: {sum(bool(r['recheck_type'].strip()) for r in mine)}/{len(mine)} filled")
+    for rid, who, value in bad:
+        print(f"  NOT AN OPTION: {rid} ({who}): {value!r}")
+    if spaces:
+        print(f"  extra spaces (harmless, will be stripped): {', '.join(spaces)}")
+    return 1 if bad else 0
+
+
 def main() -> int:
     if len(sys.argv) < 2:
         print(__doc__)
         return 1
+    if sys.argv[1] == "--check":
+        return check()
     name, only = sys.argv[1], set(sys.argv[2:])
     with open(SHEET, encoding="utf-8", newline="") as f:
         rows = [r for r in csv.DictReader(f) if r["assigned_to"].lower() == name.lower()]

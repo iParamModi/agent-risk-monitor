@@ -42,8 +42,8 @@ Meet, 2026-10-26:
 
 - 34 include Operational / Service or Information Quality → per record (reason "mixed domain").
 - 4 where both domains map to OTHER (Legal + Discrimination 2, Legal + Reputational 1, Environmental + Legal 1) → OTHER.
-- 40 with one named type (Privacy, Security, Financial) and one OTHER domain → **the named type** (Physical / Health + Security 21 → SECURITY, Legal + Privacy 9, Privacy + Reputational 3, Physical / Health + Privacy 2 → PRIVACY_LEAKAGE; Financial + Legal 2, Financial + Physical / Health 2 → FINANCIAL_LOSS; Legal + Security 1 → SECURITY).
-- 58 with two named types → **per record**, by hand (reason "two domains" in `agentrisk_recheck.csv`): Privacy + Security 32, Financial + Privacy 21, Financial + Security 5. Read the conversation, label the harm the proposed action itself causes (guide Rule 2).
+- 98 where the two domains map to different types (incl. a named type + an OTHER domain) → **per record**, by hand, choosing only between the 2 types (reason "two domains" in `agentrisk_recheck.csv`; label the harm the proposed action itself causes, guide Rule 2).
+- The 142 per-record items (98 + 44 mixed) are split over Meet, Param, Prateek and Moiesha; how-to: `agentrisk_recheck_HOWTO.md`.
 - Prateek: 
 - Final: 
 
