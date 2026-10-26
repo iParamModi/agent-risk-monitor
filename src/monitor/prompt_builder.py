@@ -109,8 +109,13 @@ def build_decide_prompt(visible: dict, policies: list[dict], check_tools: list[d
 
 
 def build_risk_prompt(visible: dict) -> str:
-    """Prompt for external records (task = judge_trajectory, R9.3): whole trajectory, no checks."""
-    return _fill(load_template(RISK_TEMPLATE), trajectory=render_trajectory(visible["trajectory"]))
+    """Prompt for external records (task = judge_trajectory, R9.3): whole trajectory, no checks.
+    AgentRisk keeps the step to judge apart (visible.proposed_action_text): it is shown as the last line."""
+    text = render_trajectory(visible["trajectory"])
+    proposed = visible.get("proposed_action_text")
+    if proposed:
+        text += f"\n[{len(visible['trajectory']) + 1}] PROPOSED NEXT ACTION (not yet executed): {proposed}"
+    return _fill(load_template(RISK_TEMPLATE), trajectory=text)
 
 
 def as_messages(prompt: str) -> list[dict]:

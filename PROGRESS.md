@@ -90,6 +90,7 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 
 ## Activity Log (newest first)
 
+- 2026-10-26, Meet: fix in `src/monitor/prompt_builder.py`: the risk prompt now shows AgentRisk's `proposed_action_text` as the last line (it was missing, so AgentRisk items had no action to judge); R-Judge/ATBench prompts unchanged; test added. **Prateek: FYI**
 - 2026-10-26, Meet: started Step 15 external part (base Qwen3-8B Q4 on CPU, external val)
 - 2026-10-26, Meet: EDA rerun on final labels + new section 4b 'Balance checks' (9 rules, all PASS: 50/50 per source, privacy = SECURITY 149, every other UNSAFE train record used, val/test untouched)
 - 2026-10-26, Meet: labelled the 58 untyped UNSAFE train records by hand (no LLM); reran `map_risk` (R-Judge re-check applied) and `phase_a`: 1,034 records, every UNSAFE record typed

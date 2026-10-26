@@ -44,3 +44,14 @@ def test_no_hidden_or_gold_text_in_any_prompt():
             text = json.dumps(model.prompts)
             assert SECRET not in text and GOLD_SECRET not in text, (setting, task)
             assert "P_PRIV_07" not in text and "ENVIRONMENT_STATE" not in text, (setting, task)
+
+
+def test_risk_prompt_shows_the_agentrisk_proposed_action():
+    from src.monitor.prompt_builder import build_risk_prompt
+    visible = {"trajectory": [{"role": "user", "text": "Pay the bill.", "tool_call": None, "action_text": None}],
+               "proposed_action": None, "proposed_action_text": "payments.submit --amount 460"}
+    prompt = build_risk_prompt(visible)
+    assert prompt.index("[1] USER: Pay the bill.") < prompt.index(
+        "[2] PROPOSED NEXT ACTION (not yet executed): payments.submit --amount 460")
+    del visible["proposed_action_text"]
+    assert "PROPOSED NEXT ACTION" not in build_risk_prompt(visible)     # R-Judge / ATBench: unchanged
