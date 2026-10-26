@@ -1,9 +1,13 @@
 PYTHON ?= python3
 
-.PHONY: test external eval-dummy
+.PHONY: test external eval-dummy policies
 
 test:
 	$(PYTHON) -m pytest -q tests
+
+# Step 5: regenerate the policy store (policies.jsonl + policies_ood.jsonl) from the seeds.
+policies:
+	$(PYTHON) scripts/gen_policy_store.py
 
 external:
 	bash scripts/download_external.sh
