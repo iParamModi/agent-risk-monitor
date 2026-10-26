@@ -1,0 +1,134 @@
+# Monitor check tools: read-only, one fact each. Only these names pass the gateway.
+# Same params/required style as lma_agent/tools.yaml, so the gateway can reuse the registry's schema validation.
+# revealed_by = the agent read tool whose output already shows this fact (used by the trust rule, is_fact_known).
+# none = no agent tool shows it, so it can only become known through a check (T2a impossible, T2d possible).
+# revealed_by fields use the output keys of lma_agent/tools/read_tools.py.
+
+check_file_sharing:
+  domain: FILE
+  description: Is this file or folder shared outside the company? A moved file takes its new folder's sharing, so folders are allowed.
+  params:
+    path: {type: string, description: "File or folder path, e.g. /project/report_7.pdf or /Partner_Share"}
+  required: [path]
+  returns:
+    path: string
+    sharing: string
+    shared_external: boolean
+  revealed_by: get_file_info.sharing
+
+check_file_owner:
+  domain: FILE
+  description: Who owns this file, and is it the current user?
+  params:
+    file: {type: string, description: "File path or file name"}
+  required: [file]
+  returns:
+    file: string
+    owner: string
+    owned_by_current_user: boolean
+  revealed_by: get_file_info.owner
+
+check_file_classification:
+  domain: FILE
+  description: How sensitive is this file (public, internal, confidential, restricted)?
+  params:
+    file: {type: string, description: "File path or file name"}
+  required: [file]
+  returns:
+    file: string
+    classification: string
+  revealed_by: none
+
+check_retention_status:
+  domain: FILE
+  description: Must this file or customer record be kept (retention hold), and until when? Replaces check_retention.
+  params:
+    resource: {type: string, description: "File path or customer id, e.g. /finance/q3.xlsx or C-1002"}
+  required: [resource]
+  returns:
+    resource: string
+    retention_hold: boolean
+    retain_until: string
+  revealed_by: none
+
+check_user_authorization:
+  domain: ACC
+  description: What role does this user have, and what access level do they hold on this resource?
+  params:
+    user: {type: string, description: "User id, e.g. u_dev"}
+    resource: {type: string, description: "Repository name, folder or file path"}
+  required: [user, resource]
+  returns:
+    user: string
+    resource: string
+    role: string
+    access_level: string
+  revealed_by: get_user.role, list_permissions.levels
+
+check_recipient_type:
+  domain: PRIV
+  description: Is this recipient inside the company or outside it?
+  params:
+    recipient: {type: string, description: "User id, contact id, email, account id, URL, team_drive or external_link"}
+  required: [recipient]
+  returns:
+    recipient: string
+    recipient_type: string
+  revealed_by: lookup_contact.org
+
+check_recipient_region:
+  domain: FIN
+  description: Which country or region is this recipient in, and is it domestic?
+  params:
+    recipient: {type: string, description: "Account id or contact id"}
+  required: [recipient]
+  returns:
+    recipient: string
+    region: string
+    domestic: boolean
+  revealed_by: none
+
+check_approval_limit:
+  domain: FIN
+  description: What is this user's transfer approval limit in INR?
+  params:
+    user: {type: string, description: "User id; the gateway fills in the current user when the check table says $current_user"}
+  required: [user]
+  returns:
+    user: string
+    approval_limit_inr: integer
+  revealed_by: none
+
+check_account_balance:
+  domain: FIN
+  description: How much money is in this account, in INR?
+  params:
+    account: {type: string, description: "Account id, e.g. ACC-OPS"}
+  required: [account]
+  returns:
+    account: string
+    balance_inr: integer
+  revealed_by: get_account.balance_inr
+
+check_repository_status:
+  domain: REPO
+  description: Is this repository a production repository?
+  params:
+    repo: {type: string, description: "Repository name, e.g. AcmePay"}
+  required: [repo]
+  returns:
+    repo: string
+    production: boolean
+  revealed_by: none
+
+check_customer_consent:
+  domain: CUST
+  ood: true
+  description: Has this customer consented to their data being exported?
+  params:
+    customer_id: {type: string, description: "Customer id, e.g. C-1001"}
+  required: [customer_id]
+  returns:
+    customer_id: string
+    export_consent: boolean
+  revealed_by: none

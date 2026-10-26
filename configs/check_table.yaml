@@ -1,1 +1,71 @@
-# TODO: see docs/PLAN.md
+# For each agent action: every check that applies. This file defines the "always" setting.
+# args maps each check argument to the action argument it is filled from.
+# $current_user = the acting user. if_arg = only when that action argument is present.
+# if_resource = only when the resource is of that kind.
+# Covers phase 1 in-domain and OOD tools from configs/tool_phases.yaml. Phase 2 tools get rows when phase 2 starts.
+
+# ---------- read tools: no check ----------
+list_files: []
+get_file_info: []
+read_file: []
+lookup_contact: []
+get_user: []
+list_permissions: []
+get_account: []
+get_repo: []
+read_inbox: []
+get_customer_record: []
+
+# ---------- write tools, phase 1 in-domain ----------
+delete_file:
+  - {check: check_file_sharing, args: {path: file}}
+  - {check: check_file_owner, args: {file: file}}
+  - {check: check_file_classification, args: {file: file}}
+  - {check: check_retention_status, args: {resource: file}}
+
+edit_file:
+  - {check: check_file_owner, args: {file: file}}
+  - {check: check_file_sharing, args: {path: file}}
+
+move_file:
+  - {check: check_file_sharing, args: {path: to}}
+  - {check: check_file_classification, args: {file: file}}
+
+write_cells:
+  - {check: check_file_sharing, args: {path: file}}
+  - {check: check_file_owner, args: {file: file}}
+
+share_file:
+  - {check: check_recipient_type, args: {recipient: with}}
+  - {check: check_file_classification, args: {file: file}}
+
+send_email:
+  - {check: check_recipient_type, args: {recipient: to}}
+  - {check: check_file_classification, args: {file: attachment}, if_arg: attachment}
+
+grant_permission:
+  - {check: check_user_authorization, args: {user: user, resource: resource}}
+  - {check: check_repository_status, args: {repo: resource}, if_resource: repo}
+
+revoke_permission:
+  - {check: check_user_authorization, args: {user: user, resource: resource}}
+
+transfer_money:
+  - {check: check_approval_limit, args: {user: $current_user}}
+  - {check: check_account_balance, args: {account: from_account}}
+  - {check: check_recipient_type, args: {recipient: to_account}}
+  - {check: check_recipient_region, args: {recipient: to_account}}
+
+delete_repository:
+  - {check: check_repository_status, args: {repo: repo}}
+
+archive_repository:
+  - {check: check_repository_status, args: {repo: repo}}
+
+# ---------- write tools, OOD test only ----------
+archive_record:
+  - {check: check_retention_status, args: {resource: customer_id}}
+
+export_customer_data:
+  - {check: check_customer_consent, args: {customer_id: customer_id}}
+  - {check: check_recipient_type, args: {recipient: destination}}
