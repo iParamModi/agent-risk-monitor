@@ -60,3 +60,26 @@ def test_viewer_check_rejects_values_outside_the_options(tmp_path, monkeypatch, 
         csv.writer(f).writerow(["AR-004", "Param", "val", "two domains", "SECURITY | OTHER", "DATA_LOSS", ""])
     assert viewer.check() == 1
     assert "NOT AN OPTION: AR-004 (Param): 'DATA_LOSS'" in capsys.readouterr().out
+
+
+imp = load_script("import_agentrisk_labels")
+
+
+def sheet_rows():
+    return [{"record_id": "AR-001", "assigned_to": "Meet", "split": "train", "reason": "two domains",
+             "options": "SECURITY | OTHER", "recheck_type": "", "recheck_note": ""},
+            {"record_id": "AR-002", "assigned_to": "Param", "split": "val", "reason": "two domains",
+             "options": "SECURITY | OTHER", "recheck_type": "", "recheck_note": ""}]
+
+
+def test_import_reads_done_field():
+    text = "[1/2] AR-001   (split: train, two domains)   done: SECURITY\nother\n[2/2] AR-009   (split: val, x)   done: -\n"
+    assert imp.read_labels(text) == {"AR-001": "SECURITY"}
+
+
+def test_import_fills_only_own_valid_rows():
+    rows = sheet_rows()
+    assert imp.apply(rows, "Meet", {"AR-001": "OTHER"}) == [] and rows[0]["recheck_type"] == "OTHER"
+    rows = sheet_rows()
+    problems = imp.apply(rows, "Meet", {"AR-001": "DATA_LOSS", "AR-002": "SECURITY", "AR-777": "OTHER"})
+    assert len(problems) == 3 and rows[1]["recheck_type"] == ""
