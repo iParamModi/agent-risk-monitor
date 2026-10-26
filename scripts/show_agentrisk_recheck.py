@@ -4,7 +4,7 @@ Run: python scripts/show_agentrisk_recheck.py <YourName>             (all your r
      python scripts/show_agentrisk_recheck.py <YourName> AR-123      (one record)
 Covers the UNSAFE AgentRisk items that need a person (review sheet Q2 + Q3):
   reason "mixed domain": harm domain Operational / Service or Information Quality (situation rule below)
-  reason "two domains":  two harm domains that Meet's Q2 map turns into two different types
+  reason "two domains":  two named harm domains (Privacy + Security, Financial + Privacy, Financial + Security)
 Prints the trajectory, the proposed action, and AgentRisk's released labels (severity, harm domains with
 Meet's Q2 map, risk drivers). The items are not in git: run `python -m src.external.agentrisk` first.
 Labels are typed by hand into data/external/agentrisk_recheck.csv with
@@ -17,7 +17,7 @@ Situation rule (Meet, 2026-10-26):
   physical or emergency harm (dispatch, health)             -> OTHER
   none of these: use the guide's decision order (any of the 6 types), or CONFUSED
 Two domains (Meet, 2026-10-26): read the conversation and pick the type of the harm the proposed action
-itself causes (guide Rule 2); Physical / Health, Legal, Reputational, Environmental, Discrimination count as OTHER.
+itself causes (guide Rule 2). (Named type + an OTHER domain is not here: the named type wins.)
 """
 import csv
 import json
