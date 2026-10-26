@@ -88,6 +88,7 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 
 ## Activity Log (newest first)
 
+- 2026-10-26, Meet: EDA notebook section 1 'From raw data to the Phase A pool': 2,282 downloaded → 135 removed (with reasons) → 2,147 kept → 970 train + 685 val/test used, 492 train not used (with reasons)
 - 2026-10-26, Meet: Phase A list v3: only privacy downsampled (to 147 = SECURITY); 970 records
 - 2026-10-26, Meet: Phase A list v2: full train splits, ≤ 450 per source, ≤ 100 UNSAFE per risk type; 782 records, privacy 26%
 - 2026-10-26, Meet: started Phase A list v2 (≤ 450 per source, risk types + causes balanced)
