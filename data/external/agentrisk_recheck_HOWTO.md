@@ -1,6 +1,7 @@
 # AgentRisk risk-type labelling: how to
 
-**Who:** Meet 36 · Param 36 · Prateek 35 · Moiesha 35 (142 items, random split, the same mix for everyone)
+**Status:** ✅ done. All 142 items were labelled by Meet (2026-10-26); the planned split over four people was not needed.
+This how-to stays for any later AgentRisk labelling.
 **Time:** about 30–40 minutes each
 **Rule:** label by hand. **No Claude, ChatGPT or any LLM** (CLAUDE.md §6). LLM-made labels are rejected and redone.
 
