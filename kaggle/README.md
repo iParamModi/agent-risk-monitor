@@ -27,6 +27,15 @@ kaggle kernels push -p kaggle/finetune --accelerator NvidiaTeslaT4
 kaggle kernels output meet6868/agent-risk-finetune -p outputs/kaggle/finetune     # adapter + results
 ```
 
+## Logs
+
+Kaggle shows a script's output only after the run (CLI `kernels logs` is empty while it runs; the web page shows
+it live). Each job also writes `/kaggle/working/progress.log` (kept even if the job fails):
+`[HH:MM:SS UTC] start: <step>` / `done` / `FAILED`, plus
+`[train] step 120/250 (48%) | epoch 0.96 | loss 0.3120 | lr 1.8e-04 | 0h 41m elapsed, ~0h 44m left` (every 10 steps,
+eval loss per epoch) and `[run] 40/241 (17%) | 6m 10s, ~31m left | invalid 2 | answer 28 tokens on average`
+(every 10 records). Download it with `kaggle kernels output ...`.
+
 ## Checked before the GPU runs (2026-10-26, CPU smoke test with `trl-internal-testing/tiny-Qwen3ForCausalLM`)
 
 - train_lora → adapter → `run.py --backend transformers --adapter` → `src.eval.tables`: runs end to end.

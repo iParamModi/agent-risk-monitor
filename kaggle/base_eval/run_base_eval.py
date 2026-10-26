@@ -28,9 +28,30 @@ WORK = Path("/tmp/repo")
 OUT = Path("/kaggle/working/results")
 
 
-def sh(*cmd: str) -> None:
-    print("+", " ".join(cmd), flush=True)
-    subprocess.run(cmd, check=True, cwd=WORK)
+PROGRESS = Path("/kaggle/working/progress.log")     # kept in the job output even if the job fails
+
+
+def log(msg: str) -> None:
+    from datetime import datetime, timezone
+    line = f"[{datetime.now(timezone.utc):%H:%M:%S} UTC] {msg}"
+    print(line, flush=True)
+    with PROGRESS.open("a", encoding="utf-8") as f:
+        f.write(line + "\n")
+
+
+def sh(*cmd: str, env: dict | None = None) -> None:
+    """Runs a step; its output lines starting with '[' (progress) also go to progress.log."""
+    log("start: " + " ".join(cmd[2:] if cmd[:2] == (sys.executable, "-m") else cmd))
+    proc = subprocess.Popen(cmd, cwd=WORK, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+    for line in proc.stdout:
+        print(line, end="", flush=True)
+        for tag in ("[run]", "[train]"):        # may follow a progress bar's \r on the same line
+            if tag in line:
+                log(line[line.index(tag):].strip())
+    if proc.wait():
+        log(f"FAILED (exit {proc.returncode})")
+        raise subprocess.CalledProcessError(proc.returncode, cmd)
+    log("done")
 
 
 def get_code() -> None:

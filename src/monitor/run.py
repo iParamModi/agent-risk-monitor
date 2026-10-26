@@ -15,6 +15,7 @@ check-tool list (R7.1) and the check table (R7.5); until those exist only extern
 import argparse
 import json
 import os
+import time
 from datetime import datetime, timezone
 
 from src.common.io import REPO_ROOT, read_jsonl, write_json, write_jsonl
@@ -41,6 +42,16 @@ class Recording:
 
 
 RAW_CHARS = 1000
+
+
+def progress_line(done: int, total: int, elapsed_s: float, rows: list[dict]) -> str:
+    """'[run] 40/241 (17%) | 6m 10s, ~31m left | invalid 2 | answer 28 tokens on average'"""
+    fmt = lambda s: f"{int(s // 60)}m {int(s % 60):02d}s"   # noqa: E731
+    left = elapsed_s / done * (total - done) if done else 0
+    outs = [r["tokens_out"] for r in rows if r["tokens_out"] is not None]
+    avg = f"{sum(outs) / len(outs):.0f}" if outs else "?"
+    return (f"[run] {done}/{total} ({100 * done // total}%) | {fmt(elapsed_s)}, ~{fmt(left)} left | "
+            f"invalid {sum(r['output'] is None for r in rows)} | answer {avg} tokens on average")
 
 
 def load_records(paths: list[str], split: str | None, limit: int | None) -> list[dict]:
@@ -87,13 +98,14 @@ def main(argv=None):
     out_dir = RUNS_DIR / args.run_id
     model = Recording(model)
     rows, invalid_raw = [], []
+    start = time.perf_counter()
     for i, rec in enumerate(records, 1):
         model.texts = []
         rows.append(run_monitor(rec, args.setting, model))
         if rows[-1]["output"] is None:
             invalid_raw.append({"record_id": rec["record_id"], "raw": [t[:RAW_CHARS] for t in model.texts]})
-        if i % 25 == 0 or i == len(records):
-            print(f"{i}/{len(records)}", flush=True)
+        if i % 10 == 0 or i == len(records):
+            print(progress_line(i, len(records), time.perf_counter() - start, rows), flush=True)
     n = write_jsonl(out_dir / "predictions.jsonl", rows)
     write_jsonl(out_dir / "invalid_outputs.jsonl", invalid_raw)
     write_json(out_dir / "run_config.json", {

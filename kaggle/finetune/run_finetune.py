@@ -46,10 +46,9 @@ def main() -> int:
     sh(sys.executable, "-m", "src.training.build_sft")
     # one GPU for training: with two visible GPUs the Trainer wraps the 4-bit model in DataParallel
     train_env = {**os.environ, "CUDA_VISIBLE_DEVICES": "0", "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"}
-    cmd = [sys.executable, "-m", "src.training.train_lora", "--train", "data/training/sft_train.jsonl",
-           "--val", "data/training/sft_val.jsonl", "--out", str(ADAPTER), "--model", base.MODEL, "--revision", base.MODEL_REVISION]
-    print("+", " ".join(cmd), flush=True)
-    subprocess.run(cmd, check=True, cwd=WORK, env=train_env)
+    sh(sys.executable, "-m", "src.training.train_lora", "--train", "data/training/sft_train.jsonl",
+       "--val", "data/training/sft_val.jsonl", "--out", str(ADAPTER), "--model", base.MODEL, "--revision", base.MODEL_REVISION,
+       env=train_env)
     shutil.rmtree(ADAPTER / "checkpoints", ignore_errors=True)
 
     skipped = base.val_inputs()

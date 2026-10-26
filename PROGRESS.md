@@ -96,6 +96,7 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 ## Activity Log (newest first)
 
 - 2026-10-26, Prateek: check tools + check table installed (31 tests); coverage report `docs/check_tools_coverage.md`: 99/203 in-scope seeds pass, 13 new checks proposed, seed/policy fixes listed for Param
+- 2026-10-26, Meet: progress logs for Kaggle jobs: timestamped steps + `[train]` (step, loss, lr, time left) + `[run]` (records, time left, invalid, answer length) lines, also in `/kaggle/working/progress.log`
 - 2026-10-26, Prateek: started check tools + check table install and coverage check against seeds and policies
 - 2026-10-26, Param: **Step 5 done** — `policies.jsonl` (138) + `policies_ood.jsonl` (152) generated from the seeds, `{policy_id, text}` only, 16 style fixes, verified consistent with seeds + `Policy.md`/`Policy_OOD.md` (0 mismatch). Scope kept to just the two JSON files (no logic/risk_type/conflicts — a policy is a company rule). Monitor Option 2 (hide real IDs, show `[1/2/3]`) handed to Prateek/Meet as a STRICT Next Up task
 - 2026-10-26, Param: started Step 5 (policy store)

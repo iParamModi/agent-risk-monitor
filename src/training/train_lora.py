@@ -49,6 +49,34 @@ def load(path: str, tokenizer, max_len: int, limit: int | None = None, seed: int
     return kept, {"examples": len(rows), "kept": len(kept), "dropped_over_max_len": dict(dropped)}
 
 
+def progress_callback(path: Path | None):
+    """Prints (and appends to `path`) every logging step: step/total, loss, lr, elapsed, time left."""
+    import time
+    from transformers import TrainerCallback
+
+    class Progress(TrainerCallback):
+        def on_train_begin(self, args, state, control, **kw):
+            self.start = time.perf_counter()
+
+        def on_log(self, args, state, control, logs=None, **kw):
+            logs = logs or {}
+            el = time.perf_counter() - self.start
+            left = el / state.global_step * (state.max_steps - state.global_step) if state.global_step else 0
+            fmt = lambda s: f"{int(s // 3600)}h {int(s % 3600 // 60):02d}m"   # noqa: E731
+            parts = [f"[train] step {state.global_step}/{state.max_steps} ({100 * state.global_step // max(state.max_steps, 1)}%)",
+                     f"epoch {state.epoch:.2f}" if state.epoch is not None else "",
+                     f"loss {logs['loss']:.4f}" if "loss" in logs else "",
+                     f"eval_loss {logs['eval_loss']:.4f}" if "eval_loss" in logs else "",
+                     f"lr {logs['learning_rate']:.2e}" if "learning_rate" in logs else "",
+                     f"{fmt(el)} elapsed, ~{fmt(left)} left"]
+            line = " | ".join(p for p in parts if p)
+            print(line, flush=True)
+            if path:
+                with open(path, "a", encoding="utf-8") as f:
+                    f.write(line + "\n")
+    return Progress()
+
+
 class Collator:
     def __init__(self, pad_id: int):
         self.pad_id = pad_id
@@ -79,6 +107,7 @@ def main(argv=None) -> int:
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--quant", choices=["nf4", "none"], default="nf4")
     ap.add_argument("--limit", type=int, help="train examples (smoke tests)")
+    ap.add_argument("--progress-file", help="also append the progress lines to this file")
     args = ap.parse_args(argv)
 
     import torch
@@ -113,6 +142,7 @@ def main(argv=None) -> int:
     warmup = max(1, round(0.03 * math.ceil(len(train) / args.grad_accum) * args.epochs))
     trainer = Trainer(
         model=model, train_dataset=train, eval_dataset=val, data_collator=Collator(tokenizer.pad_token_id),
+        callbacks=[progress_callback(Path(args.progress_file) if args.progress_file else None)],
         args=TrainingArguments(
             output_dir=str(out / "checkpoints"), num_train_epochs=args.epochs, learning_rate=args.lr,
             per_device_train_batch_size=1, per_device_eval_batch_size=1, gradient_accumulation_steps=args.grad_accum,
@@ -120,7 +150,8 @@ def main(argv=None) -> int:
             save_strategy="no", fp16=gpu, gradient_checkpointing=True,
             gradient_checkpointing_kwargs={"use_reentrant": False},
             optim="paged_adamw_8bit" if args.quant == "nf4" else "adamw_torch",
-            report_to="none", seed=args.seed, remove_unused_columns=False))
+            report_to="none", seed=args.seed, remove_unused_columns=False,
+            disable_tqdm=True))     # progress comes from progress_callback, one clean line per log step
     result = trainer.train()
     model.save_pretrained(out)
     tokenizer.save_pretrained(out)
