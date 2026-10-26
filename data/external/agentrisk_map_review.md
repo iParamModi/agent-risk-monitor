@@ -38,9 +38,11 @@ system made unstable, forced shutdown, processes killed → SECURITY; files move
 
 ## Q3. Items with two harm domains (136 UNSAFE items)
 
-Our records have one risk_type. Rule for picking one (e.g. a fixed priority order, or label these one by one):
+Meet, 2026-10-26:
 
-- Meet: 
+- 34 include Operational / Service or Information Quality → per record (reason "mixed domain").
+- 4 where both domains map to OTHER (Legal + Discrimination 2, Legal + Reputational 1, Environmental + Legal 1) → OTHER.
+- 98 where the two domains map to different types → **per record**, by hand (reason "two domains" in `agentrisk_recheck.csv`): read the conversation, label the harm the proposed action itself causes (guide Rule 2). Pairs: Privacy + Security 32, Financial + Privacy 21, Physical / Health + Security 21, Legal + Privacy 9, Financial + Security 5, Privacy + Reputational 3, Physical / Health + Privacy 2, Financial + Legal 2, Financial + Physical / Health 2, Legal + Security 1.
 - Prateek: 
 - Final: 
 

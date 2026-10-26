@@ -1,13 +1,14 @@
-"""Shows your AgentRisk per-record rows WITHOUT any label, so the labelling stays blind.
+"""Shows your AgentRisk per-record rows with AgentRisk's own released labels (no label made by us or an LLM).
 
 Run: python scripts/show_agentrisk_recheck.py <YourName>             (all your rows)
      python scripts/show_agentrisk_recheck.py <YourName> AR-123      (one record)
-Covers the UNSAFE AgentRisk items whose harm domain is Operational / Service or Information Quality
-(review sheet Q2: "by situation"). Prints the visible trajectory + the proposed action only. The items
-are not in git: run `python -m src.external.agentrisk` first. Do not open the record JSON files
-directly: gold.native_labels holds the released labels. Labels are typed by hand into
-data/external/agentrisk_recheck.csv with data/external/risk_type_categories.txt and the situation rule
-below; no LLM may suggest or fill them (CLAUDE.md section 6).
+Covers the UNSAFE AgentRisk items that need a person (review sheet Q2 + Q3):
+  reason "mixed domain": harm domain Operational / Service or Information Quality (situation rule below)
+  reason "two domains":  two harm domains that Meet's Q2 map turns into two different types
+Prints the trajectory, the proposed action, and AgentRisk's released labels (severity, harm domains with
+Meet's Q2 map, risk drivers). The items are not in git: run `python -m src.external.agentrisk` first.
+Labels are typed by hand into data/external/agentrisk_recheck.csv with
+data/external/risk_type_categories.txt and the rules below; no LLM may suggest or fill them (CLAUDE.md section 6).
 
 Situation rule (Meet, 2026-10-26):
   system made unstable, forced shutdown, processes killed   -> SECURITY
@@ -15,6 +16,8 @@ Situation rule (Meet, 2026-10-26):
   deleting apps or files, clearing data, overwriting records -> DATA_LOSS
   physical or emergency harm (dispatch, health)             -> OTHER
   none of these: use the guide's decision order (any of the 6 types), or CONFUSED
+Two domains (Meet, 2026-10-26): read the conversation and pick the type of the harm the proposed action
+itself causes (guide Rule 2); Physical / Health, Legal, Reputational, Environmental, Discrimination count as OTHER.
 """
 import csv
 import json
@@ -25,6 +28,12 @@ ROOT = Path(__file__).resolve().parents[1]
 SHEET = ROOT / "data" / "external" / "agentrisk_recheck.csv"
 RECORDS = ROOT / "data" / "external" / "agentrisk"
 MAX_TOOL_CHARS = 2000
+Q2_MAP = {     # Meet's review-sheet Q2 answers (data/external/agentrisk_map_review.md)
+    "Privacy / Confidentiality": "PRIVACY_LEAKAGE", "Security / System Integrity": "SECURITY",
+    "Financial / Assets": "FINANCIAL_LOSS", "Physical / Health": "OTHER", "Legal / Compliance": "OTHER",
+    "Reputational / Social / Psychological": "OTHER", "Environmental": "OTHER", "Discrimination / Fairness": "OTHER",
+    "Operational / Service": "by situation", "Information Quality": "by situation",
+}
 
 
 def show(row: dict, n: int, total: int) -> None:
@@ -33,7 +42,7 @@ def show(row: dict, n: int, total: int) -> None:
         raise SystemExit(f"{path} missing: run `python -m src.external.agentrisk` first")
     rec = json.loads(path.read_text(encoding="utf-8"))
     print("=" * 80)
-    print(f"[{n}/{total}] {row['record_id']}   (split: {row['split']})   done: {row['recheck_type'] or '-'}")
+    print(f"[{n}/{total}] {row['record_id']}   (split: {row['split']}, {row['reason']})   done: {row['recheck_type'] or '-'}")
     print("=" * 80)
     for step in rec["visible"]["trajectory"]:
         print(f"\n--- {step['role']} ---")
@@ -44,7 +53,11 @@ def show(row: dict, n: int, total: int) -> None:
             print(text)
         if step.get("action_text"):
             print(f"ACTION: {step['action_text']}")
-    print(f"\n>>> PROPOSED ACTION (not yet run): {rec['visible']['proposed_action_text']}\n")
+    print(f"\n>>> PROPOSED ACTION (not yet run): {rec['visible']['proposed_action_text']}")
+    labels = rec["gold"]["native_labels"]
+    domains = ", ".join(f"{d} (your map: {Q2_MAP.get(d, '?')})" for d in labels["risk_domains"])
+    print(f"\nAgentRisk labels: severity {labels['risk_severity']} | harm domains: {domains} | "
+          f"risk drivers: {', '.join(labels['risk_drivers'])}\n")
 
 
 def main() -> int:
