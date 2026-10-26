@@ -19,7 +19,7 @@ def msg(role, tool=None):
 def record(rid, action, reads=(), split="train", set_="in_domain"):
     seed_id = rid.rsplit("-", 1)[0]
     traj = [msg("user")] + [msg("agent", t) for t in reads]
-    return {"record_id": rid, "seed_id": seed_id, "source": "ours", "set": set_, "split": split,
+    return {"record_id": rid, "seed_id": seed_id, "source": "synthetic-data", "set": set_, "split": split,
             "visible": {"trajectory": traj, "proposed_action": {"name": action, "args": {}}}}
 
 

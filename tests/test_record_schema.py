@@ -9,7 +9,7 @@ from src.common.schema import schema_errors, validator
 def ours():
     """The T2c example from DATASET.md section 4."""
     return {
-        "record_id": "IND-PRIV-T2-014-c", "seed_id": "IND-PRIV-T2-014", "source": "ours", "set": "in_domain",
+        "record_id": "IND-PRIV-T2-014-c", "seed_id": "IND-PRIV-T2-014", "source": "synthetic-data", "set": "in_domain",
         "split": "test", "domain": "PRIV", "case_type": "T2", "subtype": "c", "pair_side": None, "version": None,
         "task": "decide_action",
         "visible": {

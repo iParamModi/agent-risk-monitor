@@ -86,7 +86,7 @@ def bucket_for_seed(seed: dict, phases: dict[str, set[str]]) -> tuple[str, list[
 
 def split_records(records: list[dict], phases: dict[str, set[str]]) -> dict[str, list[dict]]:
     """bucket -> records; every record of a seed goes to the worst bucket among them."""
-    ours = [r for r in records if r.get("source", "ours") == "ours"]
+    ours = [r for r in records if r.get("source", "synthetic-data") == "synthetic-data"]
     seed_bucket: dict[str, str] = {}
     for r in ours:
         b = bucket_for(r, phases)

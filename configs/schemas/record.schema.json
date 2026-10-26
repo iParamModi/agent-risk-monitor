@@ -18,7 +18,7 @@
       "type": "string",
       "pattern": "^((IND|OOD)-[A-Z]+-T[1-5]-[0-9]{3}|RJ-scn-[A-Za-z0-9_]+|ATB-grp-[0-9a-f]{8}|AR-grp-G[0-9]{3,})$"
     },
-    "source":    {"description": "Where the record comes from.", "enum": ["ours", "r_judge", "atbench", "agentrisk"]},
+    "source":    {"description": "Where the record comes from.", "enum": ["synthetic-data", "r_judge", "atbench", "agentrisk"]},
     "set":       {"description": "in_domain / ood for ours, external for R-Judge, ATBench and AgentRisk.", "enum": ["in_domain", "ood", "external"]},
     "split":     {"description": "null until the split step has run.", "enum": ["train", "val", "test", null]},
     "domain":    {"description": "Ours only. CUST is OOD only.", "enum": ["FILE", "PRIV", "ACC", "FIN", "REPO", "CAL", "CUST", null]},
@@ -165,7 +165,7 @@
       "description": "Our records: action, hidden state, decision and check fields are all required.",
       "if": {"properties": {"task": {"const": "decide_action"}}},
       "then": {"properties": {
-        "source": {"const": "ours"},
+        "source": {"const": "synthetic-data"},
         "set": {"enum": ["in_domain", "ood"]},
         "domain": {"type": "string"}, "case_type": {"type": "string"},
         "hidden": {"type": "object"},

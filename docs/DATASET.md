@@ -416,7 +416,7 @@ Every record, ours and external, is one JSON line with the same fields. Schema: 
 {
   "record_id": "IND-PRIV-T2-014-c",
   "seed_id": "IND-PRIV-T2-014",
-  "source": "ours",
+  "source": "synthetic-data",
   "set": "in_domain",
   "split": "test",
   "domain": "PRIV",
