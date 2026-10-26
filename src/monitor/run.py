@@ -5,6 +5,9 @@
 
 The API key is read from the env var named by --api-key-env (default MONITOR_API_KEY, .env is loaded).
 --dry-run uses a FakeModel that always gives a fixed valid answer, to test the pipeline without a GPU.
+--backend transformers loads the model on local GPUs instead (Kaggle; kaggle/README.md):
+    python -m src.monitor.run --records ... --setting never --backend transformers \
+        --model Qwen/Qwen3-8B --revision b968826d9c46dd6066d109eabc6255188de91218 [--adapter <LoRA>] --run-id ...
 
 Our records (task = decide_action) also need the check gateway (Step 4), retrieval (Step 6), the
 check-tool list (R7.1) and the check table (R7.5); until those exist only external records can run.
@@ -16,7 +19,7 @@ from datetime import datetime, timezone
 
 from src.common.io import REPO_ROOT, read_jsonl, write_json, write_jsonl
 from src.monitor.loop import run_monitor
-from src.monitor.models import FakeModel, OpenAICompatModel
+from src.monitor.models import FakeModel, OpenAICompatModel, TransformersModel
 from src.monitor.prompt_builder import template_names
 from src.monitor.settings import SETTINGS
 
@@ -36,6 +39,9 @@ def main(argv=None):
     ap.add_argument("--setting", choices=SETTINGS, required=True)
     ap.add_argument("--model", help="model name at the endpoint, e.g. Qwen/Qwen3-8B")
     ap.add_argument("--base-url", help="OpenAI-compatible endpoint, e.g. http://localhost:8000/v1 (vLLM)")
+    ap.add_argument("--backend", choices=["openai", "transformers"], default="openai")
+    ap.add_argument("--revision", help="transformers backend: model revision (commit) to load")
+    ap.add_argument("--adapter", help="transformers backend: LoRA adapter folder or Hub id")
     ap.add_argument("--api-key-env", default="MONITOR_API_KEY")
     ap.add_argument("--thinking-off", choices=["template", "none"], default="template")
     ap.add_argument("--run-id", required=True)
@@ -51,6 +57,10 @@ def main(argv=None):
 
     if args.dry_run:
         model = FakeModel([DRY_RISK] * len(records))
+    elif args.backend == "transformers":
+        if not args.model:
+            raise SystemExit("--model is needed")
+        model = TransformersModel(args.model, args.revision, args.adapter)
     else:
         if not (args.model and args.base_url):
             raise SystemExit("--model and --base-url are needed (or --dry-run)")
@@ -67,7 +77,8 @@ def main(argv=None):
     n = write_jsonl(out_dir / "predictions.jsonl", rows)
     write_json(out_dir / "run_config.json", {
         "run_id": args.run_id, "setting": args.setting, "model": model.name, "base_url": args.base_url,
-        "thinking_off": args.thinking_off, "split": args.split, "records": args.records, "n": n,
+        "thinking_off": args.thinking_off, "backend": args.backend,
+        "revision": args.revision, "adapter": args.adapter, "split": args.split, "records": args.records, "n": n,
         "prompts": template_names(), "dry_run": args.dry_run,
         "started": datetime.now(timezone.utc).isoformat(timespec="seconds")})
     invalid = sum(r["output"] is None for r in rows)

@@ -1,5 +1,6 @@
 """Model clients for the monitor: one OpenAI-compatible client (vLLM for Qwen3-8B, a hosted API for
-Qwen3-235B-A22B, PLAN Step 15.4) and a FakeModel for tests.
+Qwen3-235B-A22B, PLAN Step 15.4), a local Hugging Face model (Kaggle GPU; base or + LoRA adapter, so the
+base and fine-tuned runs use the same code and precision) and a FakeModel for tests.
 
 Decoding is fixed by R9.7: temperature 0, at most 512 new tokens, Qwen3 thinking off.
 """
@@ -48,6 +49,36 @@ class OpenAICompatModel:
         return Generation(resp.choices[0].message.content or "",
                           usage.prompt_tokens if usage else None,
                           usage.completion_tokens if usage else None)
+
+
+class TransformersModel:
+    """Hugging Face model on local GPUs (e.g. Kaggle 2x T4): float16, spread over the GPUs, greedy decoding.
+
+    adapter: a LoRA adapter (folder or Hub id) loaded on top of the base model (Step 17 fine-tuned run).
+    """
+
+    def __init__(self, model: str, revision: str | None = None, adapter: str | None = None, dtype: str = "float16"):
+        import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+        self.name = f"{model}+{adapter}" if adapter else model
+        self.tokenizer = AutoTokenizer.from_pretrained(model, revision=revision)
+        self.model = AutoModelForCausalLM.from_pretrained(model, revision=revision, torch_dtype=getattr(torch, dtype),
+                                                          device_map="auto")
+        if adapter:
+            from peft import PeftModel
+            self.model = PeftModel.from_pretrained(self.model, adapter)
+        self.model.eval()
+
+    def generate(self, messages: list[dict]) -> Generation:
+        import torch
+        text = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True,
+                                                  enable_thinking=False)
+        inputs = self.tokenizer(text, return_tensors="pt").to(self.model.device)
+        with torch.no_grad():   # temperature 0 = greedy; unset the sampling defaults of generation_config.json
+            out = self.model.generate(**inputs, max_new_tokens=MAX_NEW_TOKENS, do_sample=False,
+                                      temperature=None, top_p=None, top_k=None)
+        new = out[0, inputs["input_ids"].shape[1]:]
+        return Generation(self.tokenizer.decode(new, skip_special_tokens=True), inputs["input_ids"].shape[1], len(new))
 
 
 class FakeModel:
