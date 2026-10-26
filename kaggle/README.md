@@ -27,6 +27,22 @@ kaggle kernels push -p kaggle/finetune --accelerator NvidiaTeslaT4
 kaggle kernels output meet6868/agent-risk-finetune -p outputs/kaggle/finetune     # adapter + results
 ```
 
+## Checked before the GPU runs (2026-10-26, CPU smoke test with `trl-internal-testing/tiny-Qwen3ForCausalLM`)
+
+- train_lora → adapter → `run.py --backend transformers --adapter` → `src.eval.tables`: runs end to end.
+- Fixed for transformers 5 (Kaggle's version): `warmup_ratio` is gone (warmup now as a step count);
+  `apply_chat_template(tokenize=True)` returns a dict (prompt now tokenized from the chat text, as at inference).
+- Real Qwen3-8B tokenizer: the training prompt ends exactly like the inference prompt
+  (`<|im_start|>assistant\n<think>\n\n</think>\n\n`, thinking off); the loss is only on
+  `{"type": "RISK", ...}<|im_end|>`; `<|im_end|>` is an EOS id, so generation stops after the answer.
+- 41 of the 1,034 Phase A examples are over 4,096 tokens (37 ATBench UNSAFE, 4 SAFE): dropped and counted in
+  `train_stats.json` (Step 16.6).
+- Training uses one GPU (`CUDA_VISIBLE_DEVICES=0`): two visible GPUs would make the Trainer wrap the 4-bit model
+  in DataParallel. Evaluation uses both (float16 base needs ~16.4 GB).
+- Invalid answers: the raw text (first 1,000 characters) goes to `invalid_outputs.jsonl` next to `predictions.jsonl`.
+- Same library versions for both runs: `PIP` in `base_eval/run_base_eval.py`, versions written to `notes.json`.
+  If the first base run used other versions than the fine-tune job, rerun the base job before comparing.
+
 ## Data rules
 
 - The code dataset is `git archive HEAD`: committed files only. The push script refuses if `.env`,

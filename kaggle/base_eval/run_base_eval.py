@@ -22,6 +22,8 @@ AGENTRISK_REVISION = "bc7cbf702846e53ecbb31abcdb387ae4ec9f9392"  # same as scrip
 SOURCES = ("r_judge", "atbench", "agentrisk")
 MAX_TOKENS = 7300
 RUN_TAG = "base_qwen3_8b_fp16"
+# shared with kaggle/finetune (same libraries for the base and the fine-tuned run); code works with transformers 4.56+ and 5.x
+PIP = ["transformers>=4.56", "accelerate", "peft", "bitsandbytes", "jsonschema", "pyyaml", "python-dotenv", "tokenizers"]
 WORK = Path("/tmp/repo")
 OUT = Path("/kaggle/working/results")
 
@@ -69,8 +71,7 @@ def val_inputs() -> list[dict]:
 def main() -> int:
     subprocess.run(["nvidia-smi"], check=False)
     get_code()
-    sh(sys.executable, "-m", "pip", "install", "-q", "transformers>=4.51.3,<5", "accelerate", "peft",
-       "jsonschema", "pyyaml", "python-dotenv", "tokenizers")
+    sh(sys.executable, "-m", "pip", "install", "-q", *PIP)
     get_agentrisk()
     sh(sys.executable, "-m", "src.external.agentrisk")
     sh(sys.executable, "-m", "src.external.count_tokens")
@@ -101,7 +102,7 @@ def main() -> int:
     (OUT / "notes.json").write_text(json.dumps({
         "model": MODEL, "model_revision": MODEL_REVISION, "dtype": "float16", "agentrisk_revision": AGENTRISK_REVISION,
         "max_tokens": MAX_TOKENS, "skipped_long": skipped, "transformers": transformers.__version__,
-        "torch": torch.__version__, "gpus": [torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())],
+        "torch": torch.__version__, "peft": __import__("peft").__version__, "gpus": [torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())],
     }, indent=2), encoding="utf-8")
     print("done:", sorted(p.name for p in (OUT / "tables").iterdir()), flush=True)
     return 0

@@ -62,7 +62,7 @@ class TransformersModel:
         from transformers import AutoModelForCausalLM, AutoTokenizer
         self.name = f"{model}+{adapter}" if adapter else model
         self.tokenizer = AutoTokenizer.from_pretrained(model, revision=revision)
-        self.model = AutoModelForCausalLM.from_pretrained(model, revision=revision, torch_dtype=getattr(torch, dtype),
+        self.model = AutoModelForCausalLM.from_pretrained(model, revision=revision, dtype=getattr(torch, dtype),
                                                           device_map="auto")
         if adapter:
             from peft import PeftModel
@@ -73,7 +73,7 @@ class TransformersModel:
         import torch
         text = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True,
                                                   enable_thinking=False)
-        inputs = self.tokenizer(text, return_tensors="pt").to(self.model.device)
+        inputs = self.tokenizer(text, return_tensors="pt", add_special_tokens=False).to(self.model.device)
         with torch.no_grad():   # temperature 0 = greedy; unset the sampling defaults of generation_config.json
             out = self.model.generate(**inputs, max_new_tokens=MAX_NEW_TOKENS, do_sample=False,
                                       temperature=None, top_p=None, top_k=None)

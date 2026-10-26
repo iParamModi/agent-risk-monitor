@@ -33,10 +33,13 @@ def test_example_uses_the_monitor_prompt_and_no_gold_text():
 
 class FakeTokenizer:
     def apply_chat_template(self, messages, tokenize, add_generation_prompt, enable_thinking):
-        assert add_generation_prompt and not enable_thinking
-        return [1] * len(messages[0]["content"].split())
+        assert add_generation_prompt and not enable_thinking and not tokenize
+        return "PROMPT " + messages[0]["content"]
 
     def __call__(self, text, add_special_tokens):
+        assert not add_special_tokens
+        if text.startswith("PROMPT "):
+            return {"input_ids": [1] * len(text.split()[1:])}
         return {"input_ids": [7] * len(text.split())}
 
 

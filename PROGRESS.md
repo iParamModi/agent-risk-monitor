@@ -93,6 +93,8 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 
 - 2026-10-26, Param: started Step 5 (policy store); will generate the 4 policy files from the seeds (shared extractor + generator, validated back), normalize text (16 style fixes at one point), label `risk_type` per the guide. Planned monitor change (Option 2): model sees local `[1/2/3]` policy tags, not real IDs — to coordinate with Prateek/Meet (their `src/monitor/`)
 - 2026-10-26, Param: handed my OOD seed verification (CUST + reworded-domain) to Moiesha — on other work
+- 2026-10-26, Meet: pipeline check before the GPU runs (CPU smoke test, tiny Qwen3): fixed 2 transformers-5 bugs in `train_lora.py` (warmup_ratio, apply_chat_template dict), one-GPU training, invalid raw outputs saved, shared package list; real Qwen3 template checked (training = inference prompt). 41 Phase A examples > 4,096 tokens dropped
+- 2026-10-26, Meet: SFT builder + QLoRA trainer + Kaggle fine-tune job ready; starts after the base-model val job finishes
 - 2026-10-26, Meet: Kaggle setup for model runs: transformers backend in the monitor runner, `kaggle/` jobs, private code dataset; base Qwen3-8B job on external val. **Prateek: FYI, `src/monitor/models.py` + `run.py` changed (additive)**
 - 2026-10-26, Meet: fix in `src/monitor/prompt_builder.py`: the risk prompt now shows AgentRisk's `proposed_action_text` as the last line (it was missing, so AgentRisk items had no action to judge); R-Judge/ATBench prompts unchanged; test added. **Prateek: FYI**
 - 2026-10-26, Meet: started Step 15 external part (base Qwen3-8B Q4 on CPU, external val)

@@ -27,6 +27,22 @@ RUNS_DIR = REPO_ROOT / "outputs" / "runs"
 DRY_RISK = '{"type": "RISK", "risk_label": "SAFE", "risk_type": "NONE"}'
 
 
+class Recording:
+    """Wraps a model and keeps the raw text of each answer, so invalid outputs can be read later
+    (predictions.jsonl keeps the eval format, docs/evaluation_metrics.md section 2)."""
+
+    def __init__(self, model):
+        self.inner, self.name, self.texts = model, model.name, []
+
+    def generate(self, messages):
+        gen = self.inner.generate(messages)
+        self.texts.append(gen.text)
+        return gen
+
+
+RAW_CHARS = 1000
+
+
 def load_records(paths: list[str], split: str | None, limit: int | None) -> list[dict]:
     records = [r for p in paths for r in read_jsonl(p) if split is None or r["split"] == split]
     return records[:limit] if limit else records
@@ -69,12 +85,17 @@ def main(argv=None):
         model = OpenAICompatModel(args.model, args.base_url, os.getenv(args.api_key_env, ""), args.thinking_off)
 
     out_dir = RUNS_DIR / args.run_id
-    rows = []
+    model = Recording(model)
+    rows, invalid_raw = [], []
     for i, rec in enumerate(records, 1):
+        model.texts = []
         rows.append(run_monitor(rec, args.setting, model))
+        if rows[-1]["output"] is None:
+            invalid_raw.append({"record_id": rec["record_id"], "raw": [t[:RAW_CHARS] for t in model.texts]})
         if i % 25 == 0 or i == len(records):
             print(f"{i}/{len(records)}", flush=True)
     n = write_jsonl(out_dir / "predictions.jsonl", rows)
+    write_jsonl(out_dir / "invalid_outputs.jsonl", invalid_raw)
     write_json(out_dir / "run_config.json", {
         "run_id": args.run_id, "setting": args.setting, "model": model.name, "base_url": args.base_url,
         "thinking_off": args.thinking_off, "backend": args.backend,
