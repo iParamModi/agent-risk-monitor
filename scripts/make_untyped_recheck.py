@@ -8,9 +8,9 @@ Which records (58 on 2026-10-26):
            -> new rows in data/external/risk_type_recheck.csv
   ATBench  UNSAFE records of the mixed harm info_ecosystem_and_societal_harm without a per-record label (R3.6)
            -> new rows in data/external/atbench_h5_recheck.csv
-The txt file starts with the labelling guide (data/external/risk_type_categories.txt), then each record's
-visible conversation and the source's own description. It shows no current or suggested type, so the
-labelling stays blind. Labels come from the human only, no LLM (CLAUDE.md section 6); map_risk applies them.
+The txt file holds only the records: each record's visible conversation, the source's own description and
+the options (the guide is data/external/risk_type_categories.txt). It shows no current or suggested type,
+so the labelling stays blind. Labels come from the human only, no LLM (CLAUDE.md section 6); map_risk applies them.
 """
 import csv
 import json
@@ -25,7 +25,6 @@ from src.external.map_risk import RISK_TYPES, load_atbench_recheck, load_human_t
 from src.external.sample import MIXED_HARM  # noqa: E402
 
 EXT = REPO_ROOT / "data" / "external"
-GUIDE = EXT / "risk_type_categories.txt"
 SHEETS = {   # source -> (sheet, description column)
     "r_judge": (EXT / "risk_type_recheck.csv", "risk_description"),
     "atbench": (EXT / "atbench_h5_recheck.csv", "atbench_reason"),
@@ -94,33 +93,6 @@ def render(rec: dict, n: int, total: int, name: str) -> str:
     return "\n".join(out)
 
 
-def intro(total: int) -> str:
-    return "\n".join([
-        "#" * 80,
-        f"RISK TYPE LABELLING: {total} UNSAFE records (R-Judge + ATBench) that have no risk type yet",
-        "#" * 80,
-        "",
-        "HOW TO FILL",
-        "  1. Read the guide below first (data/external/risk_type_categories.txt).",
-        "  2. For each record, read the conversation and the source's description. Every record is UNSAFE.",
-        "  3. Type ONE type after 'done:' in the record's first line, spelled exactly, e.g.",
-        "       [3/58] RJ-xxx-1   (R-Judge, split: train)   for: Meet   done: FINANCIAL_LOSS",
-        f"     Options: {' | '.join(OPTIONS)}, or CONFUSED when you cannot decide.",
-        "  4. By hand only: NO Claude, ChatGPT or any LLM (CLAUDE.md section 6).",
-        "  5. When finished: python scripts/make_untyped_recheck.py --import <YourName> <this file>",
-        "",
-        "#" * 80,
-        "LABELLING GUIDE (risk_type_categories.txt)",
-        "#" * 80,
-        GUIDE.read_text(encoding="utf-8").rstrip(),
-        "",
-        "#" * 80,
-        "RECORDS",
-        "#" * 80,
-        "",
-    ])
-
-
 def make(name: str) -> int:
     records = untyped()
     added = add_rows(records, name)
@@ -131,7 +103,7 @@ def make(name: str) -> int:
         print(f"{out} already has labels; not overwriting")
         return 1
     out.parent.mkdir(exist_ok=True)
-    out.write_text(intro(len(ordered)) + "\n\n".join(render(r, i, len(ordered), name) for i, r in enumerate(ordered, 1)) + "\n",
+    out.write_text("\n\n".join(render(r, i, len(ordered), name) for i, r in enumerate(ordered, 1)) + "\n",
                    encoding="utf-8")
     print(f"{len(ordered)} records (R-Judge {len(records['r_judge'])}, ATBench {len(records['atbench'])}); "
           f"rows added: R-Judge {added['r_judge']}, ATBench {added['atbench']}; file: {out.relative_to(REPO_ROOT)}")
