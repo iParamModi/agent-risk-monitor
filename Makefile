@@ -12,6 +12,7 @@ external:
 	$(PYTHON) -m src.external.map_risk
 	$(PYTHON) -m src.external.agentrisk
 	$(PYTHON) -m src.external.count_tokens
+	$(PYTHON) -m src.external.phase_a
 
 # Step 12 check: fake runs for the 4 settings -> full report in outputs/runs/dummy_report/main.md
 eval-dummy:
