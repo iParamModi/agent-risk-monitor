@@ -119,3 +119,64 @@ def pick_text(entry: dict) -> str:
         if cands:
             return Counter(cands).most_common(1)[0][0]
     return ""
+
+
+# ---- logic extraction (for policy_logic.yaml + conflicts.yaml) ---------------------------------
+# A policy's standalone logic: which actions, the deciding fact + where it lives, the firing decision,
+# and the safe/unsafe sample values. ESCALATE from a conflict is NOT stored here - conflicts.yaml does.
+
+# The (SAFE|UNSAFE) marker may be followed by a risk type, e.g. "BLOCK(UNSAFE, PRIVACY_LEAKAGE)".
+_T1_BRANCH = re.compile(r"\b([AB])\s+\S*?=?\s*([A-Za-z0-9_.:-]+)\s*->\s*([A-Z_]+)\((SAFE|UNSAFE)[^)]*\)")
+
+
+def _t1_branches(notes: str) -> dict[str, tuple[str, str, str]]:
+    """{'A': (value, decision, SAFE|UNSAFE), ...} parsed robustly (either branch may be the unsafe one)."""
+    return {letter: (value, decision, safety)
+            for letter, value, decision, safety in _T1_BRANCH.findall(notes)}
+
+
+def logic_candidates(which: str) -> tuple[dict, list]:
+    """Aggregate each policy's logic from its seeds. Returns ({policy_id: {...}}, [conflict pairs]).
+
+    Per policy: domain, actions, case_types, fact_attr, fact_location, decisions (non-escalate from
+    T1/T2/T3/T4 + ESCALATE only for T5 facts_disagree), safe_value, unsafe_value, seeds.
+    """
+    pol = defaultdict(lambda: {"domain": None, "actions": set(), "case_types": set(),
+                               "fact_attr": set(), "fact_location": set(), "decisions": set(),
+                               "safe_value": set(), "unsafe_value": set(), "seeds": []})
+    conflicts = []
+    for d in load_seeds(which):
+        ct, action = d["case_type"], d["proposed_action"]["name"]
+        key_attr = d.get("key_fact", {}).get("attribute")
+        branches = _t1_branches(d.get("notes", "")) if ct == "T1" else {}
+        for i, pid in enumerate(d["gold_policy_ids"]):
+            p = pol[pid]
+            p["domain"] = d["domain"]
+            p["case_types"].add(ct)
+            p["actions"].add(action)
+            p["seeds"].append(d["seed_id"])
+            if key_attr and i == 0:
+                p["fact_attr"].add(key_attr)
+            if ct == "T1":
+                p["fact_location"].add("hidden_state")
+                for _letter, (value, decision, safety) in branches.items():
+                    if safety == "UNSAFE":
+                        p["decisions"].add(decision)
+                        p["unsafe_value"].add(value)
+                    else:
+                        p["safe_value"].add(value)
+            elif ct == "T2":
+                p["fact_location"].add("hidden_state")
+                p["decisions"].add("BLOCK")
+            elif ct == "T3":
+                p["fact_location"].add("in_policy")
+                p["decisions"].add("ALLOW")
+            elif ct == "T4":
+                p["fact_location"].add("in_policy")
+                p["decisions"].add("BLOCK")
+            elif ct == "T5" and d.get("t5_kind") == "facts_disagree":
+                p["fact_location"].add("hidden_state")
+                p["decisions"].add("ESCALATE")
+        if ct == "T5" and d.get("t5_kind") == "policy_conflict" and len(d["gold_policy_ids"]) >= 2:
+            conflicts.append({"policies": list(d["gold_policy_ids"]), "action": action})
+    return dict(pol), conflicts
