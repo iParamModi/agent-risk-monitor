@@ -44,7 +44,7 @@ COLUMNS = ["record_id", "assigned_to", "split", "reason", "options", "recheck_ty
 
 CAUSE_SHEET = REPO_ROOT / "data" / "external" / "agentrisk_cause_recheck.csv"
 CAUSE_COLUMNS = ["record_id", "assigned_to", "split", "reason", "options", "recheck_cause", "recheck_note"]
-CAUSE_LABELLERS = ("Meet",)
+CAUSE_LABELLERS = ("Prateek",)    # all 281, by hand; not to be handed over (Meet, 2026-10-26)
 CAUSE_ORDER = ("USER_REQUEST", "UNTRUSTED_CONTENT", "ENVIRONMENT_STATE", "POLICY_CONFLICT", "AGENT_ERROR")
 DRIVER_CAUSES = {     # AgentRisk risk driver -> our risk_cause candidates (decisions.md R3.4), review sheet Q4
     "Risky Requested Outcome": ("USER_REQUEST",),

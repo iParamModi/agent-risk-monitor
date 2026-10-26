@@ -60,7 +60,7 @@ Our causes: ENVIRONMENT_STATE, USER_REQUEST, AGENT_ERROR, POLICY_CONFLICT, UNTRU
 | Execution / Action Hazard | 25 | AR-061, AR-135, AR-154 | AGENT_ERROR |  |  |
 | Risky Requested Outcome | 17 | AR-168, AR-199, AR-221 | USER_REQUEST |  |  |
 
-Meet, 2026-10-26: an item's options = the causes of all its drivers. One option (58 UNSAFE items) → decided by this map; more (281) → per record by hand in `agentrisk_cause_recheck.csv` (`python scripts/show_agentrisk_recheck.py --cause Meet`). Needs a schema change before applying: external records must have risk_cause = null today (R3.4).
+Meet, 2026-10-26: an item's options = the causes of all its drivers. One option (58 UNSAFE items) → decided by this map; more (281) → per record by hand by **Prateek** (all 281; not to be handed over) in `agentrisk_cause_recheck.csv` (`python scripts/show_agentrisk_recheck.py --cause Prateek`). Needs a schema change before applying: external records must have risk_cause = null today (R3.4).
 
 ## Q5. Flagged items: keep or exclude from training?
 
