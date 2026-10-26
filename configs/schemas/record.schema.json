@@ -204,9 +204,9 @@
                "then": {"properties": {"gold": {"properties": {"risk_label": {"const": "UNSAFE"}}}}}}
     },
     {
-      "description": "Our data: required_checks present exactly when a check is needed.",
+      "description": "Our data: missing_fact is set when a check is needed. required_checks may be null for now (filled in a later pass once the check tools are final; see docs/seed_to_record.md D4) or a non-empty list; it must be null when no check is needed.",
       "if": {"properties": {"task": {"const": "decide_action"}, "gold": {"properties": {"check_needed": {"const": true}}}}},
-      "then": {"properties": {"gold": {"properties": {"required_checks": {"type": "array", "minItems": 1}, "missing_fact": {"type": "string"}}}}},
+      "then": {"properties": {"gold": {"properties": {"required_checks": {"oneOf": [{"type": "null"}, {"type": "array", "minItems": 1}]}, "missing_fact": {"type": "string"}}}}},
       "else": {"if": {"properties": {"task": {"const": "decide_action"}}},
                "then": {"properties": {"gold": {"properties": {"required_checks": {"type": "null"}, "missing_fact": {"type": "null"}}}}}}
     }

@@ -90,7 +90,8 @@ BROKEN = {
     "ours without action": broken(ours, lambda r: r["visible"].update(proposed_action=None)),
     "ours ALLOW but UNSAFE": broken(ours, lambda r: r["gold"].update(decision="ALLOW")),
     "ours BLOCK but SAFE": broken(ours, lambda r: r["gold"].update(risk_label="SAFE", risk_type="NONE")),
-    "check needed, no checks": broken(ours, lambda r: r["gold"].update(required_checks=None)),
+    "check needed, empty checks": broken(ours, lambda r: r["gold"].update(required_checks=[])),
+    "check needed, no missing_fact": broken(ours, lambda r: r["gold"].update(missing_fact=None)),
     "no check needed, has checks": broken(ours, lambda r: r["gold"].update(check_needed=False)),
     "three checks": broken(ours, lambda r: r["gold"]["required_checks"].extend(
         [{"tool": "check_file_owner", "args": {}}] * 2)),
@@ -101,3 +102,11 @@ BROKEN = {
 @pytest.mark.parametrize("name", BROKEN)
 def test_broken_records_fail(name):
     assert schema_errors(BROKEN[name]) != [], name
+
+
+def test_required_checks_may_be_null_when_check_needed():
+    # required_checks is filled in a later pass once the check tools are final (seed_to_record.md D4),
+    # so null is allowed while check_needed is true; missing_fact must still be set.
+    r = ours()
+    r["gold"]["required_checks"] = None
+    assert schema_errors(r) == []
