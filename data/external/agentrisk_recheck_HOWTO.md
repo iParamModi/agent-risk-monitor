@@ -51,7 +51,7 @@ The "AgentRisk labels" line holds the dataset's own labels and our map, not anyo
 python scripts/show_agentrisk_recheck.py <YourName> > local_notes/agentrisk_<YourName>.txt   # local_notes/ is git-ignored
 ```
 
-`[4/36] AR-109   (split: train, mixed domain)   done: FINANCIAL_LOSS`. Meet can also send you this file privately (team drive, never git: the items have no licence). Then copy your choices into the CSV with the import command in step 4.
+`[4/36] AR-109   (split: train, mixed domain)   for: Param   done: FINANCIAL_LOSS`. Meet can also send you one shared file with everyone's items (`python scripts/show_agentrisk_recheck.py Prateek,Param,Moiesha`; fill only the items marked `for: <YourName>`) privately (team drive, never git: the items have no licence). Then copy your choices into the CSV with the import command in step 4.
 
 ## 3. Decide
 

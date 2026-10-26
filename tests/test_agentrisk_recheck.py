@@ -73,13 +73,15 @@ def sheet_rows():
 
 
 def test_import_reads_done_field():
-    text = "[1/2] AR-001   (split: train, two domains)   done: SECURITY\nother\n[2/2] AR-009   (split: val, x)   done: -\n"
+    text = ("[1/2] AR-001   (split: train, two domains)   for: Meet   done: SECURITY\nother\n"
+            "[2/2] AR-009   (split: val, x)   done: -\n")
     assert imp.read_labels(text) == {"AR-001": "SECURITY"}
 
 
 def test_import_fills_only_own_valid_rows():
     rows = sheet_rows()
-    assert imp.apply(rows, "Meet", {"AR-001": "OTHER"}) == [] and rows[0]["recheck_type"] == "OTHER"
+    assert imp.apply(rows, "Meet", {"AR-001": "OTHER", "AR-002": "SECURITY"}) == ([], 1)    # AR-002 is Param's: skipped
+    assert rows[0]["recheck_type"] == "OTHER" and rows[1]["recheck_type"] == ""
     rows = sheet_rows()
-    problems = imp.apply(rows, "Meet", {"AR-001": "DATA_LOSS", "AR-002": "SECURITY", "AR-777": "OTHER"})
-    assert len(problems) == 3 and rows[1]["recheck_type"] == ""
+    problems, _ = imp.apply(rows, "Meet", {"AR-001": "DATA_LOSS", "AR-777": "OTHER"})
+    assert len(problems) == 2

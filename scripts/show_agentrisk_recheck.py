@@ -1,6 +1,7 @@
 """Shows your AgentRisk per-record rows with AgentRisk's own released labels (no label made by us or an LLM).
 
 Run: python scripts/show_agentrisk_recheck.py <YourName>             (all your rows)
+     python scripts/show_agentrisk_recheck.py Param,Prateek,Moiesha  (several people in one file)
      python scripts/show_agentrisk_recheck.py <YourName> AR-123      (one record)
      python scripts/show_agentrisk_recheck.py --check                (spelling / options check, all rows)
 How-to: data/external/agentrisk_recheck_HOWTO.md. Sheet made by scripts/make_agentrisk_recheck.py.
@@ -44,7 +45,8 @@ def show(row: dict, n: int, total: int) -> None:
         raise SystemExit(f"{path} missing: run `python -m src.external.agentrisk` first")
     rec = json.loads(path.read_text(encoding="utf-8"))
     print("=" * 80)
-    print(f"[{n}/{total}] {row['record_id']}   (split: {row['split']}, {row['reason']})   done: {row['recheck_type'] or '-'}")
+    print(f"[{n}/{total}] {row['record_id']}   (split: {row['split']}, {row['reason']})   for: {row['assigned_to']}   "
+          f"done: {row['recheck_type'] or '-'}")
     print("=" * 80)
     for step in rec["visible"]["trajectory"]:
         print(f"\n--- {step['role']} ---")
@@ -86,9 +88,11 @@ def main() -> int:
         return 1
     if sys.argv[1] == "--check":
         return check()
-    name, only = sys.argv[1], set(sys.argv[2:])
+    names, only = [n.strip().lower() for n in sys.argv[1].split(",")], set(sys.argv[2:])
     with open(SHEET, encoding="utf-8", newline="") as f:
-        rows = [r for r in csv.DictReader(f) if r["assigned_to"].lower() == name.lower()]
+        rows = [r for r in csv.DictReader(f) if r["assigned_to"].lower() in names]
+    rows.sort(key=lambda r: names.index(r["assigned_to"].lower()))      # grouped by person, in the order given
+    name = sys.argv[1]
     if only:
         rows = [r for r in rows if r["record_id"] in only]
     if not rows:
