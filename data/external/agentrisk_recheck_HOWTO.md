@@ -1,7 +1,7 @@
 # AgentRisk risk-type labelling: how to
 
-**Who:** Meet 36 · Param 36 · Prateek 35 · Moiesha 35 (142 items, random split, the same mix for everyone)
-**Time:** about 30–40 minutes each
+**Who:** Prateek 71 (his 35 + Meet's 36, handed over 2026-10-26) · Param 36 · Moiesha 35 (142 items, random split, the same mix per share)
+**Time:** about 30–40 minutes per 35 items
 **Rule:** label by hand. **No Claude, ChatGPT or any LLM** (CLAUDE.md §6). LLM-made labels are rejected and redone.
 
 ## What this is
