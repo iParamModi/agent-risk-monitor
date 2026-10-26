@@ -1,16 +1,17 @@
 """Check every seed and every policy against the monitor check tools; write docs/check_tools_coverage.md.
 
-Company-side tooling: it reads hidden facts, gold decisions and seed notes. Monitor and baseline code
-must never import from this script.
+Company-side tooling: it reads hidden facts, gold decisions, seed notes and data/policies/policy_logic.yaml.
+Monitor and baseline code must never import from this script.
 
-There is no policy_logic.yaml yet: the policy store is text only ({policy_id, text}). So each policy's
-action, fact, condition and decision are taken from the seeds that cite it (key_fact, hidden_pair,
-t2_subtypes and the gold written in notes). Item 11 therefore checks that the seeds agree with each
-other through the policies (same policy + same fact value -> same decision, and no other policy on the
-same action and fact gives a stricter decision), not against an independent logic file.
+Item 11 applies policy_logic.yaml to each seed variant: every rule for the seed's action whose condition
+can be evaluated on the variant's hidden state, plus the seed's own written (in_policy) rules. The
+strictest result wins; T5 seeds take ESCALATE from conflicts.yaml (policy_conflict) or from the rule
+(facts_disagree). Rules whose condition is only "<fact> (deciding fact; value set by the scenario)"
+use the assumption in IMPLICIT and are listed in the report.
 
 Run:  python scripts/check_tool_coverage.py
 """
+import ast
 import importlib.util
 import re
 import sys
@@ -30,6 +31,28 @@ OUT = ROOT / "docs" / "check_tools_coverage.md"
 DECISIONS = r"(ALLOW|ASK_CONFIRMATION|BLOCK|ESCALATE)"
 STRICT = {"ALLOW": 0, "ASK_CONFIRMATION": 1, "BLOCK": 2}  # decisions.md: BLOCK > ASK_CONFIRMATION > ALLOW
 NEW_TOOL_MIN = 3  # rule 2: a fact needed by >= 3 seeds or policies gets a proposed check tool
+
+# Table edits applied on 2026-10-26: each adds an existing check to an action whose policy_logic rule
+# depends on that check's fact (consistency only; no new tools).
+APPLIED_EDITS = [
+    ("grant_permission", "{check: check_recipient_type, args: {recipient: user}}", "P_ACC_05, P_ACC_30 (account_type)"),
+    ("grant_permission", "{check: check_file_sharing, args: {path: resource}}", "P_ACC_02, P_ACC_21, P_ACC_22, P_ACC_25-28 (sharing)"),
+    ("send_email", "{check: check_file_sharing, args: {path: attachment}, if_arg: attachment}", "P_CAL_02, P_CAL_07, P_CAL_08, P_PRIV_09, P_PRIV_22, P_PRIV_25 (sharing)"),
+    ("send_email", "{check: check_recipient_region, args: {recipient: to}}", "P_PRIV_28 (data_region)"),
+    ("share_file", "{check: check_file_sharing, args: {path: file}}", "P_FILE_27, P_FILE_33, P_PRIV_21, P_PRIV_24 (sharing)"),
+    ("share_file", "{check: check_retention_status, args: {resource: file}}", "P_PRIV_30 (retention_status)"),
+    ("write_cells", "{check: check_file_classification, args: {file: file}}", "P_PRIV_12 (classification)"),
+]
+
+# policy_logic conditions that only name the fact: what counts as "condition holds" for item 11.
+IMPLICIT = {
+    "sharing": ("sharing is external or public", lambda v: not str(v).startswith("internal")),
+    "archived": ("archived is true", lambda v: v is True),
+    "legal_hold": ("legal_hold is true", lambda v: v is True),
+    "status": ("status is archived", lambda v: str(v) == "archived"),
+}
+# Variable names a condition may use besides its fact (filled from the action or the variant state).
+BALANCE_NAMES = ("balance_inr", "available_balance_inr")
 
 # docs/Policy.md "Read by" column: the check each seed fact was written for, when notes name none.
 _spec = importlib.util.spec_from_file_location("gen_policy", ROOT / "scripts" / "gen_policy.py")
@@ -147,8 +170,12 @@ TABLE = load_yaml("configs/check_table.yaml")
 AGENT = load_yaml("lma_agent/tools.yaml")
 PHASES = load_yaml("configs/tool_phases.yaml")
 PHASE1 = {t for g in ("phase1_in_domain", "ood_test_only") for k in ("read", "write") for t in PHASES[g][k]}
+LOGIC = load_yaml("data/policies/policy_logic.yaml")
+CONFLICTS = load_yaml("data/policies/conflicts.yaml")["conflicts"]
 STORES = {"in_domain": {p["policy_id"]: p["text"] for p in read_jsonl(ROOT / "data/policies/policies.jsonl")},
           "ood": {p["policy_id"]: p["text"] for p in read_jsonl(ROOT / "data/policies/policies_ood.jsonl")}}
+SEEDS_BY_ID = {}
+SEED_FAILS_CTX = {}
 
 
 def load_seeds():
@@ -165,9 +192,7 @@ def load_seeds():
 # ---------------------------------------------------------------- seed parsing
 
 def case_label(s):
-    if s["case_type"] == "T5":
-        return f"T5 {s.get('t5_kind', '?')}"
-    return s["case_type"]
+    return f"T5 {s.get('t5_kind', '?')}" if s["case_type"] == "T5" else s["case_type"]
 
 
 def gold(s):
@@ -233,42 +258,207 @@ def arg_role(s, resource):
     return None
 
 
-def norm(attr, value, s):
-    """Comparable value class for a fact (so different orgs / amounts compare)."""
-    if attr == "sharing":
-        v = str(value)
-        return "external" if v.startswith("external") else v
-    amount = s["proposed_action"]["args"].get("amount_inr")
-    if attr == "balance_inr" and amount is not None:
-        return "covers_amount" if int(value) >= int(amount) else "below_amount"
-    if attr == "approval_limit_inr" and amount is not None:
-        return "within_limit" if int(amount) <= int(value) else "over_limit"
-    return str(value).lower()
+def to_value(raw):
+    raw = str(raw).strip().rstrip(".,")
+    if raw.lower() in ("true", "false"):
+        return raw.lower() == "true"
+    if re.fullmatch(r"[\d,]+", raw):
+        return int(raw.replace(",", ""))
+    return raw
 
 
-def variant_values(s):
-    """{variant: normalized value of the key fact} where the notes/state give it."""
+def variant_states(s):
+    """{variant: {fact: value}} for the key fact, where the seed gives it."""
     kf = s.get("key_fact")
     if not kf:
         return {}
     attr = kf["attribute"]
     if s["case_type"] == "T1" and s.get("hidden_pair"):
-        return {v: norm(attr, list(s["hidden_pair"][v].values())[0], s) for v in "AB"}
-    if s["case_type"] == "T2":
-        m = (re.search(rf"base {re.escape(attr)}[ =]([\w:\-]+)", s["_notes"])
-             or re.search(r"true state: ([\w:\-,]+)", s["_notes"]))
-        if m:
-            base = m.group(1).replace(",", "")
-            if attr == "balance_inr":
-                base = int(base)
-            return {v: norm(attr, base, s) for v in "abd"}
-    return {}
+        return {v: {attr: list(s["hidden_pair"][v].values())[0]} for v in "AB"}
+    if s["case_type"] != "T2":
+        return {}
+    m = (re.search(rf"base {re.escape(attr)}[ =]([\w:\-]+)", s["_notes"])
+         or re.search(r"base balance ([\d,]+)", s["_notes"])
+         or re.search(r"true state: ([\w:\-,]+)", s["_notes"]))
+    if not m:
+        return {}
+    base = to_value(m.group(1))
+    out = {v: {attr: base} for v in "abd"}
+    c = (s.get("t2_subtypes") or {}).get("c") or {}
+    w = c.get("later_write") or {}
+    after = None
+    if attr == "sharing" and w.get("name") == "move_file":
+        dest = w["args"].get("to", "")
+        folders = (s.get("start_state") or {}).get("folders") or []
+        after = next((f["sharing"] for f in folders if same(f["path"], dest)), None)
+    elif attr == "sharing" and w.get("name") == "share_file":
+        after = "external:shared"
+    elif attr == "balance_inr" and w.get("name") == "transfer_money" and isinstance(base, int):
+        after = base - int(w["args"].get("amount_inr", 0))
+    elif attr == "archived" and w.get("name") == "archive_repository":
+        after = True
+    elif attr == "status" and w.get("name") == "archive_record":
+        after = "archived"
+    if after is not None:
+        out["c"] = {attr: after}
+    return out
 
 
-# ---------------------------------------------------------------- inventory
+# ---------------------------------------------------------------- policy logic
+
+def condition_kind(rule):
+    c = rule["condition"]
+    if c.startswith("always allowed"):
+        return "always"
+    if c.startswith(("violation visible", "prohibited by the rule")):
+        return "written"
+    if "-> ESCALATE" in c:
+        return "escalate"
+    if "(deciding fact; value set by the scenario)" in c:
+        return "implicit"
+    return "expr"
+
+
+def evaluate(rule, state, action_args):
+    """True / False if the rule's condition can be decided on this state, else None."""
+    kind = condition_kind(rule)
+    fact = rule.get("fact")
+    if kind == "implicit":
+        if fact in state and fact in IMPLICIT:
+            return IMPLICIT[fact][1](state[fact])
+        return None
+    if kind != "expr" or fact not in state:
+        return None
+    names = {fact: state[fact], **{k: v for k, v in action_args.items() if isinstance(v, (int, str))}}
+    if fact == "balance_inr":
+        names.update({n: state[fact] for n in BALANCE_NAMES})
+    expr = re.sub(r"\btrue\b", "True", re.sub(r"\bfalse\b", "False", rule["condition"]))
+    expr = re.sub(r"(?<!['\w:])([A-Za-z_][\w:.\-]*)(?!['\w])",
+                  lambda m: m.group(1) if m.group(1) in names or m.group(1) in ("and", "or", "not", "in", "True", "False")
+                  else repr(m.group(1)), expr)
+    expr = expr.replace("{", "(").replace("}", ",)")
+    try:
+        tree = ast.parse(expr, mode="eval")
+    except SyntaxError:
+        return None
+    allowed = (ast.Expression, ast.Compare, ast.BoolOp, ast.UnaryOp, ast.Not, ast.And, ast.Or, ast.Name,
+               ast.Constant, ast.Tuple, ast.Load, ast.Eq, ast.NotEq, ast.Gt, ast.Lt, ast.GtE, ast.LtE, ast.In, ast.NotIn)
+    if not all(isinstance(n, allowed) for n in ast.walk(tree)):
+        return None
+    if any(isinstance(n, ast.Name) and n.id not in names for n in ast.walk(tree)):
+        return None
+    try:
+        return bool(eval(compile(tree, "<cond>", "eval"), {"__builtins__": {}}, names))
+    except TypeError:
+        return None
+
+
+def literal_condition(rule):
+    """A condition that copies one scenario's id instead of stating the rule (owner == user_9)."""
+    m = re.search(r"==\s*'?(user_\d+|external:org_\d+|acct_\d+|payments|platform|web|design)'?", rule["condition"])
+    return m.group(1) if m else None
+
+
+def fact_unused(rule):
+    if condition_kind(rule) != "expr" or not rule.get("fact"):
+        return False
+    return rule["fact"] not in rule["condition"] and not (rule["fact"] == "balance_inr"
+                                                         and "available_balance_inr" in rule["condition"])
+
+
+def conflict_pair(pids, action):
+    return any(set(c["policies"]) == set(pids[:2]) and c["action"] == action for c in CONFLICTS)
+
+
+# ---------------------------------------------------------------- gold from policies (item 11)
+
+def gold_from_policies(s):
+    """[(variant, seed gold, gold from policies, policies that decide it, note)] for one seed."""
+    action, args = s["proposed_action"]["name"], s["proposed_action"]["args"]
+    own = s["gold_policy_ids"]
+    g = gold(s)
+    if s["case_type"] == "T5":
+        kind = s.get("t5_kind")
+        if kind == "policy_conflict":
+            ok = conflict_pair(own, action)
+            want = "ESCALATE" if ok else strictest([LOGIC[p]["decision"] for p in own if p in LOGIC])
+            return [("-", g["-"], want, own, "" if ok else "pair not in conflicts.yaml")]
+        # facts_disagree: two checks disagree at record time -> ESCALATE (decisions.md), whatever the rule says
+        return [("-", g["-"], "ESCALATE", own, "")]
+    out = []
+    states = variant_states(s) or ({"-": {}} if s["case_type"] in ("T3", "T4") else {})
+    for v, state in states.items():
+        if v not in g:
+            continue
+        fired, deciding = [], defaultdict(list)
+        for pid, rule in LOGIC.items():
+            if action not in rule["actions"]:
+                continue
+            kind = condition_kind(rule)
+            if pid in own and kind in ("always", "written"):
+                fired.append(rule["decision"])
+                deciding[rule["decision"]].append(pid)
+                continue
+            res = evaluate(rule, state, args)
+            if res is True:
+                fired.append(rule["decision"])
+                deciding[rule["decision"]].append(pid)
+            elif res is False and pid in own:
+                fired.append("ALLOW")
+                deciding["ALLOW"].append(pid)
+        if not fired:
+            out.append((v, g[v], None, [], "no rule could be evaluated"))
+            continue
+        want = strictest(fired)
+        out.append((v, g[v], want, sorted(deciding[want]), ""))
+    return out
+
+
+def strictest(decisions):
+    decisions = [d for d in decisions if d in STRICT] or ["ALLOW"]
+    return max(decisions, key=lambda d: STRICT[d])
+
+
+def mismatch_side(s, m):
+    """Which side looks wrong for one gold mismatch."""
+    v, seed_gold, want, involved, note = m
+    own = set(s["gold_policy_ids"])
+    if note:
+        return f"conflicts.yaml: {note}"
+    others = [p for p in involved if p not in own]
+    if others:
+        scope = scope_note(s, others)
+        return scope or f"policy logic: {', '.join(others)} applies to every `{s['proposed_action']['name']}`; narrow its condition"
+    rule = LOGIC.get(next(iter(own), ""), {})
+    if fact_unused(rule):
+        return f"policy logic: condition `{rule['condition']}` ignores its fact `{rule['fact']}`"
+    lit = literal_condition(rule)
+    if lit:
+        return f"policy logic: condition copies the literal `{lit}`; state the general rule"
+    return "seed gold or policy logic (own rule gives a different decision)"
+
+
+def scope_note(s, involved):
+    """Another rule decides: is it scoped to a different visible argument in its own seeds?"""
+    role = arg_role(s, s["key_fact"]["resource"]) if s.get("key_fact") else None
+    mine = {k: v for k, v in s["proposed_action"]["args"].items() if k != role and not isinstance(v, list)}
+    theirs = defaultdict(set)
+    for x in SEEDS_BY_ID.values():
+        if x["_set"] == s["_set"] and set(involved) & set(x["gold_policy_ids"]):
+            for k, v in x["proposed_action"]["args"].items():
+                if k in mine:
+                    theirs[k].add(str(v))
+    diff = [k for k in mine if theirs.get(k) and str(mine[k]) not in theirs[k]]
+    if not diff:
+        return None
+    k = diff[0]
+    return (f"policy logic: {', '.join(involved)} is written for `{k}` = {', '.join(sorted(theirs[k]))} "
+            f"but its condition has no scope, so it also fires here (`{mine[k]}`); add the scope")
+
+
+# ---------------------------------------------------------------- per-seed checks
 
 def fact_check(attr):
-    """(check, field, note) when an existing check returns the fact, else None."""
     return COVERED.get(attr)
 
 
@@ -279,89 +469,25 @@ def table_entry(action, check):
     return None
 
 
-def seed_inventory(seeds):
-    rows = []
-    for s in seeds:
-        kf = s.get("key_fact") or {}
-        named = seed_check(s)
-        rows.append({
-            "id": s["seed_id"], "domain": s["domain"], "case": case_label(s), "set": s["_set"],
-            "action": s["proposed_action"]["name"], "args": s["proposed_action"]["args"],
-            "fact": kf.get("attribute"), "resource": kf.get("resource"),
-            "values": variant_values(s), "named": named, "policies": s["gold_policy_ids"], "gold": gold(s),
-        })
-    return rows
+def sim_missing_fields():
+    out = {}
+    for check, fields in SIM_FIELDS.items():
+        miss = [f"{cls}.{f}" for cls, f in fields if f not in getattr(models, cls).model_fields]
+        present = [f"{cls}.{f}" for cls, f in fields if f in getattr(models, cls).model_fields]
+        if miss and (not present or check in ("check_retention_status", "check_customer_consent", "check_recipient_region")):
+            out[check] = miss
+    return out
 
 
-def policy_inventory(seeds):
-    """Per (set, policy id): actions, facts, decisions, conflict partners, all taken from the seeds."""
-    pol = {}
-    for which, store in STORES.items():
-        for pid, text in store.items():
-            twin = STORES["in_domain"].get(pid)
-            wording = ("in-domain" if which == "in_domain" else
-                       "OOD (new domain)" if twin is None else
-                       "OOD (reworded)" if twin != text else "OOD (copy of in-domain)")
-            pol[(which, pid)] = {"set": which, "id": pid, "domain": pid.split("_")[1], "text": text,
-                                 "wording": wording, "actions": set(), "facts": set(), "hidden_seeds": [],
-                                 "written_seeds": [], "rules": defaultdict(dict), "conflicts": set(),
-                                 "seeds": []}
-    for s in seeds:
-        for pid in s["gold_policy_ids"]:
-            p = pol.get((s["_set"], pid))
-            if p is None:
-                continue
-            p["seeds"].append(s["seed_id"])
-            p["actions"].add(s["proposed_action"]["name"])
-            kf = s.get("key_fact")
-            if kf and s["case_type"] in ("T1", "T2") or (s["case_type"] == "T5" and s.get("t5_kind") == "facts_disagree"):
-                p["facts"].add(kf["attribute"])
-                p["hidden_seeds"].append(s["seed_id"])
-            else:
-                p["written_seeds"].append(s["seed_id"])
-            if s["case_type"] == "T5" and s.get("t5_kind") == "policy_conflict":
-                p["conflicts"].update(x for x in s["gold_policy_ids"] if x != pid)
-        if s["case_type"] in ("T1", "T2") and s.get("key_fact") and len(s["gold_policy_ids"]) == 1:
-            p = pol.get((s["_set"], s["gold_policy_ids"][0]))
-            key = (s["proposed_action"]["name"], s["key_fact"]["attribute"], arg_role(s, s["key_fact"]["resource"]))
-            g = gold(s)
-            for v, val in variant_values(s).items():
-                if v in g:
-                    p["rules"][key].setdefault(val, []).append((s["seed_id"], v, g[v]))
-    for p in pol.values():
-        p["kind"] = "hidden state" if p["facts"] else ("written in policy" if p["seeds"] else "unused")
-        decisions = {d for vals in p["rules"].values() for lst in vals.values() for _, _, d in lst}
-        p["decisions"] = decisions
-    return pol
-
-
-# ---------------------------------------------------------------- verification
-
-def fact_users(seeds, pols):
-    """attr -> (set of seed ids, set of policy keys) that need it."""
-    users = defaultdict(lambda: (set(), set()))
-    for s in seeds:
-        kf = s.get("key_fact")
-        if kf:
-            users[kf["attribute"]][0].add(s["seed_id"])
-    for key, p in pols.items():
-        for f in p["facts"]:
-            users[f][1].add(key)
-    return users
-
-
-def check_seed(s, r, pols, users, sim_missing):
-    """List of (item, detail) failures for one seed."""
+def check_seed(s, r, sim_missing):
+    """[(item, detail)] failures for one seed (items 1-7, 12, 13; item 11 is added by main)."""
     fails = []
-    ct, action, attr = s["case_type"], r["action"], r["fact"]
-    kind = s.get("t5_kind")
-    needs_check = attr is not None and ct in ("T1", "T2") or kind == "facts_disagree"
+    ct, action, attr, kind = s["case_type"], r["action"], r["fact"], s.get("t5_kind")
     r["resolved"] = None
-    r["needs_check"] = needs_check
+    r["needs_check"] = attr is not None and ct in ("T1", "T2") or kind == "facts_disagree"
     if action not in PHASE1:
         r["out_of_scope"] = True
         return []
-
     if ct in ("T1", "T2") and attr:
         cov = fact_check(attr)
         named = [OLD_NAMES.get(c, c) for c in r["named"]]
@@ -373,11 +499,8 @@ def check_seed(s, r, pols, users, sim_missing):
         else:
             check, field, _ = cov
             r["resolved"] = check
-            if named and named[0] != check:
-                if named[0] in CHECKS:
-                    fails.append((2, f"seed names `{r['named'][0]}`, which does not return `{attr}`; `{check}.{field}` does"))
-            if field not in CHECKS[check]["returns"]:
-                fails.append((2, f"`{check}` does not return `{field}`"))
+            if named and named[0] != check and named[0] in CHECKS:
+                fails.append((2, f"seed names `{r['named'][0]}`, which does not return `{attr}`; `{check}.{field}` does"))
             entry = table_entry(action, check)
             if entry is None:
                 fails.append((3, f"`{check}` not in the `{action}` row"))
@@ -390,28 +513,29 @@ def check_seed(s, r, pols, users, sim_missing):
             if ct == "T2":
                 rev = CHECKS[check]["revealed_by"]
                 tools = [x.strip().split(".")[0] for x in rev.split(",")] if rev != "none" else []
-                a = (s.get("t2_subtypes") or {}).get("a") or {}
-                read = (a.get("earlier_read") or {}).get("tool")
+                read = (((s.get("t2_subtypes") or {}).get("a") or {}).get("earlier_read") or {}).get("tool")
                 if not tools:
                     fails.append((5, f"`{check}` has revealed_by none, so T2a cannot know `{attr}`"))
                 elif read not in tools:
                     fails.append((5, f"T2a earlier read is `{read}`, but `{attr}` is shown by `{rev}`"))
-            missing = sim_missing.get(check)
-            if missing:
-                fails.append((7, f"simulator has no typed field for `{check}` ({', '.join(missing)})"))
+            if sim_missing.get(check):
+                fails.append((7, f"simulator has no typed field for `{check}` ({', '.join(sim_missing[check])})"))
     if ct in ("T3", "T4") or kind == "policy_conflict":
-        if r["named"] or re.search(r"check_needed=true", s["_notes"]):
+        if r["named"] or "check_needed=true" in s["_notes"]:
             fails.append((6, f"no-check case names `{', '.join(r['named']) or 'check_needed=true'}`"))
     if kind == "facts_disagree":
         fails += check_t5_facts(s, r)
-    # 12: covered by a policy
-    store = STORES[s["_set"]]
-    missing_p = [p for p in r["policies"] if p not in store]
+    if ct in ("T1", "T2") and attr:
+        for p in r["policies"]:
+            rule = LOGIC.get(p) or {}
+            if rule.get("fact_location") == "hidden_state" and rule.get("fact") != attr:
+                fails.append((11, f"seed fact `{attr}` but `{p}` in policy_logic uses `{rule.get('fact')}`, "
+                                  "so the gold engine cannot apply the rule to this seed"))
+    missing_p = [p for p in r["policies"] if p not in LOGIC or p not in STORES[s["_set"]]]
     if not r["policies"] or missing_p:
-        fails.append((12, f"policies not in the store: {missing_p or 'none named'}"))
+        fails.append((12, f"policies missing from policy_logic.yaml or the store: {missing_p or 'none named'}"))
     if kind == "policy_conflict":
-        fails += check_t5_conflict(s, r, pols)
-    r["needs_check"] = needs_check
+        fails += check_t5_conflict(s, r)
     return fails
 
 
@@ -422,9 +546,8 @@ def check_t5_facts(s, r):
     agent_named = agent_tools_named(s)
     fields = T5_FIELDS.get(attr, {})
     if agent_named and len(named) < 2:
-        fails.append((13, f"disagreement is between agent tools `{', '.join(agent_named)}`"
-                          + (f" and `{named[0]}`" if named else "") + ", not two checks"))
-        return fails
+        return [(13, f"disagreement is between agent tools `{', '.join(agent_named)}`"
+                     + (f" and `{named[0]}`" if named else "") + ", not two checks")]
     for c in named:
         if c not in CHECKS:
             fails.append((1, f"`{c}` is not a check tool"))
@@ -438,91 +561,47 @@ def check_t5_facts(s, r):
     return fails
 
 
-def check_t5_conflict(s, r, pols):
-    fails = []
-    pids = r["policies"]
+def check_t5_conflict(s, r):
+    pids, action = r["policies"], r["action"]
     if len(pids) < 2:
         return [(13, "policy_conflict names fewer than two policies")]
+    fails = []
+    if not conflict_pair(pids, action):
+        fails.append((13, f"`{pids[0]}` / `{pids[1]}` on `{action}` is not in conflicts.yaml"))
     for pid in pids[:2]:
-        p = pols.get((s["_set"], pid))
-        if p and r["action"] not in p["actions"]:
-            fails.append((13, f"`{pid}` does not apply to `{r['action']}`"))
-    dirs = []
-    for pid in pids[:2]:
-        p = pols.get((s["_set"], pid))
-        d = {x for x in (p["decisions"] if p else set()) if x != "ESCALATE"}
-        d |= {gold(x)["-"] for x in SEEDS_BY_ID.values() if pid in x["gold_policy_ids"]
-              and x["case_type"] in ("T3", "T4") and x["_set"] == s["_set"]}
-        dirs.append(d)
-    if all(len(d) == 1 for d in dirs) and dirs[0] == dirs[1]:
-        fails.append((13, f"`{pids[0]}` and `{pids[1]}` both lead to {dirs[0]} elsewhere, so they do not conflict"))
+        if pid in LOGIC and action not in LOGIC[pid]["actions"]:
+            fails.append((13, f"`{pid}` does not list `{action}` in policy_logic"))
+    ds = [LOGIC[p]["decision"] for p in pids[:2] if p in LOGIC]
+    if len(ds) == 2 and ds.count("ALLOW") != 1:
+        fails.append((13, f"standalone decisions {ds[0]} / {ds[1]} do not oppose (need one ALLOW and one "
+                          f"BLOCK/ASK_CONFIRMATION; ESCALATE comes from conflicts.yaml)"))
     return fails
-
-
-def gold_mismatches(seeds, rows, pols):
-    """Item 11: same policy + same value -> same decision; no other policy on the same action and fact is stricter."""
-    out = []
-    by_key = defaultdict(list)  # (set, action, attr, role) -> policy keys with a rule
-    for key, p in pols.items():
-        for rk in p["rules"]:
-            by_key[(p["set"],) + rk].append(key)
-    for s, r in zip(seeds, rows):
-        if s["case_type"] not in ("T1", "T2") or not s.get("key_fact") or r.get("out_of_scope"):
-            continue
-        rk = (s["_set"], r["action"], r["fact"], arg_role(s, r["resource"]))
-        for v, val in r["values"].items():
-            g = r["gold"].get(v)
-            if g is None:
-                continue
-            hits = []
-            for pk in by_key.get(rk, []):
-                for _, _, d in pols[pk]["rules"][rk[1:]].get(val, []):
-                    hits.append((pk[1], d))
-            if not hits:
-                continue
-            want = max((d for _, d in hits), key=lambda d: STRICT.get(d, 3))
-            if want != g:
-                involved = sorted({pid for pid, d in hits if d == want})
-                own = set(r["policies"])
-                if own & set(involved):
-                    side = "seed gold: the same policy gives a different decision for the same value in another seed"
-                else:
-                    side = scope_note(s, r, involved)
-                out.append({"id": r["id"], "variant": v, "value": val, "gold": g, "from_policies": want,
-                            "policies": involved, "side": side})
-    return out
-
-
-def scope_note(s, r, involved):
-    """Another policy on the same action and fact is stricter: is it scoped to a different visible argument?"""
-    role = arg_role(s, r["resource"])
-    mine = {k: v for k, v in r["args"].items() if k != role and not isinstance(v, list)}
-    theirs = defaultdict(set)
-    for sid in (x for pid in involved for x in SEEDS_BY_ID if pid in SEEDS_BY_ID[x]["gold_policy_ids"]
-                and SEEDS_BY_ID[x]["_set"] == s["_set"]):
-        for k, v in SEEDS_BY_ID[sid]["proposed_action"]["args"].items():
-            if k in mine:
-                theirs[k].add(str(v))
-    diff = [k for k in mine if theirs.get(k) and str(mine[k]) not in theirs[k]]
-    if diff:
-        k = diff[0]
-        return (f"neither, if {', '.join(involved)} only covers `{k}` = {', '.join(sorted(theirs[k]))} "
-                f"(this seed: `{mine[k]}`); state that scope in the policy logic. Otherwise the seed gold")
-    return f"policy overlap: {', '.join(involved)} is stricter on the same action and fact; seed gold or policy wording"
 
 
 # ---------------------------------------------------------------- fixes
 
+def users_of_tool(tool, users):
+    out = set()
+    for attr, (seeds, pids) in users.items():
+        if attr in UNCOVERED and UNCOVERED[attr][0] == tool:
+            out |= seeds | {f"policy:{p}" for p in pids}
+    return out
+
+
 def propose_seed_fix(s, r, items, users):
     attr, action = r["fact"], r["action"]
+    fact_gap = next((d for i, d in SEED_FAILS_CTX.get(r["id"], []) if i == 11 and "policy_logic uses" in d), None)
+    if fact_gap:
+        m = re.search(r"`(P_\w+)` in policy_logic uses `(\w+)`", fact_gap)
+        return f"Use one fact name: rename `{m.group(2)}` in `{m.group(1)}` to `{attr}` (or the seed's to `{m.group(2)}`)"
     if 12 in items:
-        return "Add the policy to the store or point the seed at an existing one (rule 6)"
+        return "Add the policy to policy_logic.yaml / the store, or point the seed at an existing one (rule 6)"
     if s.get("t5_kind") == "facts_disagree" and ({1, 3, 13} & set(items)):
         return t5_facts_fix(s, r, items)
     if 6 in items:
         return "Remove the check mention / `check_needed=true` from the notes (no-check case)"
     if s.get("t5_kind") == "policy_conflict" and 13 in items:
-        return "Pick a partner policy with the opposite decision on the same action, or relabel as T4 (rule 6)"
+        return "Add the pair to conflicts.yaml, or pick a partner rule with the opposite decision (rule 6)"
     if 1 in items and attr in UNCOVERED:
         tool = UNCOVERED[attr][0]
         n = len(users_of_tool(tool, users))
@@ -541,7 +620,7 @@ def propose_seed_fix(s, r, items, users):
         param = next(iter(CHECKS[r["resolved"]]["params"]))
         if role:
             return f"Add `{{check: {r['resolved']}, args: {{{param}: {role}}}}}` to `{action}` (section 7)"
-        return f"Change seed: put the fact on `{action}`'s argument (fact resource `{r['resource']}` is not an argument)"
+        return f"Change seed: put the fact on an argument of `{action}` (`{r['resource']}` is not one)"
     if 5 in items:
         rev = CHECKS[r["resolved"]]["revealed_by"]
         if rev == "none":
@@ -562,24 +641,16 @@ def t5_facts_fix(s, r, items):
                     "turn into a policy_conflict T5 or drop")
         return "Add `account_type` to `check_user_authorization` returns (section 6), and add it to the action's row"
     if attr == "disposable":
-        return "Name `check_retention_status` instead of `check_file_sharing` as the second check, and add it to the row"
+        return "Name `check_retention_status` instead of `check_file_sharing` as the second check"
     if attr == "modifiable":
         return "Change seed: compare `check_repository_status` with the proposed `check_repository_compliance`, or drop"
     if attr == "consent":
         return "Change seed: second check `check_dnc_registry` does not exist (needed by 2 < 3); pick a covered fact or drop"
     if attr == "retention_status":
-        return "New check `check_legal_hold` (section 6) as the second check"
+        return "Add `check_legal_hold` (section 6) as the second check"
     if attr in ("locked", "is_last_admin"):
         return "Change seed: the disagreement is between agent tool outputs, not two checks; rewrite with two checks or relabel T2"
     return "Change seed so two existing checks return the disputed fact"
-
-
-def users_of_tool(tool, users):
-    out = set()
-    for attr, (seeds, pols) in users.items():
-        if attr in UNCOVERED and UNCOVERED[attr][0] == tool:
-            out |= seeds | {f"policy:{k[1]}" for k in pols}  # one count per policy id (IND and OOD copy alike)
-    return out
 
 
 # ---------------------------------------------------------------- report helpers
@@ -589,18 +660,6 @@ def md_table(header, rows):
     for row in rows:
         out.append("| " + " | ".join(str(c).replace("|", "/") for c in row) + " |")
     return "\n".join(out)
-
-
-def sim_missing_fields():
-    out = {}
-    for check, fields in SIM_FIELDS.items():
-        miss = [f"{cls}.{f}" for cls, f in fields if f not in getattr(models, cls).model_fields]
-        present = [f"{cls}.{f}" for cls, f in fields if f in getattr(models, cls).model_fields]
-        if miss and not present:
-            out[check] = miss
-        elif miss and check in ("check_retention_status", "check_customer_consent", "check_recipient_region"):
-            out[check] = miss
-    return out
 
 
 STOP = set("a an the of to and or be may must only with by for in on from its their is are not no any has have "
@@ -613,229 +672,229 @@ def word_overlap(a, b):
     return len(wa & wb) / len(wa | wb) if wa | wb else 0.0
 
 
-def wording_overlap(text, seed):
-    hint = seed.get("story_hint", "")
-    return SequenceMatcher(None, text.lower(), hint.lower()).ratio()
+def policy_text(pid):
+    return STORES["in_domain"].get(pid) or STORES["ood"].get(pid, "")
 
 
 # ---------------------------------------------------------------- main
 
-SEEDS_BY_ID = {}
-
-
 def main():
     seeds = load_seeds()
     SEEDS_BY_ID.update({s["seed_id"]: s for s in seeds})
-    rows = seed_inventory(seeds)
-    pols = policy_inventory(seeds)
-    users = fact_users(seeds, pols)
     sim_missing = sim_missing_fields()
 
-    seed_fails = {}
+    # ---- inventory
+    rows = []
+    for s in seeds:
+        kf = s.get("key_fact") or {}
+        rows.append({"id": s["seed_id"], "domain": s["domain"], "case": case_label(s), "set": s["_set"],
+                     "action": s["proposed_action"]["name"], "args": s["proposed_action"]["args"],
+                     "fact": kf.get("attribute"), "resource": kf.get("resource"),
+                     "states": variant_states(s), "named": seed_check(s), "policies": s["gold_policy_ids"],
+                     "gold": gold(s)})
+    cited = defaultdict(list)
+    for s in seeds:
+        for p in s["gold_policy_ids"]:
+            cited[p].append(s["seed_id"])
+    users = defaultdict(lambda: (set(), set()))  # fact -> (seed ids, policy ids)
+    for s in seeds:
+        if s.get("key_fact"):
+            users[s["key_fact"]["attribute"]][0].add(s["seed_id"])
+    for pid, rule in LOGIC.items():
+        if rule["fact_location"] == "hidden_state" and rule.get("fact"):
+            users[rule["fact"]][1].add(pid)
+
+    # ---- seeds: items 1-7, 12, 13, then 11
+    seed_fails = {r["id"]: check_seed(s, r, sim_missing) for s, r in zip(seeds, rows)}
+    SEED_FAILS_CTX.update(seed_fails)
+    mism = []
     for s, r in zip(seeds, rows):
-        seed_fails[r["id"]] = check_seed(s, r, pols, users, sim_missing)
-    mism = gold_mismatches(seeds, rows, pols)
-    for m in mism:
-        seed_fails[m["id"]].append((11, f"{m['variant']}: gold {m['gold']}, policies give {m['from_policies']}"))
+        if r.get("out_of_scope"):
+            continue
+        for m in gold_from_policies(s):
+            v, g, want, involved, note = m
+            if want is not None and want != g:
+                side = mismatch_side(s, m)
+                mism.append({"id": r["id"], "variant": v, "value": (r["states"].get(v) or {}).get(r["fact"], "-"),
+                             "gold": g, "from_policies": want, "policies": involved, "side": side})
+                seed_fails[r["id"]].append((11, f"{v}: gold {g}, policies give {want} ({', '.join(involved)})"))
 
     # ---- policies: items 8-10
     pol_fails = {}
-    for key, p in pols.items():
+    for pid, rule in LOGIC.items():
         f = []
-        for attr in sorted(p["facts"]):
+        attr, kind = rule.get("fact"), condition_kind(rule)
+        if rule["fact_location"] == "hidden_state" and kind != "escalate":
             cov = fact_check(attr)
-            t5_only = all(SEEDS_BY_ID[x]["case_type"] == "T5" for x in p["hidden_seeds"]
-                          if (SEEDS_BY_ID[x].get("key_fact") or {}).get("attribute") == attr)
-            if cov is None and not (t5_only and attr in T5_FIELDS):
-                f.append((8, attr, f"no check returns `{attr}`"))
-                continue
             if cov is None:
-                continue
-            for action in sorted(p["actions"] & PHASE1):
-                if table_entry(action, cov[0]) is None:
-                    f.append((9, attr, f"`{cov[0]}` not in the `{action}` row"))
-        if p["kind"] == "written in policy":
-            for sid in p["written_seeds"]:
-                if named_checks(SEEDS_BY_ID[sid]):
+                f.append((8, attr, f"no check returns `{attr}`"))
+            else:
+                for action in sorted(set(rule["actions"]) & PHASE1):
+                    if table_entry(action, cov[0]) is None:
+                        f.append((9, attr, f"`{cov[0]}` not in the `{action}` row"))
+        if rule["fact_location"] == "in_policy":
+            for sid in cited.get(pid, []):
+                if named_checks(SEEDS_BY_ID[sid]) and SEEDS_BY_ID[sid]["case_type"] in ("T3", "T4"):
                     f.append((10, "-", f"seed {sid} names a check for a written condition"))
         if f:
-            pol_fails[key] = f
+            pol_fails[pid] = f
 
-    # ---- fixes
-    seed_rows, fix_count = [], Counter()
+    # ---- seed fix rows
+    seed_rows = []
     for s, r in zip(seeds, rows):
         fails = seed_fails[r["id"]]
         if not fails:
             continue
         items = sorted({i for i, _ in fails})
+        named = ", ".join(r["named"]) or "-"
         fix = propose_seed_fix(s, r, items, users)
-        if 11 in items and fix == "-":
-            m = next(m for m in mism if m["id"] == r["id"])
-            fix = f"Gold: {m['side']}; check {', '.join(m['policies'])}"
-        named = ", ".join(r["named"]) or (COVERED.get(r["fact"], ("",))[0] if r["fact"] else "") or "-"
-        seed_rows.append([r["id"], r["action"], r["fact"] or "-", named, ", ".join(map(str, items)),
-                          fix, "; ".join(d for _, d in fails)])
-        fix_count[fix.split(" (")[0]] += 1
-        if 11 in items and not fix.startswith("Gold"):
-            m = next(m for m in mism if m["id"] == r["id"])
-            seed_rows.append([r["id"], r["action"], r["fact"] or "-", named, "11",
-                              f"Gold: {m['side']}; check {', '.join(m['policies'])}", ""])
+        other = [i for i in items if i != 11 or any(i2 == 11 and "policy_logic uses" in d for i2, d in fails)]
+        if fix != "-" and other:
+            seed_rows.append([r["id"], r["action"], r["fact"] or "-", named, ", ".join(map(str, sorted(set(other)))), fix,
+                              "; ".join(d for i, d in fails if i != 11 or "policy_logic uses" in d)])
+        if True:
+            for m in (m for m in mism if m["id"] == r["id"]):
+                seed_rows.append([r["id"], r["action"], r["fact"] or "-", named, "11", f"Gold: {m['side']}",
+                                  f"{m['variant']}: gold {m['gold']}, policies {m['from_policies']}"])
+    failing_seed_ids = {row[0] for row in seed_rows}
+    out_scope = [r["id"] for r in rows if r.get("out_of_scope")]
 
     pol_rows = []
-    for key, f in sorted(pol_fails.items()):
-        p = pols[key]
+    for pid, f in sorted(pol_fails.items()):
+        rule = LOGIC[pid]
         items = sorted({i for i, _, _ in f})
-        attrs = sorted({a for _, a, _ in f if a != "-"})
         if 8 in items:
-            a = next(a for i, a, _ in f if i == 8)
+            a = rule["fact"]
             tool = UNCOVERED.get(a, ("?",))[0]
             n = len(users_of_tool(tool, users))
             fix = (f"New check `{tool}` (section 6)" if n >= NEW_TOOL_MIN
-                   else f"Change the policy's seeds to a covered fact, or drop (`{a}` needed by {n})")
+                   else f"Change to a covered fact or drop (`{a}` needed by {n} < {NEW_TOOL_MIN})")
         elif 9 in items:
             fix = "Table edit (section 7)"
         else:
             fix = "Remove the check from the seed notes"
-        pol_rows.append([f"{p['id']} ({'OOD' if p['set'] == 'ood' else 'IND'})", ", ".join(sorted(p["actions"])),
-                         ", ".join(attrs) or "-", ", ".join(map(str, items)), fix])
+        pol_rows.append([pid, ", ".join(rule["actions"]), rule.get("fact") or "-", ", ".join(map(str, items)), fix])
 
-    # ---- proposed table edits (from item 3/4 failures with a covered fact)
-    proposed_edits = defaultdict(lambda: {"args": set(), "ids": set()})  # (action, check) -> args, users
-
-    def propose(s, action, check, ids):
-        role = arg_role(s, s["key_fact"]["resource"]) if s.get("key_fact") else None
-        if not role or action not in PHASE1:
-            return False
-        params = list(CHECKS[check]["params"])
-        args = {params[0]: role}
-        if check == "check_user_authorization":  # second param: the resource being accessed or sent
-            other = {"send_email": "attachment", "share_file": "file", "grant_permission": "resource"}.get(action)
-            if not other:
-                return False
-            args["resource"] = other
-        proposed_edits[(action, check)]["args"].add(", ".join(f"{k}: {v}" for k, v in args.items()))
-        proposed_edits[(action, check)]["ids"] |= set(ids)
-        return True
-
+    # ---- remaining table proposals
+    proposed = defaultdict(lambda: {"args": set(), "ids": set()})
     for s, r in zip(seeds, rows):
         for i, d in seed_fails[r["id"]]:
             m = re.search(r"`(check_\w+)` not in the `(\w+)` row", d)
-            if i in (3, 4) and m and m.group(1) in CHECKS:
-                propose(s, m.group(2), m.group(1), [r["id"]])
-    for key, f in pol_fails.items():
+            if i == 3 and m and m.group(1) in CHECKS and r["action"] in PHASE1:
+                check, action = m.group(1), m.group(2)
+                role = arg_role(s, r["resource"]) if r["resource"] else None
+                if not role:
+                    continue
+                params = list(CHECKS[check]["params"])
+                args = {params[0]: role}
+                if check == "check_user_authorization":
+                    other = {"send_email": "attachment", "share_file": "file"}.get(action)
+                    if not other:
+                        continue
+                    args["resource"] = other
+                proposed[(action, check)]["args"].add(", ".join(f"{k}: {v}" for k, v in args.items()))
+                proposed[(action, check)]["ids"].add(r["id"])
+    for pid, f in pol_fails.items():
         for i, attr, d in f:
             m = re.search(r"`(check_\w+)` not in the `(\w+)` row", d)
             if i == 9 and m:
-                src = [SEEDS_BY_ID[x] for x in pols[key]["hidden_seeds"]
-                       if SEEDS_BY_ID[x]["proposed_action"]["name"] == m.group(2)]
-                if not any(propose(x, m.group(2), m.group(1), [key[1]]) for x in src):
-                    proposed_edits[(m.group(2), m.group(1))]["ids"].add(key[1])
+                proposed[(m.group(2), m.group(1))]["ids"].add(pid)
 
     # ---- coverage per check tool
-    cov_rows = []
-    used_checks = defaultdict(lambda: {"pol": set(), "ind": set(), "ood": set(), "T1": set(), "T2": set(), "T5": set()})
+    used = defaultdict(lambda: {"pol": set(), "ind": set(), "ood": set(), "T1": set(), "T2": set(), "T5": set()})
+    needed = set()
     for s, r in zip(seeds, rows):
-        checks = set()
-        if r["resolved"]:
-            checks.add(r["resolved"])
+        checks = {r["resolved"]} if r["resolved"] else set()
         if s.get("t5_kind") == "facts_disagree":
             checks |= {OLD_NAMES.get(c, c) for c in r["named"] if OLD_NAMES.get(c, c) in CHECKS}
         for c in checks:
-            u = used_checks[c]
+            needed.add((r["action"], c))
+            u = used[c]
             u["ind" if s["_set"] == "in_domain" else "ood"].add(r["id"])
             if s["case_type"] in ("T1", "T2", "T5"):
                 u[s["case_type"]].add(r["id"])
-    for key, p in pols.items():
-        for attr in p["facts"]:
-            cov = fact_check(attr)
-            if cov:
-                used_checks[cov[0]]["pol"].add(key)
-    for c in CHECKS:
-        u = used_checks[c]
-        cov_rows.append([f"`{c}`", len(u["pol"]), len(u["ind"]), len(u["ood"]), len(u["T1"]), len(u["T2"]), len(u["T5"])])
-    unused_tools = [c for c in CHECKS if not any(used_checks[c][k] for k in used_checks[c])]
-
-    # unused table entries: no seed/policy with that action resolves to that check
-    needed = set()
-    for s, r in zip(seeds, rows):
-        if r["resolved"]:
-            needed.add((r["action"], r["resolved"]))
-        if s.get("t5_kind") == "facts_disagree":
-            needed |= {(r["action"], OLD_NAMES.get(c, c)) for c in r["named"]}
-    for p in pols.values():
-        for attr in p["facts"]:
-            cov = fact_check(attr)
-            if cov:
-                needed |= {(a, cov[0]) for a in p["actions"]}
+    for pid, rule in LOGIC.items():
+        cov = fact_check(rule.get("fact")) if rule["fact_location"] == "hidden_state" else None
+        if cov:
+            used[cov[0]]["pol"].add(pid)
+            needed |= {(a, cov[0]) for a in rule["actions"]}
+    cov_rows = [[f"`{c}`", len(used[c]["pol"]), len(used[c]["ind"]), len(used[c]["ood"]), len(used[c]["T1"]),
+                 len(used[c]["T2"]), len(used[c]["T5"])] for c in CHECKS]
+    unused_tools = [c for c in CHECKS if not any(used[c].values())]
     unused_entries = [(a, e["check"]) for a, row in TABLE.items() for e in (row or []) if (a, e["check"]) not in needed]
-    unused_pols = [p for p in pols.values() if not p["seeds"]]
+    unused_pols = sorted(p for p in LOGIC if p not in cited)
 
     # ---- policy set health
-    conflict_pairs = sorted({tuple(sorted((p["set"], p["id"], c))) for p in pols.values() for c in p["conflicts"]})
-    conflict_pairs = sorted({(p["set"], *sorted((p["id"], c))) for p in pols.values() for c in p["conflicts"]})
-    lookalikes = set()
-    for which in STORES:
-        ps = [p for p in pols.values() if p["set"] == which and p["seeds"]]
-        for a, b in combinations(ps, 2):
-            if a["domain"] == b["domain"] and a["actions"] & b["actions"] and \
-                    {a["kind"], b["kind"]} == {"hidden state", "written in policy"} and \
-                    word_overlap(a["text"], b["text"]) >= LOOKALIKE_MIN:
-                lookalikes.add((which, *sorted((a["id"], b["id"]))))
+    lookalikes = []
+    rules = [(p, r) for p, r in LOGIC.items() if condition_kind(r) != "escalate"]
+    for (pa, a), (pb, b) in combinations(rules, 2):
+        if a["domain"] == b["domain"] and set(a["actions"]) & set(b["actions"]) and \
+                {a["fact_location"], b["fact_location"]} == {"hidden_state", "in_policy"} and \
+                word_overlap(policy_text(pa), policy_text(pb)) >= LOOKALIKE_MIN:
+            lookalikes.append(f"{pa}/{pb}")
     copies = []
-    for p in pols.values():
-        for sid in p["seeds"]:
-            ratio = wording_overlap(p["text"], SEEDS_BY_ID[sid])
+    for pid in LOGIC:
+        for sid in cited.get(pid, []):
+            s = SEEDS_BY_ID[sid]
+            text = STORES[s["_set"]].get(pid, "")
+            ratio = SequenceMatcher(None, text.lower(), s.get("story_hint", "").lower()).ratio()
             if ratio >= 0.6:
-                copies.append((p["set"], p["id"], sid, ratio))
+                copies.append((pid, sid, ratio))
+    literals = [(p, literal_condition(r), r["condition"]) for p, r in LOGIC.items() if literal_condition(r)]
+    implicit = [p for p, r in LOGIC.items() if condition_kind(r) == "implicit"]
+    standalone_esc = [p for p, r in LOGIC.items() if r["decision"] == "ESCALATE"]
+    unused_fact = [(p, r["fact"], r["condition"]) for p, r in LOGIC.items() if fact_unused(r)]
+    not_phase1 = [(p, ", ".join(sorted(set(r["actions"]) - PHASE1))) for p, r in LOGIC.items() if set(r["actions"]) - PHASE1]
+    store_ids = set(STORES["in_domain"]) | set(STORES["ood"])
+    id_gaps = sorted(store_ids ^ set(LOGIC))
 
-    # ---- write report
-    failing_seed_ids = {r[0] for r in seed_rows}
-    out_scope = [r["id"] for r in rows if r.get("out_of_scope")]
-    needing_check = sum(1 for r in rows if r.get("needs_check"))
-    L = []
-    L.append("# Check tools coverage: seeds and policies against the monitor check tools\n")
-    L.append("> Generated by `python scripts/check_tool_coverage.py`. Do not edit by hand; rerun after seeds, "
-             "policies or configs change.\n")
-    L.append("> There is no `policy_logic.yaml` yet: the store is text only. Each policy's action, fact and "
-             "decision are taken from the seeds that cite it, so item 11 checks that seeds agree with each "
-             "other through the policies, not against an independent logic file.\n")
-    L.append("## 1. Summary\n")
+    # ---- write the report
     n_ind = sum(1 for r in rows if r["set"] == "in_domain")
-    L.append(md_table(["", "count"], [
-        ["Seeds total", f"{len(rows)} (in-domain {n_ind}, OOD {len(rows) - n_ind})"],
-        ["Policies total", f"{len(pols)} (in-domain store {len(STORES['in_domain'])}, OOD store {len(STORES['ood'])})"],
-        ["Seeds that need a check (T1, T2, T5 facts_disagree)", needing_check],
-        ["Seeds out of scope (action not in phase 1, not checked)",
-         f"{len(out_scope)} ({', '.join(out_scope)})"],
-        ["Seeds that pass every item", len(rows) - len(failing_seed_ids) - len(out_scope)],
-        ["Seeds that fail", len(failing_seed_ids)],
-        ["Policies that fail", len(pol_fails)],
-        ["Gold mismatches (item 11)", len(mism)],
-    ]))
+    in_scope = len(rows) - len(out_scope)
+    L = ["# Check tools coverage: seeds and policies against the monitor check tools\n",
+         "> Generated by `python scripts/check_tool_coverage.py` from the seeds, `data/policies/policy_logic.yaml`, "
+         "`conflicts.yaml`, `configs/check_tools.yaml` and `configs/check_table.yaml`. Do not edit by hand; rerun "
+         "after any of them change.\n",
+         "## 1. Summary\n",
+         md_table(["", "count"], [
+             ["Seeds total", f"{len(rows)} (in-domain {n_ind}, OOD {len(rows) - n_ind})"],
+             ["Policies total (policy_logic.yaml)", f"{len(LOGIC)} (in-domain store {len(STORES['in_domain'])}, "
+                                                    f"OOD store {len(STORES['ood'])})"],
+             ["Seeds out of scope (action not in phase 1)", f"{len(out_scope)} ({', '.join(out_scope)})"],
+             ["Seeds that need a check (T1, T2, T5 facts_disagree)", sum(1 for r in rows if r.get("needs_check")
+                                                                       and not r.get("out_of_scope"))],
+             ["Seeds that pass every item", in_scope - len(failing_seed_ids)],
+             ["Seeds that fail", len(failing_seed_ids)],
+             ["Policies that fail (items 8-10)", len(pol_fails)],
+             ["Gold mismatches (item 11, seed variants)", len(mism)],
+         ])]
     items_count = Counter(i for f in seed_fails.values() for i in {i for i, _ in f})
     L.append("\nSeeds failing each item: " + ", ".join(f"{i}: {items_count[i]}" for i in sorted(items_count)) + ".\n")
     L.append("Old check names mapped: " + ", ".join(f"`{a}` → `{b}`" for a, b in OLD_NAMES.items())
              + ". Seed facts read by an existing check under another name (rule 1): "
              + ", ".join(f"`{a}` → `{c}.{f}`" for a, (c, f, _) in COVERED.items() if a != f) + ".\n")
-    L.append("Config fixes applied in Step 1 (the test passed after them): `check_tools.yaml` `revealed_by` "
-             "fields renamed to the read tools' real output keys: `lookup_contact.organisation` → `lookup_contact.org`, "
-             "`get_account.balance` → `get_account.balance_inr`, `list_permissions` → `list_permissions.levels`.\n")
+    L.append("Config fixes in `check_tools.yaml` (Step 1): `revealed_by` renamed to the read tools' real output keys: "
+             "`lookup_contact.organisation` → `lookup_contact.org`, `get_account.balance` → `get_account.balance_inr`, "
+             "`list_permissions` → `list_permissions.levels`.\n")
 
     L.append("## 2. Coverage per check tool\n")
     L.append(md_table(["tool", "policies", "in-domain seeds", "OOD seeds", "T1", "T2", "T5"], cov_rows))
 
     L.append("\n## 3. Failing seeds\n")
-    L.append("Items: 1 name, 2 fact, 3 table, 4 args, 5 T2a, 6 no-check case, 7 simulator, 11 gold, 12 policy, 13 T5.\n")
+    L.append("Items: 1 name, 2 fact, 3 table, 4 args, 5 T2a, 6 no-check case, 7 simulator, 11 gold, 12 policy, 13 T5. "
+             "One row per independent problem, each with one fix.\n")
     L.append(md_table(["seed id", "action", "fact", "named check", "failed item", "proposed fix", "detail"], seed_rows))
 
     L.append("\n## 4. Failing policies\n")
     L.append(md_table(["policy id", "applies to", "fact", "failed item", "proposed fix"], pol_rows))
-    later = sorted(f"{p['id']} ({'OOD' if p['set'] == 'ood' else 'IND'}): {', '.join(sorted(p['actions'] - PHASE1))}"
-                   for p in pols.values() if p["actions"] - PHASE1)
-    L.append("\nFlag: policies that apply to an action outside phase 1 (not checked, phase 2): "
-             + ("; ".join(later) or "none") + ".")
+    L.append("\nFlag, not checked: rules for actions outside phase 1: "
+             + ("; ".join(f"{p} ({a})" for p, a in not_phase1) or "none") + ".")
 
     L.append("\n## 5. Gold mismatches\n")
+    L.append("Every seed variant is run through `policy_logic.yaml`: all rules for its action whose condition can be "
+             "decided on the variant's hidden fact, plus the seed's own written rules; the strictest wins, T5 uses "
+             "`conflicts.yaml`. Rules that only name their fact use these assumptions: "
+             + "; ".join(f"`{k}`: {v[0]}" for k, v in IMPLICIT.items()) + ".\n")
     if mism:
         L.append(md_table(["seed id", "variant", "fact value", "seed gold", "gold from policies", "policies involved",
                            "which side looks wrong"],
@@ -858,41 +917,37 @@ def main():
         params = {k: {"type": "string", "description": v} for k, v in spec[2].items()}
         block = {tool: {"domain": spec[1], "params": params, "required": list(params),
                         "returns": {**{k: "string" for k in spec[2]}, **spec[3]}, "revealed_by": spec[4]}}
+        proposals.append(tool)
         seeds_n = sorted(x for x in n_users if not x.startswith("policy:"))
         pols_n = sorted(x.split(":")[1] for x in n_users if x.startswith("policy:"))
-        proposals.append(tool)
         L.append(f"### `{tool}` (facts: {', '.join(f'`{a}`' for a in attrs)})\n")
         L.append("```yaml\n" + yaml.safe_dump(block, sort_keys=False, width=200) + "```\n")
         L.append(f"Seeds ({len(seeds_n)}): {', '.join(seeds_n)}  \nPolicies ({len(pols_n)}): {', '.join(pols_n)}\n")
-    L.append("### Change to an existing check: `check_user_authorization` returns `account_type`\n")
     t5_acc = [r["id"] for s, r in zip(seeds, rows) if s.get("t5_kind") == "facts_disagree"
               and r["fact"] in ("account_type", "recipient_class") and r["action"] != "transfer_money"]
-    L.append("The T5 facts_disagree seeds below make `check_recipient_type` (internal) disagree with "
+    L.append("### Change to an existing check: `check_user_authorization` also returns `account_type`\n")
+    L.append("These T5 facts_disagree seeds make `check_recipient_type` (internal) disagree with "
              "`check_user_authorization` (external_contractor). That only works if `check_user_authorization` "
              "also returns the HR account type (employee / external_contractor / external_vendor):\n")
     L.append("```yaml\ncheck_user_authorization:\n  returns:\n    account_type: string   # new\n```\n")
-    L.append(f"Seeds ({len(t5_acc)}): {', '.join(t5_acc)}\n")
+    L.append(f"Seeds ({len(t5_acc)}): {', '.join(t5_acc)}. Policies: P_ACC_20, P_PRIV_18, P_PRIV_34 "
+             "(two-check ESCALATE rules).\n")
 
     L.append("## 7. Check table edits\n")
-    L.append("**Applied:** none. Both configs already matched the agent tools, so only `revealed_by` field "
-             "names were changed (section 1).\n")
-    L.append("**Proposed** (one row per action and check; several args = the fact sits on different "
-             "arguments in different seeds, add one entry per args):\n")
-    if proposed_edits:
-        L.append(md_table(["action", "add entry", "seeds / policies"],
-                          [[a, "<br>".join(f"`{{check: {c}, args: {{{x}}}}}`" for x in sorted(e["args"])) or f"`{c}` (args: see seeds)",
-                            ", ".join(sorted(e["ids"]))]
-                           for (a, c), e in sorted(proposed_edits.items()) if e["args"] or e["ids"]]))
-    else:
-        L.append("None.")
+    L.append("**Applied** (existing checks only; each one is needed by a hidden-state rule in `policy_logic.yaml` "
+             "for that action; `tests/gateway/test_check_config.py` passes):\n")
+    L.append(md_table(["action", "added entry", "needed by"], [[a, f"`{e}`", w] for a, e, w in APPLIED_EDITS]))
+    L.append("\nEach applied entry is one more call per record in the always setting.\n")
+    L.append("**Proposed, not applied** (they depend on a section 6 decision or a seed change):\n")
+    prop_rows = [[a, "<br>".join(f"`{{check: {c}, args: {{{x}}}}}`" for x in sorted(e["args"])) or f"`{c}`",
+                  ", ".join(sorted(e["ids"]))] for (a, c), e in sorted(proposed.items())]
+    L.append(md_table(["action", "entry", "seeds / policies"], prop_rows) if prop_rows else "None.")
 
     L.append("\n## 8. Missing simulator fields\n")
-    L.append("Facts a check reads that `lma_agent/sim/models.py` has no typed field for (today only the "
-             "generic `attrs` dict could hold them). Not added.\n")
-    sim_rows = []
-    for check, miss in sim_missing.items():
-        n = sum(1 for f in seed_fails.values() for i, d in f if i == 7 and f"`{check}`" in d)
-        sim_rows.append([f"`{check}`", ", ".join(miss), n])
+    L.append("Facts a check reads that `lma_agent/sim/models.py` has no typed field for (today only the generic "
+             "`attrs` dict could hold them). Not added.\n")
+    sim_rows = [[f"`{c}`", ", ".join(m), sum(1 for f in seed_fails.values() for i, d in f if i == 7 and f"`{c}`" in d)]
+                for c, m in sim_missing.items()]
     L.append(md_table(["check", "missing field(s)", "seeds affected"], sim_rows) if sim_rows else "None.")
     L.append("\nPresent: sharing (`File`, `Folder`), owner, classification, role, access level "
              "(`CompanyState.permissions`), recipient internal/external (`Contact.kind`, `User.is_external`, "
@@ -900,61 +955,83 @@ def main():
 
     L.append("## 9. Unused tools, table entries and policies\n")
     L.append("**Check tools no seed and no policy uses:** " + (", ".join(f"`{c}`" for c in unused_tools) or "none") + "\n")
-    L.append("**Table entries no seed or policy needs** (each one is an extra call in the always setting):\n")
+    L.append("**Table entries no seed or rule needs** (each one adds a call in the always setting):\n")
     L.append(md_table(["action", "check"], [[a, f"`{c}`"] for a, c in unused_entries]) if unused_entries else "None.")
-    L.append(f"\n**Policies no seed uses:** {len(unused_pols)} (fine as retrieval distractors). In-domain: "
-             + (", ".join(p["id"] for p in unused_pols if p["set"] == "in_domain") or "none")
-             + f". OOD store: {sum(1 for p in unused_pols if p['set'] == 'ood')} "
-               "(mostly unchanged in-domain copies that no OOD seed cites).\n")
+    L.append(f"\n**Rules no seed cites:** {len(unused_pols)}" + (f": {', '.join(unused_pols)}" if unused_pols else "")
+             + ". (The OOD store also carries 112 unchanged in-domain texts as retrieval distractors.)\n")
 
     L.append("## 10. Policy set health\n")
-    dom = Counter((p["set"], p["domain"]) for p in pols.values())
-    doms = sorted({d for _, d in dom})
-    L.append(md_table(["store"] + doms + ["total"],
-                      [[w] + [dom[(w, d)] for d in doms] + [len(STORES[w])] for w in STORES]))
-    wording = Counter(p["wording"] for p in pols.values() if p["set"] == "ood")
-    L.append("\nOOD store wording: " + ", ".join(f"{k} {v}" for k, v in sorted(wording.items())) + ".\n")
-    L.append(f"Conflict pairs ({len(conflict_pairs)}): " + ", ".join(f"{a}/{b} ({w})" for w, a, b in conflict_pairs) + ".\n")
-    L.append(f"Look-alike pairs (same domain and action, one hidden-state and one written condition, "
-             f"content-word overlap ≥ {LOOKALIKE_MIN}): "
-             f"{len(lookalikes)} (in-domain {sum(1 for x in lookalikes if x[0] == 'in_domain')}): "
-             + ", ".join(f"{a}/{b}" for w, a, b in sorted(lookalikes) if w == "in_domain") + ". "
-             f"PLAN target: 120+ in-domain rules including look-alikes and conflict pairs; "
-             f"in-domain store has {len(STORES['in_domain'])}.\n")
-    kinds = Counter(p["kind"] for p in pols.values() if p["set"] == "in_domain")
-    L.append("In-domain policies by condition: " + ", ".join(f"{k} {v}" for k, v in kinds.items()) + ".\n")
-    L.append("Policies whose text copies a citing seed's `story_hint` closely (SequenceMatcher ≥ 0.6; these "
-             "make the rules baseline's job too easy):\n")
-    L.append(md_table(["store", "policy", "seed", "similarity"],
-                      [[w, pid, sid, f"{x:.2f}"] for w, pid, sid, x in sorted(copies)]) if copies else "None.")
+    dom = Counter(r["domain"] for r in LOGIC.values())
+    L.append(md_table(["", *sorted(dom), "total"], [["rules", *[dom[d] for d in sorted(dom)], len(LOGIC)]]))
+    kinds = Counter(condition_kind(r) for r in LOGIC.values())
+    L.append(f"\nCondition kinds: expression {kinds['expr']}, only names its fact {kinds['implicit']}, always allowed "
+             f"{kinds['always']}, written/visible {kinds['written']}, ESCALATE {kinds['escalate']}. "
+             f"In-domain rules: {len(STORES['in_domain'])} (PLAN target 120+).\n")
+    L.append(f"Conflict pairs in `conflicts.yaml`: {len(CONFLICTS)}: "
+             + ", ".join(f"{'/'.join(c['policies'])} ({c['action']})" for c in CONFLICTS) + ".\n")
+    L.append(f"Look-alike pairs (same domain and action, one hidden-state and one in-policy rule, content-word "
+             f"overlap ≥ {LOOKALIKE_MIN}): {len(lookalikes)}: {', '.join(lookalikes)}.\n")
+    L.append(f"IDs in a store but not in `policy_logic.yaml`, or the reverse: {', '.join(id_gaps) or 'none'}.\n")
+    L.append("**Conditions that copy one scenario's value** (the gold engine will mislabel any new record with another "
+             "value; state the general rule):\n")
+    L.append(md_table(["rule", "literal", "condition"], [[p, f"`{v}`", f"`{c}`"] for p, v, c in literals])
+             if literals else "None.")
+    L.append(f"\n**Conditions that only name their fact** ({len(implicit)}; the gold engine cannot evaluate them; "
+             f"assumed as in section 5): {', '.join(implicit)}.\n")
+    L.append(f"**Rules whose standalone decision is ESCALATE** ({len(standalone_esc)}): {', '.join(standalone_esc)}. "
+             "The file header says ESCALATE comes only from `conflicts.yaml` or from two checks disagreeing, so a "
+             "rule's own decision should be ALLOW/BLOCK/ASK_CONFIRMATION (e.g. P_ACC_20: BLOCK when the account is "
+             "external); otherwise the gold engine has no decision for a record where the checks agree.\n")
+    L.append("**Rules whose fact is not used in the condition:**\n")
+    L.append(md_table(["rule", "fact", "condition"], [[p, f"`{f}`", f"`{c}`"] for p, f, c in unused_fact])
+             if unused_fact else "None.")
+    L.append("\n**Policy text close to a citing seed's `story_hint`** (SequenceMatcher ≥ 0.6; makes the rules "
+             "baseline's job too easy):\n")
+    L.append(md_table(["rule", "seed", "similarity"], [[p, s, f"{x:.2f}"] for p, s, x in sorted(copies)])
+             if copies else "None.")
 
     L.append("\n## 11. Messages for the team\n")
     L.append("**Param (seeds):**\n")
-    msgs = Counter()
+    groups = defaultdict(list)
     for row in seed_rows:
-        fix = row[5]
-        if fix.startswith(("Change", "Remove", "Map", "Pick", "Name", "Gold", "Add the policy")):
-            msgs[fix] += 1
-    for fix, n in msgs.most_common():
-        ids = [r[0] for r in seed_rows if r[5] == fix]
+        if row[5].startswith(("Change", "Remove", "Map", "Name", "Add the pair", "Add the policy", "Use one fact")):
+            groups[row[5]].append(row[0])
+    for fix, ids in groups.items():
         L.append(f"- {fix}: {', '.join(ids)}")
-    L.append("\n**Policy owner (Param, Step 5 store):**\n")
-    pmsgs = defaultdict(list)
+    L.append("\n**Param (policy_logic.yaml / conflicts.yaml):**\n")
+    if literals:
+        L.append(f"- Replace literal values with the general rule (e.g. `owner != current user`, "
+                 f"`sharing starts with external`): {', '.join(p for p, _, _ in literals)}")
+    if implicit:
+        L.append(f"- Write an explicit condition instead of `<fact> (deciding fact; value set by the scenario)`: "
+                 f"{', '.join(implicit)}")
+    if unused_fact:
+        L.append(f"- Use the named fact in the condition: {', '.join(p for p, _, _ in unused_fact)}")
+    if standalone_esc:
+        L.append(f"- Give a standalone ALLOW/BLOCK/ASK_CONFIRMATION decision (ESCALATE comes from conflicts.yaml or "
+                 f"disagreeing checks): {', '.join(standalone_esc)}")
+    gold_groups = defaultdict(list)
+    for m in mism:
+        gold_groups[m["side"]].append(f"{m['id']} {m['variant']}")
+    for side, ids in gold_groups.items():
+        L.append(f"- Gold mismatch, {side}: {', '.join(ids)}")
+    fact_groups = defaultdict(list)
     for row in pol_rows:
-        pmsgs[row[4]].append(row[0])
-    for fix, ids in pmsgs.items():
-        L.append(f"- {fix}: {', '.join(ids)}")
-    L.append("- Add `policy_logic.yaml` (applies-to, condition, fact, decision) and `conflicts.yaml`, so item 11 "
-             "can be checked against the logic instead of against the seeds' own notes.")
+        fact_groups[row[4]].append(row[0])
+    for fix, ids in fact_groups.items():
+        if fix.startswith("Change"):
+            L.append(f"- {fix}: {', '.join(ids)}")
     L.append("\n**Prateek (configs / gateway):**\n")
-    L.append(f"- Decide on the {len(proposals)} proposed check tools in section 6 and the `account_type` "
-             "return on `check_user_authorization`, then the table edits in section 7.")
+    L.append(f"- Decide on the {len(proposals)} proposed check tools in section 6 and `account_type` on "
+             "`check_user_authorization`; then add their table rows.")
     L.append("- Add the simulator fields in section 8 when the gateway is built.")
 
     OUT.write_text("\n".join(L) + "\n", encoding="utf-8")
-    print(f"seeds {len(rows)}, out of scope {len(out_scope)}, pass {len(rows) - len(failing_seed_ids) - len(out_scope)}, fail {len(failing_seed_ids)}; "
-          f"policies {len(pols)}, fail {len(pol_fails)}; gold mismatches {len(mism)}; "
-          f"proposed tools {len(proposals)}; sim missing {list(sim_missing)}")
+    print(f"seeds {len(rows)}, out of scope {len(out_scope)}, pass {in_scope - len(failing_seed_ids)}, "
+          f"fail {len(failing_seed_ids)}; rules {len(LOGIC)}, fail {len(pol_fails)}; gold mismatches {len(mism)}; "
+          f"proposed tools {len(proposals)}; literal conditions {len(literals)}, implicit {len(implicit)}, "
+          f"standalone ESCALATE {len(standalone_esc)}, fact unused {len(unused_fact)}; "
+          f"sim missing {list(sim_missing)}")
     print(f"wrote {OUT.relative_to(ROOT)}")
 
 

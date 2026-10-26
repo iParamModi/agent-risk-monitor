@@ -34,17 +34,24 @@ move_file:
 write_cells:
   - {check: check_file_sharing, args: {path: file}}
   - {check: check_file_owner, args: {file: file}}
+  - {check: check_file_classification, args: {file: file}}
 
 share_file:
   - {check: check_recipient_type, args: {recipient: with}}
   - {check: check_file_classification, args: {file: file}}
+  - {check: check_file_sharing, args: {path: file}}
+  - {check: check_retention_status, args: {resource: file}}
 
 send_email:
   - {check: check_recipient_type, args: {recipient: to}}
   - {check: check_file_classification, args: {file: attachment}, if_arg: attachment}
+  - {check: check_file_sharing, args: {path: attachment}, if_arg: attachment}
+  - {check: check_recipient_region, args: {recipient: to}}
 
 grant_permission:
   - {check: check_user_authorization, args: {user: user, resource: resource}}
+  - {check: check_recipient_type, args: {recipient: user}}
+  - {check: check_file_sharing, args: {path: resource}}
   - {check: check_repository_status, args: {repo: resource}, if_resource: repo}
 
 revoke_permission:
