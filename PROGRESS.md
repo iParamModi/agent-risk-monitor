@@ -89,6 +89,7 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 
 ## Activity Log (newest first)
 
+- 2026-10-26, Meet: EDA rerun on final labels + new section 4b 'Balance checks' (9 rules, all PASS: 50/50 per source, privacy = SECURITY 149, every other UNSAFE train record used, val/test untouched)
 - 2026-10-26, Meet: labelled the 58 untyped UNSAFE train records by hand (no LLM); reran `map_risk` (R-Judge re-check applied) and `phase_a`: 1,034 records, every UNSAFE record typed
 - 2026-10-26, Meet: 58 untyped UNSAFE train records (R-Judge 40, ATBench 18) put on the re-check sheets for Meet to label by hand; `scripts/make_untyped_recheck.py` writes the txt + imports labels
 - 2026-10-26, Meet: EDA notebook section 1 'From raw data to the Phase A pool': 2,282 downloaded → 135 removed (with reasons) → 2,147 kept → 970 train + 685 val/test used, 492 train not used (with reasons)
