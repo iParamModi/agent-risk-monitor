@@ -7,6 +7,15 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 set -a; . ./.env; set +a
 MSG="${1:-update code}"
+GITDIR=$(git rev-parse --git-dir)
+if [ -d "$GITDIR/rebase-merge" ] || [ -d "$GITDIR/rebase-apply" ] || [ -f "$GITDIR/MERGE_HEAD" ]; then
+  echo "refusing: a rebase or merge is in progress, HEAD is not your commit" >&2; exit 1
+fi
+git fetch -q origin
+if [ -n "$(git log origin/main..HEAD --oneline)" ] || [ -n "$(git log HEAD..origin/main --oneline)" ]; then
+  echo "refusing: HEAD differs from origin/main; pull and push first so Kaggle runs the code on GitHub" >&2; exit 1
+fi
+echo "uploading code at $(git log -1 --format='%h %s')"
 DIR=$(mktemp -d)
 git archive --format=tar.gz -o "$DIR/code.tar.gz" HEAD
 if git archive HEAD | tar -t | grep -E '(^|/)\.env$|agentrisk\.jsonl$|^data/raw/agentrisk/|^data/external/agentrisk/|\.gguf$|\.safetensors$'; then
