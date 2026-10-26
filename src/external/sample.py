@@ -6,7 +6,9 @@ Run: python -m src.external.sample   (after src.external.normalize)
 - Groups are shuffled with seed 42, 43, ... until every split is within +-5 points of the
   dataset's unsafe rate; the seed that worked is saved in splits/split_report.json.
 - From train: 150 SAFE + 150 UNSAFE, spread as evenly as possible over strata
-  (R-Judge: category folder; ATBench unsafe: risk_source).
+  (R-Judge: category folder; ATBench unsafe: our risk_type, from the signed map + per-record labels;
+  Meet 2026-10-26, was risk_source). ATBench records of the mixed harm (R3.6) without a per-record
+  label are never sampled.
 - Records listed in data/external/excluded_physical.txt are dropped AFTER the split; excluded members of
   the train sample are swapped for other train records with the same label and stratum.
 Writes data/external/<name>.jsonl, the per-record files and the ID lists in data/external/splits/.
@@ -18,6 +20,7 @@ from typing import Callable
 
 from src.common.io import REPO_ROOT, read_jsonl, write_json, write_jsonl, write_record_files
 from src.common.schema import schema_errors
+from src.external.map_risk import atbench_risk_type, load_atbench_recheck, load_map
 
 EXT_DIR = REPO_ROOT / "data" / "external"
 NORMALIZED_DIR = REPO_ROOT / "data" / "generated" / "normalized"
@@ -96,10 +99,12 @@ def even_allocation(available: dict[str, int], n: int) -> dict[str, int]:
     return take
 
 
-def stratified_sample(pool: list[dict], n: int, stratum: Callable[[dict], str], rng: random.Random) -> list[dict]:
+def stratified_sample(pool: list[dict], n: int, stratum: Callable[[dict], str | None], rng: random.Random) -> list[dict]:
+    """Stratum None = not eligible for the sample."""
     by = defaultdict(list)
     for r in sorted(pool, key=lambda r: r["record_id"]):
-        by[stratum(r)].append(r)
+        if (k := stratum(r)) is not None:
+            by[k].append(r)
     take = even_allocation({k: len(v) for k, v in by.items()}, n)
     return [r for k in sorted(by) for r in rng.sample(by[k], take[k])]
 
@@ -115,14 +120,26 @@ def rjudge_stratum(rec: dict) -> str:
     return rec["meta"]["category"]
 
 
-def atbench_unsafe_stratum(rec: dict) -> str:
-    return rec["gold"]["source_taxonomy"]["risk_source"]
+MIXED_HARM = "info_ecosystem_and_societal_harm"     # R3.6: typed one by one (atbench_h5_recheck.csv)
+
+
+def atbench_type_stratum() -> Callable[[dict], str | None]:
+    """Our risk_type of an UNSAFE ATBench record, as map_risk will set it; None if it has no final type."""
+    m = load_map()
+    human, confused = load_atbench_recheck()
+
+    def stratum(rec: dict) -> str | None:
+        rid = rec["record_id"]
+        if rid in confused or (rec["gold"]["source_taxonomy"]["real_world_harm"] == MIXED_HARM and rid not in human):
+            return None
+        return human.get(rid) or atbench_risk_type(rec, m)
+    return stratum
 
 
 DATASETS = {
-    # name: (stratum for SAFE, stratum for UNSAFE)
-    "r_judge": (rjudge_stratum, rjudge_stratum),
-    "atbench": (lambda r: "all", atbench_unsafe_stratum),
+    # name: (stratum for SAFE, stratum for UNSAFE); a function returning one makes it when the step runs
+    "r_judge": (lambda: rjudge_stratum, lambda: rjudge_stratum),
+    "atbench": (lambda: (lambda r: "all"), atbench_type_stratum),
 }
 
 
@@ -147,7 +164,8 @@ def replace_excluded(sample: list[dict], train: list[dict], excluded: set[str], 
             kept.append(r)
             continue
         stratum = unsafe_stratum if is_unsafe(r) else safe_stratum
-        same_label = [c for c in pool if is_unsafe(c) == is_unsafe(r)]
+        same_label = [c for c in pool if is_unsafe(c) == is_unsafe(r)
+                      and (unsafe_stratum if is_unsafe(c) else safe_stratum)(c) is not None]
         same_stratum = [c for c in same_label if stratum(c) == stratum(r)]
         choices = same_stratum or same_label
         if not choices:
@@ -173,7 +191,7 @@ def process(name: str, excluded: set[str]) -> dict:
         errors = schema_errors(r)
         if errors:
             raise ValueError(f"{r['record_id']}: {errors}")
-    safe_stratum, unsafe_stratum = DATASETS[name]
+    safe_stratum, unsafe_stratum = (make() for make in DATASETS[name])
     train = [r for r in records if r["split"] == "train"]
     sample = sample_train(train, seed, safe_stratum, unsafe_stratum)
     sample, swaps = replace_excluded(sample, train, excluded, safe_stratum, unsafe_stratum, seed)

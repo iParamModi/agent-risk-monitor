@@ -97,3 +97,14 @@ def test_load_excluded_ignores_comments(tmp_path):
     f.write_text("# header\nRJ-a-1  # robot\n\nATB-2\n")
     assert load_excluded(f) == {"RJ-a-1", "ATB-2"}
     assert load_excluded(tmp_path / "missing.txt") == set()
+
+
+def test_sample_skips_records_without_a_stratum():
+    records = make_records()
+    train = [r for r in records if r["meta"]["category"] != "Web" or r["gold"]["risk_label"] == "SAFE"] + \
+        [r for r in records if r["meta"]["category"] == "Web" and r["gold"]["risk_label"] == "UNSAFE"]
+    no_web = lambda r: None if r["meta"]["category"] == "Web" else r["meta"]["category"]   # noqa: E731
+    sample = sample_train(train, 1, lambda r: "all", no_web, per_class=20)
+    unsafe = [r for r in sample if r["gold"]["risk_label"] == "UNSAFE"]
+    assert len(unsafe) == 20 and not any(r["meta"]["category"] == "Web" for r in unsafe)
+    assert Counter(r["meta"]["category"] for r in unsafe) == {"App": 10, "Fin": 10}
