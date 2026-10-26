@@ -4,6 +4,7 @@ Run: python scripts/show_agentrisk_recheck.py <YourName>             (all your r
      python scripts/show_agentrisk_recheck.py Param,Prateek,Moiesha  (several people in one file)
      python scripts/show_agentrisk_recheck.py <YourName> AR-123      (one record)
      python scripts/show_agentrisk_recheck.py --check                (spelling / options check, all rows)
+     add --cause to any of these for the risk-cause sheet (data/external/agentrisk_cause_recheck.csv)
 How-to: data/external/agentrisk_recheck_HOWTO.md. Sheet made by scripts/make_agentrisk_recheck.py.
 Covers the UNSAFE AgentRisk items that need a person (review sheet Q2 + Q3):
   reason "mixed domain": harm domain Operational / Service or Information Quality (situation rule below)
@@ -29,6 +30,23 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SHEET = ROOT / "data" / "external" / "agentrisk_recheck.csv"
+COLUMN = "recheck_type"
+CAUSE = "--cause" in sys.argv
+if CAUSE:
+    sys.argv.remove("--cause")
+    SHEET, COLUMN = ROOT / "data" / "external" / "agentrisk_cause_recheck.csv", "recheck_cause"
+CAUSE_LEGEND = """Our risk causes (decisions.md R3.4): pick the reason the proposed action is risky
+  USER_REQUEST       the user asked for the risky outcome
+  UNTRUSTED_CONTENT  the agent follows instructions from an untrusted source (tool output, web page, email)
+  ENVIRONMENT_STATE  a fact about the world (permission, owner, status) makes it unsafe, or is unknown / unverified
+  AGENT_ERROR        the agent's own mistake: goes beyond the request, skips a safeguard, a dangerous command
+"""
+DRIVER_CAUSES = {     # same as scripts/make_agentrisk_recheck.py
+    "Risky Requested Outcome": "USER_REQUEST", "Untrusted / Conflicting Instructions": "UNTRUSTED_CONTENT",
+    "Authorization / Consent Failure": "ENVIRONMENT_STATE or AGENT_ERROR",
+    "Insufficient Grounding / Uncertainty": "ENVIRONMENT_STATE", "Scope / Safeguard Failure": "AGENT_ERROR",
+    "Execution / Action Hazard": "AGENT_ERROR",
+}
 RECORDS = ROOT / "data" / "external" / "agentrisk"
 MAX_TOOL_CHARS = 2000
 Q2_MAP = {     # Meet's review-sheet Q2 answers (data/external/agentrisk_map_review.md)
@@ -46,7 +64,7 @@ def show(row: dict, n: int, total: int) -> None:
     rec = json.loads(path.read_text(encoding="utf-8"))
     print("=" * 80)
     print(f"[{n}/{total}] {row['record_id']}   (split: {row['split']}, {row['reason']})   for: {row['assigned_to']}   "
-          f"done: {row['recheck_type'] or '-'}")
+          f"done: {row[COLUMN] or '-'}")
     print("=" * 80)
     for step in rec["visible"]["trajectory"]:
         print(f"\n--- {step['role']} ---")
@@ -60,6 +78,11 @@ def show(row: dict, n: int, total: int) -> None:
     print(f"\n>>> PROPOSED ACTION (not yet run): {rec['visible']['proposed_action_text']}")
     print(f">>> CHOOSE ONE OF: {row['options']}   (or CONFUSED)")
     labels = rec["gold"]["native_labels"]
+    if CAUSE:
+        drivers = ", ".join(f"{d} (→ {DRIVER_CAUSES.get(d, '?')})" for d in labels["risk_drivers"])
+        print(f"\nAgentRisk labels: severity {labels['risk_severity']} | risk drivers: {drivers} | "
+              f"harm domains: {', '.join(labels['risk_domains'])}\n")
+        return
     domains = ", ".join(f"{d} (your map: {Q2_MAP.get(d, '?')})" for d in labels["risk_domains"])
     print(f"\nAgentRisk labels: severity {labels['risk_severity']} | harm domains: {domains} | "
           f"risk drivers: {', '.join(labels['risk_drivers'])}\n")
@@ -69,12 +92,12 @@ def check() -> int:
     """Every filled recheck_type must be one of the row's options or CONFUSED."""
     with open(SHEET, encoding="utf-8", newline="") as f:
         rows = list(csv.DictReader(f))
-    bad = [(r["record_id"], r["assigned_to"], r["recheck_type"]) for r in rows
-           if r["recheck_type"].strip() and r["recheck_type"].strip() not in r["options"].split(" | ") + ["CONFUSED"]]
-    spaces = [r["record_id"] for r in rows if r["recheck_type"] != r["recheck_type"].strip()]
+    bad = [(r["record_id"], r["assigned_to"], r[COLUMN]) for r in rows
+           if r[COLUMN].strip() and r[COLUMN].strip() not in r["options"].split(" | ") + ["CONFUSED"]]
+    spaces = [r["record_id"] for r in rows if r[COLUMN] != r[COLUMN].strip()]
     for name in sorted({r["assigned_to"] for r in rows}):
         mine = [r for r in rows if r["assigned_to"] == name]
-        print(f"{name}: {sum(bool(r['recheck_type'].strip()) for r in mine)}/{len(mine)} filled")
+        print(f"{name}: {sum(bool(r[COLUMN].strip()) for r in mine)}/{len(mine)} filled")
     for rid, who, value in bad:
         print(f"  NOT AN OPTION: {rid} ({who}): {value!r}")
     if spaces:
@@ -98,6 +121,8 @@ def main() -> int:
     if not rows:
         print(f"no rows for {name!r} in {SHEET.name}")
         return 1
+    if CAUSE:
+        print(CAUSE_LEGEND)
     for n, row in enumerate(rows, 1):
         show(row, n, len(rows))
     return 0

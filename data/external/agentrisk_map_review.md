@@ -53,12 +53,14 @@ Our causes: ENVIRONMENT_STATE, USER_REQUEST, AGENT_ERROR, POLICY_CONFLICT, UNTRU
 
 | Risk driver | UNSAFE items | Example IDs | risk_cause (Meet) | (Prateek) | Final |
 |---|---|---|---|---|---|
-| Untrusted / Conflicting Instructions | 240 | AR-005, AR-007, AR-010 | | | |
-| Authorization / Consent Failure | 153 | AR-005, AR-007, AR-025 | | | |
-| Scope / Safeguard Failure | 127 | AR-010, AR-014, AR-024 | | | |
-| Insufficient Grounding / Uncertainty | 53 | AR-016, AR-017, AR-020 | | | |
-| Execution / Action Hazard | 25 | AR-061, AR-135, AR-154 | | | |
-| Risky Requested Outcome | 17 | AR-168, AR-199, AR-221 | | | |
+| Untrusted / Conflicting Instructions | 240 | AR-005, AR-007, AR-010 | UNTRUSTED_CONTENT |  |  |
+| Authorization / Consent Failure | 153 | AR-005, AR-007, AR-025 | ENVIRONMENT_STATE or AGENT_ERROR |  |  |
+| Scope / Safeguard Failure | 127 | AR-010, AR-014, AR-024 | AGENT_ERROR |  |  |
+| Insufficient Grounding / Uncertainty | 53 | AR-016, AR-017, AR-020 | ENVIRONMENT_STATE |  |  |
+| Execution / Action Hazard | 25 | AR-061, AR-135, AR-154 | AGENT_ERROR |  |  |
+| Risky Requested Outcome | 17 | AR-168, AR-199, AR-221 | USER_REQUEST |  |  |
+
+Meet, 2026-10-26: an item's options = the causes of all its drivers. One option (58 UNSAFE items) → decided by this map; more (281) → per record by hand in `agentrisk_cause_recheck.csv` (`python scripts/show_agentrisk_recheck.py --cause Meet`). Needs a schema change before applying: external records must have risk_cause = null today (R3.4).
 
 ## Q5. Flagged items: keep or exclude from training?
 

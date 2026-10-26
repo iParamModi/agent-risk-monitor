@@ -85,3 +85,23 @@ def test_import_fills_only_own_valid_rows():
     rows = sheet_rows()
     problems, _ = imp.apply(rows, "Meet", {"AR-001": "DATA_LOSS", "AR-777": "OTHER"})
     assert len(problems) == 2
+
+
+def test_cause_options():
+    assert mk.cause_options(["Untrusted / Conflicting Instructions", "Authorization / Consent Failure"]) == \
+        ["UNTRUSTED_CONTENT", "ENVIRONMENT_STATE", "AGENT_ERROR"]
+    assert mk.cause_options(["Scope / Safeguard Failure", "Execution / Action Hazard"]) == ["AGENT_ERROR"]   # map decides
+    assert set(mk.DRIVER_CAUSES) == {"Risky Requested Outcome", "Untrusted / Conflicting Instructions",
+                                     "Authorization / Consent Failure", "Insufficient Grounding / Uncertainty",
+                                     "Scope / Safeguard Failure", "Execution / Action Hazard"}
+
+
+def test_select_cause_skips_safe_and_single_option():
+    def rec(rid, label, drivers):
+        return {"record_id": rid, "split": "train",
+                "gold": {"risk_label": label, "native_labels": {"risk_drivers": drivers}}}
+    items = mk.select_cause([rec("AR-001", "UNSAFE", ["Authorization / Consent Failure"]),
+                             rec("AR-002", "UNSAFE", ["Scope / Safeguard Failure"]),
+                             rec("AR-003", "SAFE", ["No Material Risk"])])
+    assert [(i["record_id"], i["reason"], i["options"]) for i in items] == \
+        [("AR-001", "one driver", ["ENVIRONMENT_STATE", "AGENT_ERROR"])]

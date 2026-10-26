@@ -1,6 +1,10 @@
 """Builds data/external/agentrisk_recheck.csv: the AgentRisk items that need a person, split over 4 labellers.
 
-  python scripts/make_agentrisk_recheck.py            (needs `python -m src.external.agentrisk` first)
+  python scripts/make_agentrisk_recheck.py            (risk type sheet; needs `python -m src.external.agentrisk` first)
+  python scripts/make_agentrisk_recheck.py --cause    (risk cause sheet: data/external/agentrisk_cause_recheck.csv)
+
+Risk cause (review sheet Q4): each risk driver points to one or two of our causes (DRIVER_CAUSES); an
+item's options are the causes of all its drivers. One option: decided by the map. More: a person picks.
 
 Which items (UNSAFE only; review sheet Q2 + Q3, Meet 2026-10-26):
   "two domains"  : two harm domains that Meet's Q2 map turns into two different types
@@ -38,6 +42,19 @@ MIXED = {"Operational / Service", "Information Quality"}
 SITUATION_TYPES = {"SECURITY", "DATA_LOSS", "OTHER"}
 COLUMNS = ["record_id", "assigned_to", "split", "reason", "options", "recheck_type", "recheck_note"]
 
+CAUSE_SHEET = REPO_ROOT / "data" / "external" / "agentrisk_cause_recheck.csv"
+CAUSE_COLUMNS = ["record_id", "assigned_to", "split", "reason", "options", "recheck_cause", "recheck_note"]
+CAUSE_LABELLERS = ("Meet",)
+CAUSE_ORDER = ("USER_REQUEST", "UNTRUSTED_CONTENT", "ENVIRONMENT_STATE", "POLICY_CONFLICT", "AGENT_ERROR")
+DRIVER_CAUSES = {     # AgentRisk risk driver -> our risk_cause candidates (decisions.md R3.4), review sheet Q4
+    "Risky Requested Outcome": ("USER_REQUEST",),
+    "Untrusted / Conflicting Instructions": ("UNTRUSTED_CONTENT",),
+    "Authorization / Consent Failure": ("ENVIRONMENT_STATE", "AGENT_ERROR"),
+    "Insufficient Grounding / Uncertainty": ("ENVIRONMENT_STATE",),
+    "Scope / Safeguard Failure": ("AGENT_ERROR",),
+    "Execution / Action Hazard": ("AGENT_ERROR",),
+}
+
 
 def ordered(types: set[str]) -> list[str]:
     return [t for t in TYPE_ORDER if t in types]
@@ -66,6 +83,26 @@ def select(records: list[dict]) -> list[dict]:
     return out
 
 
+def cause_options(drivers: list[str]) -> list[str]:
+    found = {c for d in drivers for c in DRIVER_CAUSES[d]}
+    return [c for c in CAUSE_ORDER if c in found]
+
+
+def select_cause(records: list[dict]) -> list[dict]:
+    """UNSAFE items whose drivers give more than one candidate cause."""
+    out = []
+    for r in records:
+        if r["gold"]["risk_label"] != "UNSAFE":
+            continue
+        drivers = r["gold"]["native_labels"]["risk_drivers"]
+        options = cause_options(drivers)
+        if len(options) > 1:
+            reason = "two drivers" if len(drivers) == 2 else "one driver"
+            out.append({"record_id": r["record_id"], "split": r["split"], "reason": reason, "options": options,
+                        "group": (r["split"], reason, " + ".join(sorted(drivers)))})
+    return out
+
+
 def assign(items: list[dict], labellers=LABELLERS, seed: int = SEED) -> None:
     """Deal each group's shuffled items in turn; the next group starts with whoever has the fewest so far."""
     rng = random.Random(seed)
@@ -83,21 +120,27 @@ def assign(items: list[dict], labellers=LABELLERS, seed: int = SEED) -> None:
 
 
 def main() -> int:
-    if SHEET.exists():
-        with open(SHEET, encoding="utf-8", newline="") as f:
-            if any((r.get("recheck_type") or "").strip() or (r.get("recheck_note") or "").strip() for r in csv.DictReader(f)):
-                print(f"{SHEET.name} already has labels; not overwriting")
+    cause = "--cause" in sys.argv
+    sheet, columns, labellers = (CAUSE_SHEET, CAUSE_COLUMNS, CAUSE_LABELLERS) if cause else (SHEET, COLUMNS, LABELLERS)
+    if sheet.exists():
+        with open(sheet, encoding="utf-8", newline="") as f:
+            if any((r.get(columns[5]) or "").strip() or (r.get("recheck_note") or "").strip() for r in csv.DictReader(f)):
+                print(f"{sheet.name} already has labels; not overwriting")
                 return 1
-    items = select(list(read_jsonl(RECORDS)))
-    assign(items)
+    records = list(read_jsonl(RECORDS))
+    items = select_cause(records) if cause else select(records)
+    assign(items, labellers)
     items.sort(key=lambda it: int(it["record_id"][3:]))
-    with open(SHEET, "w", encoding="utf-8", newline="") as f:
+    with open(sheet, "w", encoding="utf-8", newline="") as f:
         w = csv.writer(f)
-        w.writerow(COLUMNS)
+        w.writerow(columns)
         for it in items:
             w.writerow([it["record_id"], it["assigned_to"], it["split"], it["reason"], " | ".join(it["options"]), "", ""])
-    print(f"{len(items)} items: " + ", ".join(f"{k} {v}" for k, v in Counter(it["reason"] for it in items).items()))
-    for name in LABELLERS:
+    print(f"{sheet.name}: {len(items)} items: " + ", ".join(f"{k} {v}" for k, v in Counter(it["reason"] for it in items).items()))
+    if cause:
+        unsafe = sum(r["gold"]["risk_label"] == "UNSAFE" for r in records)
+        print(f"  decided by the driver map alone: {unsafe - len(items)}")
+    for name in labellers:
         mine = [it for it in items if it["assigned_to"] == name]
         print(f"  {name}: {len(mine)} ({', '.join(f'{k} {v}' for k, v in sorted(Counter(it['reason'] for it in mine).items()))}; "
               f"{', '.join(f'{k} {v}' for k, v in sorted(Counter(it['split'] for it in mine).items()))})")

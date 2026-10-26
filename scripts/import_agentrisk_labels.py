@@ -1,6 +1,7 @@
 """Copies the labels YOU typed in a viewer file into data/external/agentrisk_recheck.csv.
 
   python scripts/import_agentrisk_labels.py <YourName> local_notes/agentrisk_<YourName>.txt
+  python scripts/import_agentrisk_labels.py --cause <YourName> local_notes/agentrisk_cause_<YourName>.txt
 
 For labellers who wrote their choice after "done:" in the saved output of show_agentrisk_recheck.py:
   [4/36] AR-109   (split: train, mixed domain)   done: FINANCIAL_LOSS
@@ -15,6 +16,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SHEET = ROOT / "data" / "external" / "agentrisk_recheck.csv"
+COLUMN = "recheck_type"
 HEADER = re.compile(r"^\[\d+/\d+\] (AR-\d+)\s.*\bdone: (.*?)\s*$")
 
 
@@ -38,16 +40,20 @@ def apply(rows: list[dict], name: str, labels: dict[str, str]) -> tuple[list[str
             problems.append(f"{rid}: not in the sheet")
         elif row["assigned_to"] != name:
             skipped += 1
-        elif row["recheck_type"].strip() and row["recheck_type"].strip() != label:
-            problems.append(f"{rid}: sheet already has {row['recheck_type']!r}")
+        elif row[COLUMN].strip() and row[COLUMN].strip() != label:
+            problems.append(f"{rid}: sheet already has {row[COLUMN]!r}")
         elif label not in row["options"].split(" | ") + ["CONFUSED"]:
             problems.append(f"{rid}: {label!r} is not one of {row['options']} or CONFUSED")
         else:
-            row["recheck_type"] = label
+            row[COLUMN] = label
     return problems, skipped
 
 
 def main() -> int:
+    global SHEET, COLUMN
+    if "--cause" in sys.argv:
+        sys.argv.remove("--cause")
+        SHEET, COLUMN = ROOT / "data" / "external" / "agentrisk_cause_recheck.csv", "recheck_cause"
     if len(sys.argv) != 3:
         print(__doc__)
         return 1
@@ -65,7 +71,7 @@ def main() -> int:
         w.writerows(rows)
     mine = [r for r in rows if r["assigned_to"] == name]
     print(f"copied {len(labels) - skipped} labels ({skipped} of other people's items skipped); "
-          f"{name}: {sum(bool(r['recheck_type'].strip()) for r in mine)}/{len(mine)} filled")
+          f"{name}: {sum(bool(r[COLUMN].strip()) for r in mine)}/{len(mine)} filled")
     return 0
 
 
