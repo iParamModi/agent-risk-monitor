@@ -62,17 +62,22 @@ transfer_money:
   - {check: check_account_balance, args: {account: from_account}}
   - {check: check_recipient_type, args: {recipient: to_account}}
   - {check: check_recipient_region, args: {recipient: to_account}}
+  - {check: check_transfer_compliance, args: {to_account: to_account, amount_inr: amount_inr}}
 
 delete_repository:
   - {check: check_repository_status, args: {repo: repo}}
+  - {check: check_repository_activity, args: {repo: repo}}
 
 archive_repository:
   - {check: check_repository_status, args: {repo: repo}}
+  - {check: check_repository_activity, args: {repo: repo}}
 
 # ---------- write tools, OOD test only ----------
 archive_record:
   - {check: check_retention_status, args: {resource: customer_id}}
+  - {check: check_customer_flags, args: {customer_id: customer_id}}
 
 export_customer_data:
   - {check: check_customer_consent, args: {customer_id: customer_id}}
   - {check: check_recipient_type, args: {recipient: destination}}
+  - {check: check_customer_flags, args: {customer_id: customer_id}}

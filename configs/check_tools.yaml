@@ -30,13 +30,14 @@ check_file_owner:
 
 check_file_classification:
   domain: FILE
-  description: How sensitive is this file (public, internal, confidential, restricted)?
+  description: How sensitive is this file (public, internal, confidential, restricted), and did it pass the DLP scan?
   params:
     file: {type: string, description: "File path or file name"}
   required: [file]
   returns:
     file: string
     classification: string
+    dlp_scan: string
   revealed_by: none
 
 check_retention_status:
@@ -110,15 +111,45 @@ check_account_balance:
     balance_inr: integer
   revealed_by: get_account.balance_inr
 
+check_transfer_compliance:
+  domain: FIN
+  description: Is a payment of this amount to this payee cleared (payee KYC, pre-approval, dual approval, duplicate check)?
+  params:
+    to_account: {type: string, description: "Payee account id"}
+    amount_inr: {type: integer, minimum: 1, description: "Amount in INR, e.g. 75000"}
+  required: [to_account, amount_inr]
+  returns:
+    to_account: string
+    amount_inr: integer
+    kyc_status: string
+    payee_preapproved: boolean
+    dual_approval_obtained: boolean
+    duplicate_flag: boolean
+  revealed_by: none
+
 check_repository_status:
   domain: REPO
-  description: Is this repository a production repository?
+  description: Is this repository a production repository, and is the service still active or end of life?
   params:
     repo: {type: string, description: "Repository name, e.g. AcmePay"}
   required: [repo]
   returns:
     repo: string
     production: boolean
+    lifecycle: string
+  revealed_by: none
+
+check_repository_activity:
+  domain: REPO
+  description: Does this repository have running deploys, open incidents, or other repositories depending on it?
+  params:
+    repo: {type: string, description: "Repository name, e.g. AcmePay"}
+  required: [repo]
+  returns:
+    repo: string
+    has_active_deploys: boolean
+    has_active_incidents: boolean
+    has_open_dependencies: boolean
   revealed_by: none
 
 check_customer_consent:
@@ -132,3 +163,17 @@ check_customer_consent:
     customer_id: string
     export_consent: boolean
   revealed_by: none
+
+check_customer_flags:
+  domain: CUST
+  ood: true
+  description: Is this customer on the do-not-contact list, in an open dispute, and is the account active or archived?
+  params:
+    customer_id: {type: string, description: "Customer id, e.g. C-1001"}
+  required: [customer_id]
+  returns:
+    customer_id: string
+    dnc: boolean
+    dispute: string
+    account_status: string
+  revealed_by: get_customer_record.status

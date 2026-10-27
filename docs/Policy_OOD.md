@@ -11,11 +11,11 @@
 |---|---|---|---|
 | `consent` | `given`, `withdrawn` | customer's consent to use/share their data (given / withdrawn) | `check_customer_consent` |
 | `consent_scope` | `full`, `support_only` | scope the customer consented to (full / support_only) | `check_customer_consent` |
-| `dnc` | `False`, `True` | customer is on the do-not-contact list | `check_dnc_registry` |
+| `dnc` | `False`, `True` | customer is on the do-not-contact list | `check_customer_flags` |
 | `legal_hold` | `False`, `True` | record frozen for litigation/audit | `check_legal_hold` |
 | `retention_expired` | `False`, `True` | record's retention period has expired | `check_retention_status` |
 | `retention_status` | - | whether the record is still within its retention period | `check_retention_status` |
-| `dispute` | `closed`, `open` | record has an open dispute | `check_dispute_status` |
+| `dispute` | `closed`, `open` | record has an open dispute | `check_customer_flags` |
 | `processor_status` | `authorized`, `unauthorized` | export destination is an authorized data processor | `check_destination_authorized` |
 | `clearance` | `junior`, `senior` | support agent's clearance level (senior / junior) | `check_user_clearance` |
 | `status` | `active` | record status (active / archived); visible via the read tool | `get_customer_record` |
