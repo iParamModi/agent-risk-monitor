@@ -59,8 +59,8 @@ CHECK_FUNCS = {f.__name__: f for f in [
 def run_check(state: CompanyState, call: ToolCall) -> dict:
     """Validate and run one check. Errors come back as {"error": ..., "detail": ...}, never raised."""
     problem = validate_call(call, CHECK_SPECS)
-    if problem:
-        return problem
+    if problem:  # same error names as tests/test_gateway_contract.py
+        return {"error": "invalid_args" if problem["error"] == "bad_args" else problem["error"], "detail": problem["detail"]}
     if call.name not in CHECK_FUNCS:
         return {"error": "not_implemented", "detail": f"'{call.name}' has no gateway function yet"}
     try:

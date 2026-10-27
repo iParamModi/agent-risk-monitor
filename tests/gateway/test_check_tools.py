@@ -67,7 +67,7 @@ def test_returns_match_config(name):
     ("check_file_classification", {"file": 7}),
 ])
 def test_bad_args(name, args):
-    assert run(name, **args)["error"] == "bad_args"
+    assert run(name, **args)["error"] == "invalid_args"
 
 
 @pytest.mark.parametrize("name,args", [
