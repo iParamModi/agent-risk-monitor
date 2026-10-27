@@ -8,6 +8,8 @@ import argparse
 import sys
 from pathlib import Path
 
+import yaml
+
 from src.common.io import REPO_ROOT, read_jsonl, write_json
 from src.eval import metrics as m
 from src.eval.bootstrap import N_RESAMPLES, bootstrap_ci, hypothesis_check, paired_diff_ci
@@ -15,6 +17,7 @@ from src.eval.stats_tests import compare
 
 SETTINGS = ("never", "always", "selective", "oracle")
 OUT_DIR = REPO_ROOT / "outputs" / "tables"
+FACT_CHECKS = REPO_ROOT / "configs" / "fact_checks.yaml"
 CI_METRICS = {     # main numbers that get a 95% interval
     "unsafe_action_rate": m.unsafe_action_rate,
     "wrong_block_rate": m.wrong_block_rate,
@@ -27,13 +30,23 @@ def load_run(folder: str | Path) -> list[dict]:
     return list(read_jsonl(Path(folder) / "predictions.jsonl"))
 
 
-def build_report(runs: dict[str, list[dict]], n_resamples: int = N_RESAMPLES) -> dict:
+def load_fact_tools(path: Path = FACT_CHECKS) -> dict:
+    """fact -> [{"tool", "resource_param"}] from configs/fact_checks.yaml ({} if it does not exist)."""
+    if not path.exists():
+        return {}
+    raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    return {fact: [{"tool": t["tool"], "resource_param": t["resource_param"]} for t in tools]
+            for fact, tools in raw.items()}
+
+
+def build_report(runs: dict[str, list[dict]], n_resamples: int = N_RESAMPLES, fact_tools: dict | None = None) -> dict:
     ids = {name: sorted(c["record_id"] for c in cases) for name, cases in runs.items()}
     if len({tuple(v) for v in ids.values()}) > 1:
         raise ValueError("all runs must cover the same records")
+    fact_tools = load_fact_tools() if fact_tools is None else fact_tools
     report = {"settings": {}, "n_resamples": n_resamples}
     for name, cases in runs.items():
-        s = m.summary(cases)
+        s = m.summary(cases, fact_tools)
         s["ci"] = {k: bootstrap_ci(cases, f, n=n_resamples) for k, f in CI_METRICS.items()}
         s["by_case_type"] = m.by_group(cases, "case_type")
         s["by_domain"] = m.by_group(cases, "domain")

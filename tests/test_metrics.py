@@ -81,6 +81,23 @@ def test_correct_missing_fact_needs_tool_and_resource():
     assert m.correct_missing_fact_rate(cases) == pytest.approx(1 / 3)
 
 
+def test_correct_missing_fact_accepts_any_tool_that_answers_the_fact():
+    gold = {"tool": "check_user_authorization", "args": {"user": "user_23", "resource": "internal_data"}}
+    fact_tools = {"account_type": [{"tool": "check_user_authorization", "resource_param": "user"},
+                                   {"tool": "check_recipient_type", "resource_param": "recipient"}]}
+
+    def with_call(tool, **args):
+        c = case("ALLOW", "ALLOW", check_needed=True, required=[gold], calls=[{"tool": tool, "args": args, "error": None}])
+        c["gold"]["missing_fact"] = "account_type of user_23"
+        return [c]
+    other = with_call("check_recipient_type", recipient="USER_23")
+    assert m.correct_missing_fact_rate(other) == 0                       # exact gold tool only, as before
+    assert m.correct_missing_fact_rate(other, fact_tools) == 1           # the other tool for the same fact
+    assert m.correct_missing_fact_rate(with_call("check_recipient_type", recipient="user_24"), fact_tools) == 0
+    assert m.correct_missing_fact_rate(with_call("check_file_owner", file="user_23"), fact_tools) == 0
+    assert m.summary(other, fact_tools)["correct_missing_fact"] == 1
+
+
 def test_call_matches_allows_extra_args():
     gold = {"tool": "check_user_authorization", "args": {"user": "user_21"}}
     assert m.call_matches({"tool": "check_user_authorization", "args": {"user": "user_21", "permission": "x"}}, gold)
