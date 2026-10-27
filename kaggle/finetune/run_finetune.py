@@ -44,8 +44,8 @@ def main() -> int:
     sh(sys.executable, "-m", "src.external.agentrisk")
     sh(sys.executable, "-m", "src.external.count_tokens")
     sh(sys.executable, "-m", "src.training.build_sft")
-    # one GPU for training: with two visible GPUs the Trainer wraps the 4-bit model in DataParallel
-    train_env = {**os.environ, "CUDA_VISIBLE_DEVICES": "0", "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"}
+    # both GPUs: train_lora splits the 4-bit model over them (one T4 ran out of memory on 4k-token examples)
+    train_env = {**os.environ, "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"}
     sh(sys.executable, "-m", "src.training.train_lora", "--train", "data/training/sft_train.jsonl",
        "--val", "data/training/sft_val.jsonl", "--out", str(ADAPTER), "--model", base.MODEL, "--revision", base.MODEL_REVISION,
        env=train_env)

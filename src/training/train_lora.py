@@ -5,8 +5,9 @@
 
 R13.1: rank 16, alpha 32, lr 2e-4, 2-3 epochs, 4-bit NF4 (--quant nf4, the default). Compute in float16 on GPU
 (T4 has no bfloat16). --quant none trains plain LoRA on an unquantized base (16-bit comparison run, or a CPU smoke
-test with a tiny model). Run on ONE GPU (the Kaggle job sets CUDA_VISIBLE_DEVICES=0): with two visible GPUs the
-Trainer would wrap the 4-bit model in DataParallel.
+test with a tiny model). With two GPUs (Kaggle T4 x2) the 4-bit model is split over both, about half the layers on
+each: one T4 holding the whole model ran out of memory in the attention backward of a 4k-token example. A model
+split over GPUs is trained as one model (the Trainer sees hf_device_map and does not use DataParallel).
 Each example = the chat-template prompt exactly as at inference (add_generation_prompt, thinking off) + target +
 <|im_end|>; loss on the target tokens only. Examples longer than --max-len are dropped and counted (Step 16.6).
 Writes the adapter and train_stats.json (examples kept / dropped per source, losses) to --out.
@@ -130,11 +131,17 @@ def main(argv=None) -> int:
 
     gpu = torch.cuda.is_available()
     if args.quant == "nf4":
+        # ~6.5 GB in 4-bit (embeddings and lm_head 1.2 GB each): a 3 GiB cap on GPU 0 = embeddings + ~1/3-1/2 of the
+        # layers there, the rest + lm_head on GPU 1, so each GPU keeps ~11 GB for activations
+        split = torch.cuda.device_count() > 1
         model = AutoModelForCausalLM.from_pretrained(
-            args.model, revision=args.revision, device_map={"": 0}, dtype=torch.float16,
+            args.model, revision=args.revision, dtype=torch.float16,
+            device_map="auto" if split else {"": 0}, max_memory={0: "3GiB", 1: "13GiB"} if split else None,
             quantization_config=BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
                                                    bnb_4bit_compute_dtype=torch.float16, bnb_4bit_use_double_quant=True))
         model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=True)
+        print("layers per device", dict(Counter(str(d) for d in (getattr(model, "hf_device_map", None) or {"": 0}).values())),
+              flush=True)
     else:
         model = AutoModelForCausalLM.from_pretrained(args.model, revision=args.revision,
                                                      dtype=torch.float16 if gpu else torch.float32,

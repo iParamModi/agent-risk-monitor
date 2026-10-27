@@ -46,8 +46,9 @@ eval loss per epoch) and `[run] 40/241 (17%) | 6m 10s, ~31m left | invalid 2 | a
   `{"type": "RISK", ...}<|im_end|>`; `<|im_end|>` is an EOS id, so generation stops after the answer.
 - 41 of the 1,034 Phase A examples are over 4,096 tokens (37 ATBench UNSAFE, 4 SAFE): dropped and counted in
   `train_stats.json` (Step 16.6).
-- Training uses one GPU (`CUDA_VISIBLE_DEVICES=0`): two visible GPUs would make the Trainer wrap the 4-bit model
-  in DataParallel. Evaluation uses both (float16 base needs ~16.4 GB).
+- T4 memory (no flash attention on a T4): training splits the 4-bit model over both GPUs (one GPU ran out of memory
+  on 4k-token examples) and computes logits only for the target positions; evaluation splits the float16 model
+  (~16.4 GB) over both and reads prompts over 1,024 tokens into the cache in pieces.
 - Invalid answers: the raw text (first 1,000 characters) goes to `invalid_outputs.jsonl` next to `predictions.jsonl`.
 - Same library versions for both runs: `PIP` in `base_eval/run_base_eval.py`, versions written to `notes.json`.
   If the first base run used other versions than the fine-tune job, rerun the base job before comparing.
