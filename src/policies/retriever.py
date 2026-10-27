@@ -44,6 +44,12 @@ def build_query(action: dict, user_request: str | None = None) -> str:
     return f"{action_text(action)}. {user_request.strip()}" if user_request else action_text(action)
 
 
+def query_for(visible: dict) -> str:
+    """The query for one of our records: its proposed action + the last user turn (used for training and eval alike)."""
+    users = [m["text"] for m in visible["trajectory"] if m["role"] == "user" and m["text"]]
+    return build_query(visible["proposed_action"], users[-1] if users else None)
+
+
 def min_max(values: list[float]) -> list[float]:
     lo, hi = min(values), max(values)
     return [0.0] * len(values) if hi == lo else [(v - lo) / (hi - lo) for v in values]

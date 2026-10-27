@@ -10,6 +10,11 @@ We have no GPU, so model runs go to Kaggle (free GPU T4 x2, 2 x 16 GB). Everythi
 
 Run 1 first, then 2 (Meet): comparing the two tables shows what training adds. Same records, code and precision.
 
+**Phase B** (our records + the external ones, PLAN Step 16): `python -m src.training.build_sft --phase b` builds
+(a) first-pass + (b) second-pass examples from `data/records/train.jsonl` (phase 1 tools) plus the same (c). It
+stops and writes nothing until every check-needed record has `gold.required_checks` (seed_to_record.md D4) and the
+check gateway exists (`src/gateway/gateway.py: for_record`); then job 2 runs with `--phase b`.
+
 ## One-time setup
 
 1. `.env` (git-ignored) holds `KAGGLE_USERNAME`, `KAGGLE_API_TOKEN`, `HF_TOKEN`. Never commit it.

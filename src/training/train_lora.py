@@ -45,7 +45,8 @@ def load(path: str, tokenizer, max_len: int, limit: int | None = None, seed: int
     for r in rows:
         t = tokenize(r, tokenizer, max_len)
         if t is None:
-            dropped[f"{r['source']} {json.loads(r['target'])['risk_label']}"] += 1
+            target = json.loads(r["target"])     # NEED_INFORMATION (Phase B) has no risk_label: counted by type
+            dropped[f"{r['source']} {target.get('risk_label') or target['type']}"] += 1
         else:
             kept.append(t)
     return kept, {"examples": len(rows), "kept": len(kept), "dropped_over_max_len": dict(dropped)}

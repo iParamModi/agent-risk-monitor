@@ -147,12 +147,16 @@ def load_seeds(folder: Path) -> list[dict]:
 
 
 def load_records(folder: Path) -> list[dict]:
-    rows = []
-    for p in sorted(folder.glob("**/*.jsonl")):
-        rows += [json.loads(line) for line in p.read_text(encoding="utf-8").splitlines() if line.strip()]
-    for p in sorted(folder.glob("**/*.json")):
-        rows.append(json.loads(p.read_text(encoding="utf-8")))
-    return rows
+    """Every record under folder. data/records/ holds each record twice (all_*.jsonl and its split file, written by
+    src/data_gen/split.py): copies with the same record_id must be identical and are kept once."""
+    by_id: dict[str, dict] = {}
+    for p in sorted(folder.glob("**/*.jsonl")) + sorted(folder.glob("**/*.json")):
+        text = p.read_text(encoding="utf-8")
+        rows = [json.loads(line) for line in text.splitlines() if line.strip()] if p.suffix == ".jsonl" else [json.loads(text)]
+        for r in rows:
+            if by_id.setdefault(r["record_id"], r) != r:
+                raise ValueError(f"{p}: record {r['record_id']} differs from another copy")
+    return list(by_id.values())
 
 
 def print_summary(title: str, counts: dict, action_counts: dict) -> None:

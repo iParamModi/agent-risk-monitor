@@ -1,6 +1,6 @@
 PYTHON ?= python3
 
-.PHONY: test external eval-dummy policies
+.PHONY: test external eval-dummy policies records
 
 test:
 	$(PYTHON) -m pytest -q tests
@@ -8,6 +8,13 @@ test:
 # Step 5: regenerate the policy store (policies.jsonl + policies_ood.jsonl) from the seeds.
 policies:
 	$(PYTHON) scripts/gen_policy_store.py
+
+# Steps 9 + 11: merge data/generated into data/records (all checks), split by seed, lock test + OOD, tool phases.
+# The test files are locked: if they would change, split stops (rerun with --relock only on purpose).
+records:
+	$(PYTHON) -m src.data_gen.merge
+	$(PYTHON) -m src.data_gen.split
+	$(PYTHON) scripts/split_by_phase.py
 
 external:
 	bash scripts/download_external.sh

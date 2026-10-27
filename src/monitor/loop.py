@@ -5,11 +5,14 @@ Returns one predictions.jsonl row in the format of docs/evaluation_metrics.md se
 The loop never hands the record to the prompt builder: prompts get `record["visible"]`, the retrieved
 policies, the check-tool list and gateway results only. `gold` is read for two things: the oracle
 check list (whose facts reach the prompt as gateway results, like any check) and the copy into the row.
+Policies are shown under local numbers in a fixed random order per record (number_policies); the cited
+numbers in a DECISION are mapped back to policy ids before the row is written.
 """
 import time
 
 from src.monitor.parser import parse_output
-from src.monitor.prompt_builder import as_messages, build_decide_prompt, build_risk_prompt
+from src.monitor.prompt_builder import (as_messages, build_decide_prompt, build_risk_prompt, number_policies,
+                                        refs_to_ids)
 from src.monitor.settings import DECIDE_NOW, MAX_GATEWAY_CALLS, MAX_PASSES, SETTINGS, checks_before_pass
 
 ERROR_NAMES = ("unknown_tool", "invalid_args", "not_found", "write_not_allowed")   # R7.3, R7.4
@@ -82,7 +85,7 @@ def run_monitor(record: dict, setting: str, model, gateway=None, policies: list[
 
     model:       has generate(messages) -> Generation (src/monitor/models.py)
     gateway:     has call(tool, args) -> dict, errors as data (src/gateway, R7.3); built for this record
-    policies:    the top 3 retrieved policies [{"policy_id", "text"}] (Step 6)
+    policies:    the top 3 retrieved policies [{"policy_id", "text"}] (Step 6); the prompt shows them by number
     check_tools: the check-tool list shown to the model (configs/tools.yaml, R7.1)
     check_table: action -> checks for the always setting (configs/check_table.yaml, R7.5)
     """
@@ -91,7 +94,7 @@ def run_monitor(record: dict, setting: str, model, gateway=None, policies: list[
     start = time.perf_counter()
     case = _Case(model, gateway)
     visible = record["visible"]
-    policies, check_tools = list(policies), list(check_tools)
+    policies, check_tools = number_policies(policies, record["record_id"]), list(check_tools)
 
     if record["task"] == "judge_trajectory":
         # External records: one pass, RISK format, no checks, in every setting (Step 14.3).
@@ -104,6 +107,7 @@ def run_monitor(record: dict, setting: str, model, gateway=None, policies: list[
         case.check(checks_before_pass(setting, visible["proposed_action"], check_table or {}, record["gold"]))
         prompt = build_decide_prompt(visible, policies, check_tools, may_check=False, results=case.results)
         output, _ = case.ask(as_messages(prompt), ("DECISION",))
+    output = refs_to_ids(output, policies)
 
     row = {k: record[k] for k in COPIED_FIELDS}
     row.update(gold=record["gold"], output=output, calls=case.calls, passes=case.passes,
