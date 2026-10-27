@@ -39,7 +39,7 @@
 |------|-------------|------------|-------|
 | ~~**P0 · Param · do first**: group B seed + policy edits~~ ✅ Done 2026-10-27 | **Param** | none | Completed: 8 seeds, policy_logic.yaml, conflicts.yaml, policies.jsonl, policies_ood.jsonl edited; 18 records regenerated; merge 518/0 problems; split --relock; Changelog row in decisions.md |
 | **Group C · Param · after P0**: exact seed edits in `docs/check_tools_coverage.md` §11 (OOD-ACC-T1-001, OOD-REPO-T1-001, OOD-CUST-T1-006, IND-FILE-T5-005, IND-REPO-T5-002: notes / `requested_by` only, no record changes) | **Param** | P0 | ✅ 4 T5 group-C seeds fixed (IND-ACC-T5-007, IND-FILE-T5-006, IND-FIN-T5-001/003): key_facts remapped to existing check tools, 8 records updated, required_checks filled. Remaining 5 seeds are notes/requested_by edits only (no record changes) |
-| **5 train-only seeds** in `data/seeds_drafts/` (IND-ACC-T1-013/014, IND-CAL-T1-005, IND-REPO-T1-010/011, new policies P_ACC_32/33, P_CAL_12, P_REPO_19/20): every in-domain check tool needs ≥ 1 train seed | **Param** (review, policies, move to `data/seeds/in_domain/`, 10 records), then **Meet** (list as `train` in `splits.yaml` + Changelog) | P0 | Test and OOD files do not change; in-domain seeds 162 → 167 |
+| **5 train-only seeds** in `data/seeds_drafts/` (IND-ACC-T1-013/014, IND-CAL-T1-005, IND-REPO-T1-010/011, new policies P_ACC_32/33, P_CAL_12, P_REPO_19/20): every in-domain check tool needs ≥ 1 train seed | **Param** (review, policies, move to `data/seeds/in_domain/`, 10 records), then **Meet** (list as `train` in `splits.yaml` + Changelog) | P0 | 🟡 In Progress — Param, 2026-10-28. Seeds reviewed and approved; adding policies + records now |
 | Check the Phase A gains for shortcuts: ATBench error/injection markers (known leak) and any surface cue in AgentRisk SAFE records (98.9 F1), before reporting the numbers | **Meet** | Step 16 + 17 done | `outputs/model_eval/base_vs_lora_phase_a.md` |
 | Step 9: optional code generator (`src/data_gen/`: skeleton via `lma_agent/sim`, gold engine over `policy_logic.yaml`+`conflicts.yaml`+trust rule, variants, assembly, schema-validate, `--person` CLI) — same spec `docs/seed_to_record.md` | Param (later, if we automate) | `required_checks` later; `decisions.md` lock | The by-hand route above is the one we're using now. This row is the eventual scripted version; `source` is `synthetic-data`. |
 | **Seed fixes from the check-tool report**: one line each in `docs/check_tools_coverage.md` §11 (rare facts → covered fact or drop, `account_type` check name, T5 facts_disagree seeds) | **Param** | Prateek's decision on the proposed check tools | Rerun the script to confirm |
@@ -50,18 +50,6 @@
 | **Check gateway + StepLog→record converter**: monitor's read-only `check_*` tools on `lma_agent/sim/readers.py` (names/returns as in `docs/Policy.md` A + `attrs`), and `StepLog` → record trajectory + `proposed_action` | **Prateek** | seed cleanup (Param) for final check-tool names | `docs/alignment_issues.md` sections 4-5; **read `docs/evaluation_metrics.md` §2 + §8**: the format of `predictions.jsonl` (gateway calls + `error` names) that the scoring needs |
 | Task agent: write the 40 live tasks (`flow_agent.md` section 7) | TBD | agent loop done | Mind the Groq limit of 8,000 tokens/min |
 | **Phase 2, step 1 (start here when phase 1 works)**: phase 2 has only 4 seeds (`create_event`). Write seeds for the phase 2 tools (`pay_bill`, `search_files`, `list_repos`, `list_transactions`, `send_message`, `create_share_link`, `delete_folder`, `delete_user`, `reset_password`, `upload_file`, `cancel_event`, `forward_email`, `unshare_file`) and add those tools to the company (`lma_agent`) | TBD | phase 1 done | Tool list: `configs/tool_phases.yaml` (phase2). Retrain on `phase1_train + phase2_train` from the base model (`scripts/split_by_phase.py`) |
-| Verify OOD CUST seeds (20) | **Moiesha** (all T1–T5; reassigned from Param, who is on other work) | seeds pushed | `data/seeds/ood/OOD-CUST-*.yaml`; set `reviewer: Moiesha` when done |
-| Verify OOD reworded-domain seeds (25) | **Moiesha** (all T1–T5; reassigned from Param, who is on other work) | seeds pushed | `OOD-{FILE,PRIV,ACC,FIN,REPO,CAL}-*.yaml`; Moiesha how-to in the note below |
-
-### How to verify — OOD reworded-domain seeds (Moiesha: T2, T3)
-
-Each reworded OOD seed is a copy of an existing in-domain rule in new words. To verify one:
-
-1. **Find its twin.** The `gold_policy_ids` in the OOD seed is the same ID as an in-domain seed (e.g. `OOD-ACC-T2-001` uses `P_ACC_21`; compare with the in-domain `P_ACC_21` seed and the row in `docs/Policy.md`).
-2. **Same logic?** Check the deciding fact, the action, and the gold decision match the original rule. The *rule* must be identical — only the surface changes.
-3. **Different wording?** The policy text in `notes`, the `story_hint`, the `writer_style`, the file paths/IDs/amounts must all read differently from the in-domain twin. If it looks like a near-copy of the original wording, flag it (that defeats the OOD test).
-4. **So: "same rule, different clothes."** Similar example, genuinely different wording/style/values → OK. Different rule, or identical wording → FIX.
-5. Set `reviewer: Moiesha` when a seed passes.
 
 ## Completed
 
