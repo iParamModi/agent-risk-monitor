@@ -22,18 +22,20 @@ delete_file:
   - {check: check_file_owner, args: {file: file}}
   - {check: check_file_classification, args: {file: file}}
   - {check: check_retention_status, args: {resource: file}}
+  - {check: check_legal_hold, args: {resource: file}}
 
 edit_file:
   - {check: check_file_owner, args: {file: file}}
   - {check: check_file_sharing, args: {path: file}}
+  - {check: check_owner_team, args: {resource: file}}
 
 move_file:
-  - {check: check_file_sharing, args: {path: to}}
   - {check: check_file_classification, args: {file: file}}
+  - {check: check_file_lock, args: {file: file}}
+  - {check: check_legal_hold, args: {resource: file}}
 
 write_cells:
   - {check: check_file_sharing, args: {path: file}}
-  - {check: check_file_owner, args: {file: file}}
   - {check: check_file_classification, args: {file: file}}
 
 share_file:
@@ -41,21 +43,27 @@ share_file:
   - {check: check_file_classification, args: {file: file}}
   - {check: check_file_sharing, args: {path: file}}
   - {check: check_retention_status, args: {resource: file}}
+  - {check: check_file_pii, args: {file: file}}
+  - {check: check_user_authorization, args: {user: with, resource: file}}
 
 send_email:
   - {check: check_recipient_type, args: {recipient: to}}
   - {check: check_file_classification, args: {file: attachment}, if_arg: attachment}
   - {check: check_file_sharing, args: {path: attachment}, if_arg: attachment}
   - {check: check_recipient_region, args: {recipient: to}}
+  - {check: check_recipient_nda, args: {recipient: to}}
+  - {check: check_recipient_verification, args: {recipient: to}}
+  - {check: check_user_authorization, args: {user: to, resource: attachment}, if_arg: attachment}
 
 grant_permission:
   - {check: check_user_authorization, args: {user: user, resource: resource}}
   - {check: check_recipient_type, args: {recipient: user}}
   - {check: check_file_sharing, args: {path: resource}}
-  - {check: check_repository_status, args: {repo: resource}, if_resource: repo}
+  - {check: check_owner_approval, args: {user: user, resource: resource}}
+  - {check: check_user_clearance, args: {user: user}}
 
 revoke_permission:
-  - {check: check_user_authorization, args: {user: user, resource: resource}}
+  - {check: check_admin_count, args: {user: user, resource: resource}}
 
 transfer_money:
   - {check: check_approval_limit, args: {user: $current_user}}
@@ -63,10 +71,15 @@ transfer_money:
   - {check: check_recipient_type, args: {recipient: to_account}}
   - {check: check_recipient_region, args: {recipient: to_account}}
   - {check: check_transfer_compliance, args: {to_account: to_account, amount_inr: amount_inr}}
+  - {check: check_sanctions, args: {account: to_account}}
 
 delete_repository:
   - {check: check_repository_status, args: {repo: repo}}
   - {check: check_repository_activity, args: {repo: repo}}
+  - {check: check_repository_archived, args: {repo: repo}}
+  - {check: check_repository_backup, args: {repo: repo}}
+  - {check: check_repository_compliance, args: {repo: repo}}
+  - {check: check_owner_team, args: {resource: repo}}
 
 archive_repository:
   - {check: check_repository_status, args: {repo: repo}}
@@ -76,8 +89,9 @@ archive_repository:
 archive_record:
   - {check: check_retention_status, args: {resource: customer_id}}
   - {check: check_customer_flags, args: {customer_id: customer_id}}
+  - {check: check_legal_hold, args: {resource: customer_id}}
 
 export_customer_data:
   - {check: check_customer_consent, args: {customer_id: customer_id}}
-  - {check: check_recipient_type, args: {recipient: destination}}
   - {check: check_customer_flags, args: {customer_id: customer_id}}
+  - {check: check_user_clearance, args: {user: $current_user}}

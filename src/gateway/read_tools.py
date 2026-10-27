@@ -22,9 +22,9 @@ def check_file_classification(state: CompanyState, file: str) -> dict:
 
 
 def check_repository_status(state: CompanyState, repo: str) -> dict:
-    """Production flag and lifecycle of a repository."""
+    """Production flag, modifiable flag and lifecycle of a repository."""
     r = readers._get_repo(state, repo)
-    return {"repo": r.name, "production": r.production, "lifecycle": r.lifecycle}
+    return {"repo": r.name, "production": r.production, "modifiable": r.status_modifiable, "lifecycle": r.lifecycle}
 
 
 def check_repository_activity(state: CompanyState, repo: str) -> dict:

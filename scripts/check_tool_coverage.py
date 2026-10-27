@@ -32,6 +32,7 @@ DECISIONS = r"(ALLOW|ASK_CONFIRMATION|BLOCK|ESCALATE)"
 STRICT = {"ALLOW": 0, "ASK_CONFIRMATION": 1, "BLOCK": 2}  # decisions.md: BLOCK > ASK_CONFIRMATION > ALLOW
 NEW_TOOL_MIN = 3  # rule 2: a check tool needs >= 3 seeds or policies, counted per tool (facts sharing a tool add up)
 BASELINE_REV = "62e24bc"  # check_table.yaml before the group B tools (2026-10-27), for the always-setting numbers
+AFTER_B_REV = "f4c2aff"  # check_table.yaml after group B, before group A
 
 # Accepted on 2026-10-27 (group B, rare facts): tool -> facts. Each tool needs >= NEW_TOOL_MIN seeds;
 # a fact with one seed is a warning. OOD tools must never be mapped to an in-domain action.
@@ -161,6 +162,41 @@ P0 = [
 P0_VERIFY_ONLY = ["IND-FIN-T1-004", "IND-FIN-T1-009", "IND-REPO-T1-003", "IND-REPO-T1-004", "IND-REPO-T1-006",
                   "IND-REPO-T1-008", "IND-PRIV-T1-011", "OOD-CUST-T1-005", "OOD-CUST-T1-007"]
 
+# Group C for Param (after P0): exact seed edits now that the group A tools exist. Notes-only edits change no record.
+GROUP_C = [
+    ("OOD-ACC-T1-001", "data/seeds/ood/OOD-ACC-T1-001.yaml", [
+        ("notes", "... check needed (check_user_authorization) ...", "... check needed (check_user_clearance) ..."),
+    ], "no"),
+    ("OOD-REPO-T1-001", "data/seeds/ood/OOD-REPO-T1-001.yaml", [
+        ("notes", "... check needed (check_repository_status) ...", "... check needed (check_repository_backup) ..."),
+    ], "no"),
+    ("OOD-CUST-T1-006", "data/seeds/ood/OOD-CUST-T1-006.yaml", [
+        ("requested_by", "(missing)", "user_sup6 (the acting user; check_user_clearance is filled from $current_user)"),
+    ], "no"),
+    ("IND-FILE-T5-005", "data/seeds/in_domain/IND-FILE-T5-005.yaml", [
+        ("notes", "check_file_classification(log_2.txt)->public vs check_file_sharing(log_2.txt)->retained:audit",
+         "check_file_classification(log_2.txt)->public vs check_retention_status(log_2.txt)->retention_hold=true "
+         "(the record's `retention: retained:audit` maps to it in check_tools.yaml)"),
+    ], "no"),
+    ("IND-REPO-T5-002", "data/seeds/in_domain/IND-REPO-T5-002.yaml", [
+        ("notes", "check_repository_status(repo_14)->archived:false vs check_user_authorization(repo_14)->locked_for_audit",
+         "check_repository_status(repo_14)->modifiable=true vs check_repository_compliance(repo_14)->modifiable=false "
+         "(the record's `repository_status` and `authorization` fields map to them in check_tools.yaml)"),
+    ], "no"),
+    ("IND-FIN-T1-005, IND-PRIV-T1-005 (account_type)", "no seed edit", [
+        ("required_checks", "-", "use check_recipient_type: the argument is an account / a contact, not a user. The other "
+         "4 account_type seeds pass a user, so check_user_authorization or check_recipient_type both count"),
+    ], "no"),
+    ("IND-ACC-T5-007, IND-FILE-T5-006, IND-FIN-T5-001, IND-FIN-T5-003", "pending Prateek's decision", [
+        ("problem", "-", "no two check tools return the same fact from two sources (ACC-T5-007, FILE-T5-006: the "
+         "disagreement is in agent tool outputs; FIN-T5-001/003: check_user_authorization takes a user, the recipient is "
+         "an account and its owner is not an action argument). Do not edit until decided"),
+    ], "-"),
+]
+
+# New train-only seeds (group A, section 1): drafted so every in-domain tool appears in training; Param reviews.
+NEW_TRAIN_SEEDS = ["IND-ACC-T1-013", "IND-ACC-T1-014", "IND-CAL-T1-005", "IND-REPO-T1-010", "IND-REPO-T1-011"]
+
 # Facts renamed in group B: seeds and policy_logic must use the new name.
 FACT_RENAMES = {"status": ("account_status", "a bare `status` is ambiguous across tools")}
 
@@ -196,83 +232,30 @@ POLICY_DOC_CHECK = {k: re.split(r" / | \+ ", v)[0].replace(" (NEW)", "") for k, 
 # Old or proposed check names used in seed notes / docs/Policy.md that mean an existing check.
 OLD_NAMES = {"check_retention": "check_retention_status"}
 
-# Seed fact (key_fact.attribute) -> the existing check and returns field that give it.
-# alias = the seed uses another name for the same fact (rule 1).
-COVERED = {
-    "sharing": ("check_file_sharing", "sharing", ""),
-    "classification": ("check_file_classification", "classification", ""),
-    "sensitivity": ("check_file_classification", "classification", "normal/restricted is the classification scale"),
-    "owner": ("check_file_owner", "owner", ""),
-    "retention_status": ("check_retention_status", "retention_hold", "active = hold, expired = no hold"),
-    "retention_expired": ("check_retention_status", "retention_hold", "expired = no hold"),
-    "account_type": ("check_recipient_type", "recipient_type", "employee = internal, contractor/vendor = external"),
-    "kind": ("check_recipient_type", "recipient_type", "Contact.kind"),
-    "recipient_class": ("check_recipient_type", "recipient_type", ""),
-    "registered_vendor": ("check_recipient_type", "recipient_type", "Account.type = vendor"),
-    "account_kind": ("check_recipient_type", "recipient_type", "Account.type company/personal"),
-    "recipient_country": ("check_recipient_region", "domestic", ""),
-    "data_region": ("check_recipient_region", "region", ""),
-    "approval_limit_inr": ("check_approval_limit", "approval_limit_inr", ""),
-    "balance_inr": ("check_account_balance", "balance_inr", ""),
-    "production": ("check_repository_status", "production", ""),
-    "is_production": ("check_repository_status", "production", ""),
-    "role_eligible": ("check_user_authorization", "role", "seniority is read from role"),
-    "consent": ("check_customer_consent", "export_consent", ""),
-    "dlp_scan": ("check_file_classification", "dlp_scan", ""),
-    "lifecycle": ("check_repository_status", "lifecycle", ""),
-    "kyc_status": ("check_transfer_compliance", "kyc_status", ""),
-    "payee_preapproved": ("check_transfer_compliance", "payee_preapproved", ""),
-    "dual_approval_obtained": ("check_transfer_compliance", "dual_approval_obtained", ""),
-    "duplicate_flag": ("check_transfer_compliance", "duplicate_flag", ""),
-    "has_active_deploys": ("check_repository_activity", "has_active_deploys", ""),
-    "has_active_incidents": ("check_repository_activity", "has_active_incidents", ""),
-    "has_open_dependencies": ("check_repository_activity", "has_open_dependencies", ""),
-    "dnc": ("check_customer_flags", "dnc", ""),
-    "dispute": ("check_customer_flags", "dispute", ""),
-    "account_status": ("check_customer_flags", "account_status", ""),
-}
-
+# Seed fact (key_fact.attribute) -> the checks that answer it: read from the `facts` map of configs/check_tools.yaml
+# (the same source as configs/fact_checks.yaml), built after loading, see COVERED_ALL below.
 # Facts no existing check returns -> the check tool that would return it (proposed only, rule 2/3).
 # {name, params, returns, revealed_by}; several facts of the same kind share one proposed tool.
 UNCOVERED = {
-    "legal_hold": ("check_legal_hold", "FILE", {"resource": "File path or customer id"}, {"legal_hold": "boolean"}, "none"),
-    "authorized_financial": ("check_user_clearance", "ACC", {"user": "User id"}, {"clearances": "list[string]"}, "none"),
-    "authorized_hr": ("check_user_clearance", "ACC", {"user": "User id"}, {"clearances": "list[string]"}, "none"),
-    "authorized_legal": ("check_user_clearance", "ACC", {"user": "User id"}, {"clearances": "list[string]"}, "none"),
-    "authorized_pii": ("check_user_clearance", "ACC", {"user": "User id"}, {"clearances": "list[string]"}, "none"),
-    "clearance": ("check_user_clearance", "ACC", {"user": "User id"}, {"clearances": "list[string]"}, "none"),
-    "owner_approved": ("check_owner_approval", "ACC", {"user": "User id", "resource": "Resource"}, {"owner_approved": "boolean"}, "none"),
-    "is_last_admin": ("check_admin_count", "ACC", {"resource": "Resource"}, {"active_admins": "integer"}, "list_permissions.levels"),
-    "archived": ("check_repository_archived", "REPO", {"repo": "Repository name"}, {"archived": "boolean"}, "get_repo.archived"),
-    "locked": ("check_file_lock", "FILE", {"file": "File path"}, {"locked": "boolean"}, "none"),
     "environment": ("check_file_environment", "FILE", {"file": "File path"}, {"environment": "string"}, "none"),
-    "contains_pii": ("check_file_pii", "FILE", {"file": "File path"}, {"contains_pii": "boolean"}, "none"),
     "is_backup": ("check_backup_status", "FILE", {"file": "File path"}, {"is_backup": "boolean"}, "none"),
-    "owner_team": ("check_owner_team", "FILE", {"resource": "File path or repository"}, {"owner_team": "string"}, "get_repo.owner_team"),
-    "sanctioned": ("check_sanctions", "FIN", {"account": "Account id"}, {"sanctioned": "boolean"}, "none"),
-    "address_verified": ("check_recipient_verification", "CAL", {"recipient": "Contact id or email"}, {"address_verified": "boolean"}, "none"),
-    "nda_in_place": ("check_recipient_nda", "PRIV", {"recipient": "Contact id or email"}, {"nda_in_place": "boolean"}, "none"),
     "marketing_consent": ("check_marketing_consent", "PRIV", {"recipient": "Customer or contact id"}, {"marketing_consent": "string"}, "none"),
     "contract_active": ("check_contract_status", "CAL", {"recipient": "Contact id"}, {"contract_active": "boolean"}, "none"),
-    "backup_exists": ("check_repository_backup", "REPO", {"repo": "Repository name"}, {"backup_exists": "boolean"}, "none"),
-    "compliance_locked": ("check_repository_compliance", "REPO", {"repo": "Repository name"}, {"compliance_locked": "boolean"}, "none"),
-    "modifiable": ("check_repository_compliance", "REPO", {"repo": "Repository name"}, {"compliance_locked": "boolean"}, "none"),
-    "consent_scope": ("check_consent_scope", "CUST", {"customer_id": "Customer id"}, {"consent_scope": "string"}, "none"),
     "processor_status": ("check_destination_authorized", "CUST", {"destination": "Destination address or domain"}, {"processor_status": "string"}, "none"),
 }
 
 # T5 facts_disagree: which returns field lets each named check express the disputed fact.
 # A check missing here cannot take part in that disagreement.
 T5_FIELDS = {
-    "account_type": {"check_recipient_type": "recipient_type"},
-    "recipient_class": {"check_recipient_type": "recipient_type"},
+    "account_type": {"check_recipient_type": "recipient_type", "check_user_authorization": "account_type"},
+    "recipient_class": {"check_recipient_type": "recipient_type", "check_user_authorization": "account_type"},
     "exposure": {"check_file_classification": "classification", "check_file_sharing": "sharing"},
     "disposable": {"check_file_classification": "classification", "check_retention_status": "retention_hold"},
-    "modifiable": {"check_repository_status": "production"},
+    "modifiable": {"check_repository_status": "modifiable", "check_repository_compliance": "modifiable"},
     "consent": {"check_customer_consent": "export_consent"},
-    "retention_status": {"check_retention_status": "retention_hold"},
-    "locked": {},
-    "is_last_admin": {},
+    "retention_status": {"check_retention_status": "retention_hold", "check_legal_hold": "legal_hold"},
+    "locked": {"check_file_lock": "locked"},
+    "is_last_admin": {"check_admin_count": "is_last_admin"},
 }
 
 # Simulator field per check returns field (item 7). None = not a typed field (only generic attrs).
@@ -282,21 +265,35 @@ SIM_FIELDS = {
     "check_file_classification": [("File", "classification"), ("File", "dlp_scan")],
     "check_retention_status": [("File", "retention_hold"), ("File", "retain_until"),
                                ("Customer", "retention_hold"), ("Customer", "retain_until")],
-    "check_user_authorization": [("User", "role"), ("CompanyState", "permissions")],
+    "check_user_authorization": [("User", "role"), ("CompanyState", "permissions"), ("User", "account_type")],
     "check_recipient_type": [("Contact", "kind"), ("User", "is_external"), ("Account", "type")],
-    "check_recipient_region": [("Contact", "region"), ("Account", "region")],
+    "check_recipient_region": [("Contact", "region"), ("Contact", "domestic"), ("Account", "region"), ("Account", "domestic")],
     "check_approval_limit": [("User", "approval_limit_inr")],
     "check_account_balance": [("Account", "balance_inr")],
-    "check_repository_status": [("Repo", "production"), ("Repo", "lifecycle")],
-    "check_customer_consent": [("Customer", "export_consent")],
+    "check_repository_status": [("Repo", "production"), ("Repo", "lifecycle"), ("Repo", "status_modifiable")],
+    "check_customer_consent": [("Customer", "export_consent"), ("Customer", "consent_scope")],
     "check_transfer_compliance": [("Account", "kyc_status"), ("Account", "payee_preapproved"),
                                   ("Account", "dual_approval_obtained"), ("Account", "duplicate_flag")],
     "check_repository_activity": [("Repo", "has_active_deploys"), ("Repo", "has_active_incidents"),
                                   ("Repo", "has_open_dependencies")],
     "check_customer_flags": [("Customer", "dnc"), ("Customer", "dispute"), ("Customer", "status")],
+    "check_file_lock": [("File", "locked")],
+    "check_file_pii": [("File", "contains_pii")],
+    "check_legal_hold": [("File", "legal_hold"), ("Customer", "legal_hold")],
+    "check_owner_team": [("File", "owner_team"), ("Repo", "owner_team")],
+    "check_user_clearance": [("User", "authorized_hr"), ("User", "authorized_financial"), ("User", "authorized_pii"),
+                             ("User", "authorized_legal"), ("User", "clearance")],
+    "check_owner_approval": [("CompanyState", "owner_approvals")],
+    "check_admin_count": [("CompanyState", "permissions")],
+    "check_recipient_nda": [("Contact", "nda_in_place")],
+    "check_recipient_verification": [("Contact", "address_verified")],
+    "check_sanctions": [("Account", "sanctioned")],
+    "check_repository_archived": [("Repo", "archived")],
+    "check_repository_backup": [("Repo", "backup_exists")],
+    "check_repository_compliance": [("Repo", "compliance_locked"), ("Repo", "modifiable")],
 }
 # returns field -> simulator field, where the names differ
-SIM_NAME = {("check_customer_flags", "account_status"): "status"}
+SIM_NAME = {("check_customer_flags", "account_status"): "status", ("check_repository_status", "modifiable"): "status_modifiable"}
 
 
 # ---------------------------------------------------------------- loading
@@ -314,14 +311,25 @@ LOGIC = load_yaml("data/policies/policy_logic.yaml")
 CONFLICTS = load_yaml("data/policies/conflicts.yaml")["conflicts"]
 STORES = {"in_domain": {p["policy_id"]: p["text"] for p in read_jsonl(ROOT / "data/policies/policies.jsonl")},
           "ood": {p["policy_id"]: p["text"] for p in read_jsonl(ROOT / "data/policies/policies_ood.jsonl")}}
+COVERED_ALL = {}  # fact -> [(check, returns field)]
+for _tool, _spec in CHECKS.items():
+    for _fact, _t in (_spec.get("facts") or {}).items():
+        COVERED_ALL.setdefault(_fact, []).append((_tool, _t if isinstance(_t, str) else _t["field"]))
+COVERED = {f: (ts[0][0], ts[0][1], "") for f, ts in COVERED_ALL.items()}
 SEEDS_BY_ID = {}
 SEED_FAILS_CTX = {}
+# Every name a condition may use as a variable: facts, agent action parameters, and the seed context.
+# A fact name that is also written as a value (`environment == production`) counts as a value, not a variable.
+VARIABLES = ({r["fact"] for r in LOGIC.values() if r.get("fact")}
+             - {m for r in LOGIC.values() for m in re.findall(r"(?:==|!=)\s*([A-Za-z_]\w*)", r["condition"])}) \
+    | {p for t in AGENT.values() for p in (t.get("params") or {})} | {"requested_by", "requester_team"}
 
 
 def load_seeds():
     seeds = []
-    for which, pat in (("in_domain", "in_domain/IND-*.yaml"), ("ood", "ood/OOD-*.yaml")):
-        for f in sorted((ROOT / "data" / "seeds").glob(pat)):
+    for which, pat in (("in_domain", "seeds/in_domain/IND-*.yaml"), ("ood", "seeds/ood/OOD-*.yaml"),
+                       ("in_domain", "seeds_drafts/IND-*.yaml")):  # drafts: the new train-only seeds
+        for f in sorted((ROOT / "data").glob(pat)):
             d = yaml.safe_load(open(f, encoding="utf-8"))
             d["_set"] = which
             d["_notes"] = " ".join(d.get("notes", "").split())
@@ -459,8 +467,24 @@ def condition_kind(rule):
     return "expr"
 
 
-def evaluate(rule, state, action_args):
-    """True / False if the rule's condition can be decided on this state, else None."""
+def seed_context(s):
+    """Names a condition may use besides its fact: who asked, and that user's team (from the seed's start_state)."""
+    who = s.get("requested_by")
+    users = (s.get("start_state") or {}).get("users") or []
+    team = next((u.get("team") for u in users if u.get("user_id") == who), None)
+    return {k: v for k, v in (("requested_by", who), ("requester_team", team)) if v is not None}
+
+
+class UnboundName(ValueError):
+    """A condition uses a variable (a fact, action argument or context name) that has no value for this seed."""
+
+
+def evaluate(rule, state, action_args, context=None, where=""):
+    """True / False if the rule's condition can be decided on this state, else None.
+
+    Strict: a bare name that is a variable somewhere (VARIABLES) but has no value here raises UnboundName,
+    instead of being read as a literal string (the old requested_by bug). Other bare names are enum values.
+    """
     kind = condition_kind(rule)
     fact = rule.get("fact")
     if kind == "implicit":
@@ -469,10 +493,14 @@ def evaluate(rule, state, action_args):
         return None
     if kind != "expr" or fact not in state:
         return None
-    names = {fact: state[fact], **{k: v for k, v in action_args.items() if isinstance(v, (int, str))}}
+    names = {fact: state[fact], **(context or {}), **{k: v for k, v in action_args.items() if isinstance(v, (int, str))}}
     if fact == "balance_inr":
         names.update({n: state[fact] for n in BALANCE_NAMES})
     expr = re.sub(r"\btrue\b", "True", re.sub(r"\bfalse\b", "False", rule["condition"]))
+    unbound = sorted({n for n in re.findall(r"(?<!['\w:])([A-Za-z_]\w*)(?![\w'])", rule["condition"])
+                      if n in VARIABLES and n not in names and n not in BALANCE_NAMES})
+    if unbound:
+        raise UnboundName(f"{where}: condition `{rule['condition']}` uses {unbound}, which have no value here")
     expr = re.sub(r"(?<!['\w:])([A-Za-z_][\w:.\-]*)(?!['\w])",
                   lambda m: m.group(1) if m.group(1) in names or m.group(1) in ("and", "or", "not", "in", "True", "False")
                   else repr(m.group(1)), expr)
@@ -517,6 +545,8 @@ def gold_from_policies(s):
     action, args = s["proposed_action"]["name"], s["proposed_action"]["args"]
     own = s["gold_policy_ids"]
     g = gold(s)
+    if any(p not in LOGIC for p in own):
+        return []  # the seed's own rule is not in policy_logic.yaml yet (item 12 reports it)
     if s["case_type"] == "T5":
         kind = s.get("t5_kind")
         if kind == "policy_conflict":
@@ -539,7 +569,12 @@ def gold_from_policies(s):
                 fired.append(rule["decision"])
                 deciding[rule["decision"]].append(pid)
                 continue
-            res = evaluate(rule, state, args)
+            try:
+                res = evaluate(rule, state, args, seed_context(s), f"{s['seed_id']} {v} / {pid}")
+            except UnboundName:
+                if pid in own:
+                    raise  # the seed's own rule must be decidable
+                res = None  # another rule needs a fact this seed does not state
             if res is True:
                 fired.append(rule["decision"])
                 deciding[rule["decision"]].append(pid)
@@ -598,8 +633,17 @@ def scope_note(s, involved):
 
 # ---------------------------------------------------------------- per-seed checks
 
-def fact_check(attr):
-    return COVERED.get(attr)
+def fact_check(attr, action=None):
+    """(check, field, note) for a fact: the first of its checks that has a row for `action`, else its first check."""
+    tools = COVERED_ALL.get(attr)
+    if not tools:
+        return None
+    hit = next(((c, f) for c, f in tools if action and table_entry(action, c)), tools[0])
+    return hit[0], hit[1], ""
+
+
+def fact_tools(attr):
+    return [c for c, _ in COVERED_ALL.get(attr, [])]
 
 
 def table_entry(action, check):
@@ -611,10 +655,13 @@ def table_entry(action, check):
 
 def sim_missing_fields():
     out = {}
-    for check, fields in SIM_FIELDS.items():
+    for check in CHECKS:
+        fields = SIM_FIELDS.get(check)
+        if fields is None:
+            out[check] = ["no SIM_FIELDS entry"]
+            continue
         miss = [f"{cls}.{f}" for cls, f in fields if f not in getattr(models, cls).model_fields]
-        present = [f"{cls}.{f}" for cls, f in fields if f in getattr(models, cls).model_fields]
-        if miss and (not present or check in ("check_retention_status", "check_customer_consent", "check_recipient_region")):
+        if miss:
             out[check] = miss
     return out
 
@@ -629,7 +676,7 @@ def check_seed(s, r, sim_missing):
         r["out_of_scope"] = True
         return []
     if ct in ("T1", "T2") and attr:
-        cov = fact_check(attr)
+        cov = fact_check(attr, action)
         named = [OLD_NAMES.get(c, c) for c in r["named"]]
         if attr in FACT_RENAMES:
             fails.append((2, f"fact `{attr}` is renamed to `{FACT_RENAMES[attr][0]}` ({FACT_RENAMES[attr][1]})"))
@@ -641,7 +688,7 @@ def check_seed(s, r, sim_missing):
         else:
             check, field, _ = cov
             r["resolved"] = check
-            if named and named[0] != check and named[0] in CHECKS:
+            if named and named[0] not in fact_tools(attr) and named[0] in CHECKS:
                 fails.append((2, f"seed names `{r['named'][0]}`, which does not return `{attr}`; `{check}.{field}` does"))
             entry = table_entry(action, check)
             if entry is None:
@@ -670,7 +717,8 @@ def check_seed(s, r, sim_missing):
     if ct in ("T1", "T2") and attr:
         for p in r["policies"]:
             rule = LOGIC.get(p) or {}
-            if rule.get("fact_location") == "hidden_state" and rule.get("fact") != attr:
+            if rule.get("fact_location") == "hidden_state" and rule.get("fact") != attr \
+                    and not re.search(rf"\b{re.escape(attr)}\b", rule["condition"]):
                 fails.append((11, f"seed fact `{attr}` but `{p}` in policy_logic uses `{rule.get('fact')}`, "
                                   "so the gold engine cannot apply the rule to this seed"))
     missing_p = [p for p in r["policies"] if p not in LOGIC or p not in STORES[s["_set"]]]
@@ -824,6 +872,13 @@ def always_setting(table):
     return out, {a: len(v) for a, v in per.items()}
 
 
+def seed_splits():
+    """seed id -> train / val / test / ood_test, from Meet's locked data/records/splits.yaml."""
+    sp = load_yaml("data/records/splits.yaml")
+    return {x: k for k in ("train", "val", "test", "ood_test")
+            for x in (sp[k] if isinstance(sp[k], list) else sp[k].get("seeds", sp[k]))}
+
+
 def load_baseline_checks():
     import subprocess
     text = subprocess.run(["git", "show", f"{BASELINE_REV}:configs/check_tools.yaml"], cwd=ROOT,
@@ -831,9 +886,9 @@ def load_baseline_checks():
     return yaml.safe_load(text)
 
 
-def baseline_table():
+def baseline_table(rev=BASELINE_REV):
     import subprocess
-    text = subprocess.run(["git", "show", f"{BASELINE_REV}:configs/check_table.yaml"], cwd=ROOT,
+    text = subprocess.run(["git", "show", f"{rev}:configs/check_table.yaml"], cwd=ROOT,
                           capture_output=True, text=True, check=True).stdout
     return yaml.safe_load(text)
 
@@ -845,7 +900,7 @@ def justified_pairs():
         if rule["fact_location"] != "hidden_state":
             continue
         fact = rule.get("fact")
-        checks = [fact_check(fact)[0]] if fact_check(fact) else [c for c in T5_FIELDS.get(fact, {}) if c in CHECKS]
+        checks = set(fact_tools(fact)) | {c for c in T5_FIELDS.get(fact, {}) if c in CHECKS}
         out |= {(a, c) for a in rule["actions"] for c in checks}
     return out
 
@@ -956,20 +1011,19 @@ def main():
             pass  # phase 2 rule: flagged below, not checked
         elif rule["fact_location"] == "hidden_state" and attr in FACT_RENAMES:
             f.append((8, attr, f"fact `{attr}` is renamed to `{FACT_RENAMES[attr][0]}`"))
-        elif rule["fact_location"] == "hidden_state" and fact_check(attr) is None and len(t5_checks) >= 2:
+        elif rule["fact_location"] == "hidden_state" and not fact_tools(attr) and len(t5_checks) >= 2:
             # facts_disagree rule: its fact is the agreement of two checks, so both must be in the row
             for action in sorted(set(rule["actions"]) & PHASE1):
                 for c in t5_checks:
                     if table_entry(action, c) is None:
                         f.append((9, attr, f"`{c}` not in the `{action}` row"))
         elif rule["fact_location"] == "hidden_state" and kind != "escalate":
-            cov = fact_check(attr)
-            if cov is None:
+            if not fact_tools(attr):
                 f.append((8, attr, f"no check returns `{attr}`"))
             else:
                 for action in sorted(set(rule["actions"]) & PHASE1):
-                    if table_entry(action, cov[0]) is None:
-                        f.append((9, attr, f"`{cov[0]}` not in the `{action}` row"))
+                    if not any(table_entry(action, c) for c in fact_tools(attr)):
+                        f.append((9, attr, f"`{fact_tools(attr)[0]}` not in the `{action}` row"))
         if rule["fact_location"] == "in_policy":
             for sid in cited.get(pid, []):
                 if named_checks(SEEDS_BY_ID[sid]) and SEEDS_BY_ID[sid]["case_type"] in ("T3", "T4"):
@@ -1054,10 +1108,9 @@ def main():
             if s["case_type"] in ("T1", "T2", "T5"):
                 u[s["case_type"]].add(r["id"])
     for pid, rule in LOGIC.items():
-        cov = fact_check(rule.get("fact")) if rule["fact_location"] == "hidden_state" else None
-        if cov:
-            used[cov[0]]["pol"].add(pid)
-            needed |= {(a, cov[0]) for a in rule["actions"]}
+        for c in (fact_tools(rule.get("fact")) if rule["fact_location"] == "hidden_state" else []):
+            used[c]["pol"].add(pid)
+            needed |= {(a, c) for a in rule["actions"]}
     cov_rows = [[f"`{c}`", len(used[c]["pol"]), len(used[c]["ind"]), len(used[c]["ood"]), len(used[c]["T1"]),
                  len(used[c]["T2"]), len(used[c]["T5"])] for c in CHECKS]
     unused_tools = [c for c in CHECKS if not any(used[c].values())]
@@ -1112,7 +1165,8 @@ def main():
     L.append("\nSeeds failing each item: " + ", ".join(f"{i}: {items_count[i]}" for i in sorted(items_count)) + ".\n")
     L.append("Old check names mapped: " + ", ".join(f"`{a}` → `{b}`" for a, b in OLD_NAMES.items())
              + ". Seed facts read by an existing check under another name (rule 1): "
-             + ", ".join(f"`{a}` → `{c}.{f}`" for a, (c, f, _) in COVERED.items() if a != f) + ".\n")
+             + ", ".join(f"`{a}` → " + " / ".join(f"`{c}.{f}`" for c, f in ts) for a, ts in COVERED_ALL.items()
+                         if any(a != f for _, f in ts)) + ".\n")
     L.append("Config fixes in `check_tools.yaml` (Step 1): `revealed_by` renamed to the read tools' real output keys: "
              "`lookup_contact.organisation` → `lookup_contact.org`, `get_account.balance` → `get_account.balance_inr`, "
              "`list_permissions` → `list_permissions.levels`.\n")
@@ -1230,36 +1284,43 @@ def main():
     L.append(md_table(["rule", "seed", "similarity"], [[p, s, f"{x:.2f}"] for p, s, x in sorted(copies)])
              if copies else "None.")
 
-    # ---- group B tools: seeds per tool, one-seed facts, OOD-only mapping
-    L.append("\n## 10b. Group B tools (accepted 2026-10-27)\n")
-    L.append(f"Each tool needs at least {NEW_TOOL_MIN} seeds, counted per tool. A fact with one seed is a warning. "
-             "Seeds are counted when their key fact (or a T5 facts_disagree check) resolves to the tool, so a seed "
-             "still waiting for a Param edit is not counted yet.\n")
-    gb_rows, gb_fail = [], []
-    for tool, facts in GROUP_B.items():
+    # ---- every tool: seeds per split (decisions.md Changelog 2026-10-27, tool and split rule)
+    split_of = seed_splits()
+    L.append("\n## 10b. Check tools: seeds per split\n")
+    L.append("Rule: no minimum seed count (fewer than 3 seeds is a warning); every tool used by in-domain seeds needs at "
+             "least one **train** seed, added as new train-only seeds if missing, never by moving a seed across the "
+             "locked split; OOD-only tools have no train seed. Per-tool test results exist only for tools with test "
+             f"seeds. Seeds are counted when their key fact (or a T5 facts_disagree check) resolves to the tool, so seeds "
+             f"waiting for a Param edit are not counted yet. New train-only seeds (drafted, not yet in the split): "
+             f"{', '.join(NEW_TRAIN_SEEDS) or 'none'}.\n")
+    gb_rows, gb_fail, gb_warn = [], [], []
+    base = load_baseline_checks()
+    for tool in CHECKS:
         seeds_t = sorted(used[tool]["ind"] | used[tool]["ood"])
-        per_fact = {f: sorted(x for x in seeds_t if (SEEDS_BY_ID[x].get("key_fact") or {}).get("attribute") == f)
-                    for f in facts}
-        new_tool = tool not in load_baseline_checks()
-        warn = [f for f, ids in per_fact.items() if len(ids) == 1]
+        n = Counter("train (new)" if x in NEW_TRAIN_SEEDS else split_of.get(x, "?") for x in seeds_t)
         mapped = sorted(a for a, row in TABLE.items() for e in (row or []) if e["check"] == tool)
         ood_tool = CHECKS[tool].get("ood", False)
+        problems = []
         leak = [a for a in mapped if ood_tool and a not in PHASES["ood_test_only"]["write"]]
-        status = "ok"
-        if new_tool and len(seeds_t) < NEW_TOOL_MIN:
-            status = f"FAIL: {len(seeds_t)} seeds < {NEW_TOOL_MIN}"
         if leak:
-            status = f"FAIL: OOD tool mapped to in-domain {leak}"
-        if status != "ok":
+            problems.append(f"OOD tool mapped to in-domain {leak}")
+        if ood_tool and (n["train"] or n["train (new)"]):
+            problems.append("OOD tool has train seeds")
+        if not ood_tool and used[tool]["ind"] and not (n["train"] or n["train (new)"]):
+            problems.append("no train seed")
+        if seeds_t and len(seeds_t) < NEW_TOOL_MIN:
+            gb_warn.append(tool)
+        if problems:
             gb_fail.append(tool)
-        gb_rows.append([f"`{tool}`" + (" (new)" if new_tool else " (field added)"), ", ".join(f"`{f}`" for f in facts),
-                        ", ".join(mapped), len(seeds_t),
-                        "; ".join(f"`{f}`: {', '.join(ids) or '-'}" for f, ids in per_fact.items()),
-                        ", ".join(f"`{f}`" for f in warn) or "-", status])
-    L.append(md_table(["tool", "facts", "mapped to", "seeds", "seeds per fact", "one-seed facts (warning)", "status"],
-                      gb_rows))
-    L.append("\nTrain/test placement: pending the seed split (Step 11). Each new tool needs a seed in train and in "
-             "test (the OOD tool: in the OOD test, which holds all OOD seeds).\n")
+        group = "base" if tool in base and tool not in GROUP_B else ("B" if tool in GROUP_B else "A")
+        gb_rows.append([f"`{tool}`", group, ", ".join(mapped), len(seeds_t),
+                        " / ".join(str(n[k]) for k in ("train", "train (new)", "val", "test", "ood_test")),
+                        "FAIL: " + "; ".join(problems) if problems else
+                        (f"warning: {len(seeds_t)} seeds" if 0 < len(seeds_t) < NEW_TOOL_MIN else "ok")])
+    L.append(md_table(["tool", "group", "mapped to", "seeds", "train / new train / val / test / OOD", "status"], gb_rows))
+    no_test = [r[0] for r in gb_rows if r[4].split(" / ")[3] == "0" and r[1] != "base" and not CHECKS[r[0].strip("`")].get("ood")]
+    L.append("\nIn-domain tools with no test seed (no per-tool test result; they still count in the always setting and "
+             "the overall metrics): " + (", ".join(no_test) or "none") + ".\n")
 
     # ---- table justification and always setting
     just = justified_pairs()
@@ -1271,9 +1332,8 @@ def main():
         for a in sorted(set(rule["actions"]) & PHASE1):
             checks = {e["check"] for e in TABLE.get(a) or []}
             fact = rule.get("fact")
-            cov = fact_check(fact)
-            ok = (cov and cov[0] in checks) or (len([c for c in T5_FIELDS.get(fact, {}) if c in checks]) >= 2)
-            if not ok and (cov or T5_FIELDS.get(fact)):
+            ok = bool(set(fact_tools(fact)) & checks) or (len([c for c in T5_FIELDS.get(fact, {}) if c in checks]) >= 2)
+            if not ok and (fact_tools(fact) or T5_FIELDS.get(fact)):
                 gaps.append(f"{pid} ({a}, `{fact}`)")
     L.append("## 10c. Check table: justification and the always setting\n")
     L.append("**(action, check) pairs no policy justifies** (no hidden-state rule for that action uses a fact the "
@@ -1282,15 +1342,17 @@ def main():
     L.append("**Policy facts not returned by any check mapped to the action** (only facts some check returns; "
              "facts no check returns are in section 4): " + (", ".join(gaps) or "none") + ".\n")
     before, n_rec = always_setting(baseline_table())
+    mid, _ = always_setting(baseline_table(AFTER_B_REV))
     after, _ = always_setting(TABLE)
     acts = sorted(a for a in after if a != "overall")
-    L.append(f"**Checks per record in the always setting**, over the {sum(n_rec.values())} Step 9 records "
-             f"(before = `check_table.yaml` at `{BASELINE_REV}`):\n")
-    L.append(md_table(["action", "records", "before", "after", "change"],
-                      [[a, n_rec.get(a, 0), f"{before.get(a, 0):.2f}", f"{after[a]:.2f}",
-                        f"{after[a] - before.get(a, 0):+.2f}"] for a in acts]
+    L.append(f"**Checks per record in the always setting**, over the {sum(n_rec.values())} Step 9 records in phase 1 "
+             f"(before group B = `{BASELINE_REV}`, after group B = `{AFTER_B_REV}`, after group A = now; group A also "
+             "removed rows no policy justifies):\n")
+    L.append(md_table(["action", "records", "before B", "after B", "after A"],
+                      [[a, n_rec.get(a, 0), f"{before.get(a, 0):.2f}", f"{mid.get(a, 0):.2f}", f"{after[a]:.2f}"]
+                       for a in acts]
                       + [["**overall**", sum(n_rec.get(a, 0) for a in acts), f"{before['overall']:.2f}",
-                          f"{after['overall']:.2f}", f"{after['overall'] - before['overall']:+.2f}"]]))
+                          f"{mid['overall']:.2f}", f"{after['overall']:.2f}"]]))
 
     # ---- hidden pairs
     hp_rows = [[sid, p] for sid, s in SEEDS_BY_ID.items() for p in hidden_pair_problems(s)]
@@ -1313,7 +1375,21 @@ def main():
     L.append(f"**Records to regenerate ({n_regen}):** " + "; ".join(f"{t}: {', '.join(v)}" for t, v in regen.items()) + ".\n")
     L.append("**Verify only, no regeneration** (the check name changed in notes or `docs/Policy.md`, which no record field "
              "holds): " + ", ".join(P0_VERIFY_ONLY) + ".\n")
-    L.append("### Other items (group C, still under review)\n")
+    L.append("### Group C · Param · after P0\n")
+    L.append("Exact edits now that the group A tools exist. \"Regenerate\" says whether any record changes.\n")
+    for target, path, changes, regen_c in GROUP_C:
+        L.append(f"**{target}**: `{path}` (regenerate records: {regen_c})\n")
+        L.append(md_table(["field", "current", "new"], [[f, c, n] for f, c, n in changes]) + "\n")
+    L.append("### New train-only seeds · Param reviews · Meet places them in train\n")
+    L.append(f"Drafted by Prateek in `data/seeds_drafts/` (`reviewer: TBD`): {', '.join(NEW_TRAIN_SEEDS)}. Each cites a **new** policy "
+             "(P_ACC_32, P_ACC_33, P_CAL_12, P_REPO_19, P_REPO_20, text in the seed notes) so it shares no gold policy "
+             "with a val/test seed. Param: review, add the 5 policies with the policy generator, move them to `data/seeds/in_domain/`, generate 2 records each "
+             "(10). Meet: list the 5 seeds as `train` in `data/records/splits.yaml` (+ Changelog row); test and OOD "
+             "files do not change. In-domain seeds: 162 → 167.\n")
+    p0_ids |= {t.split(" ")[0].rstrip(",") for t, _, _, _ in GROUP_C} | {x for t, _, _, _ in GROUP_C for x in
+                                                                      re.findall(r"[A-Z]+-[A-Z]+-T\d-\d+", t)}
+    p0_ids |= set(NEW_TRAIN_SEEDS)
+    L.append("### Other items\n")
     L.append("**Param (seeds):**\n")
     groups = defaultdict(list)
     for row in seed_rows:
@@ -1348,17 +1424,17 @@ def main():
         if fix.startswith("Change") and ids:
             L.append(f"- {fix}: {', '.join(ids)}")
     L.append("\n**Prateek (configs / gateway):**\n")
-    L.append("- Group B tools, simulator fields and gateway checks: done (section 10b).")
-    L.append(f"- Waiting for review: the {len(proposals)} group A tools in section 6, `account_type` on "
-             "`check_user_authorization`, the group D simulator fields (section 8) and the `requested_by` fix in the "
-             "gold mismatch check (section 5).")
+    L.append("- Done: group A + B tools in `configs/check_tools.yaml` and `check_table.yaml`, `configs/fact_checks.yaml` "
+             "(generated), typed simulator fields for groups A, B, D and `account_type`, the `requested_by` fix "
+             "(section 5).")
+    L.append("- Open: decide the 4 group C seeds marked pending; the record-based gateway (HIGH PRIORITY #2).")
 
     OUT.write_text("\n".join(L) + "\n", encoding="utf-8")
     print(f"seeds {len(rows)}, out of scope {len(out_scope)}, pass {in_scope - len(failing_seed_ids)}, "
           f"fail {len(failing_seed_ids)}; rules {len(LOGIC)}, fail {len(pol_fails)}; gold mismatches {len(mism)}; "
           f"proposed tools {len(proposals)}; literal conditions {len(literals)}, implicit {len(implicit)}, "
           f"standalone ESCALATE {len(standalone_esc)}, fact unused {len(unused_fact)}; "
-          f"sim missing {list(sim_missing)}; group B tools failing {gb_fail}; hidden-pair problems {len(hp_rows)}; "
+          f"sim missing {list(sim_missing)}; tools failing {gb_fail}, warnings {len(gb_warn)}; hidden-pair problems {len(hp_rows)}; "
           f"always setting {before['overall']:.2f} -> {after['overall']:.2f} checks/record")
     print(f"wrote {OUT.relative_to(ROOT)}")
 
