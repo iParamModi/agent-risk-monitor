@@ -1,7 +1,7 @@
 # Project Progress
 
 > Check this file before starting any work. Update it and push to GitHub after every change.
-> Last updated: 2026-10-28 by Param
+> Last updated: 2026-10-28 by Prateek
 
 ## 🔴 HIGH PRIORITY: do these first (set by Meet, 2026-10-27)
 
@@ -38,7 +38,7 @@
 | Task | Assigned To | Depends On | Notes |
 |------|-------------|------------|-------|
 | ~~**P0 · Param · do first**: group B seed + policy edits~~ ✅ Done 2026-10-27 | **Param** | none | Completed: 8 seeds, policy_logic.yaml, conflicts.yaml, policies.jsonl, policies_ood.jsonl edited; 18 records regenerated; merge 518/0 problems; split --relock; Changelog row in decisions.md |
-| **Group C · Param · after P0**: exact seed edits in `docs/check_tools_coverage.md` §11 (OOD-ACC-T1-001, OOD-REPO-T1-001, OOD-CUST-T1-006, IND-FILE-T5-005, IND-REPO-T5-002: notes / `requested_by` only, no record changes) | **Param** | P0 | 4 more group C seeds (IND-ACC-T5-007, IND-FILE-T5-006, IND-FIN-T5-001/003) wait for Prateek's decision |
+| **Group C · Param · after P0**: exact seed edits in `docs/check_tools_coverage.md` §11 (OOD-ACC-T1-001, OOD-REPO-T1-001, OOD-CUST-T1-006, IND-FILE-T5-005, IND-REPO-T5-002: notes / `requested_by` only, no record changes; IND-ACC-T5-007 and IND-FILE-T5-006 → policy conflicts with new pairs P_ACC_34/35, P_FILE_39/40, 4 train records to regenerate) | **Param** | P0 | IND-FIN-T5-001/003 wait for the payee-authorization schema decision (Blockers) |
 | **5 train-only seeds** in `data/seeds_drafts/` (IND-ACC-T1-013/014, IND-CAL-T1-005, IND-REPO-T1-010/011, new policies P_ACC_32/33, P_CAL_12, P_REPO_19/20): every in-domain check tool needs ≥ 1 train seed | **Param** (review, policies, move to `data/seeds/in_domain/`, 10 records), then **Meet** (list as `train` in `splits.yaml` + Changelog) | P0 | Test and OOD files do not change; in-domain seeds 162 → 167 |
 | Check the Phase A gains for shortcuts: ATBench error/injection markers (known leak) and any surface cue in AgentRisk SAFE records (98.9 F1), before reporting the numbers | **Meet** | Step 16 + 17 done | `outputs/model_eval/base_vs_lora_phase_a.md` |
 | Step 9: optional code generator (`src/data_gen/`: skeleton via `lma_agent/sim`, gold engine over `policy_logic.yaml`+`conflicts.yaml`+trust rule, variants, assembly, schema-validate, `--person` CLI) — same spec `docs/seed_to_record.md` | Param (later, if we automate) | `required_checks` later; `decisions.md` lock | The by-hand route above is the one we're using now. This row is the eventual scripted version; `source` is `synthetic-data`. |
@@ -110,7 +110,7 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 
 ## Blockers / Questions
 
-- 2026-10-27, Prateek: **4 group C seeds have no honest two-check fix**: IND-ACC-T5-007 and IND-FILE-T5-006 (the disagreement is in agent tool outputs), IND-FIN-T5-001/003 (`check_user_authorization` takes a user, the payee is an account). Prateek decides; **Meet**: please confirm several facts per check tool (decisions.md Changelog 2026-10-27)
+- 2026-10-28, Prateek: **IND-FIN-T5-001/003 need a second payee-authorization source.** `check_transfer_compliance` has no authorization fact today (`payee_preapproved` is P_FIN_08's amount-gated new-payee approval; reusing it would make IND-FIN-T1-003 B BLOCK). Proposal (not applied): new `check_vendor_master(account)` → `registered_vendor`, `payee_authorized` (vendor master) + `payee_authorized` on `check_transfer_compliance` (payments register); P_FIN_07 → `payee_authorized == False`; seeds IND-FIN-T5-001/003, IND-FIN-T1-005 change (6 train records); IND-FIN-T1-002 (test) unchanged. Waiting for Prateek's OK. **Meet**: please confirm several facts per check tool (decisions.md Changelog 2026-10-27)
 - 2026-10-27, Prateek: **split vs new check tools.** `check_transfer_compliance` seeds are train 3 / val 1 / **test 0**; `check_repository_activity` seeds are **train 0** / test 3 (the model never learns to call it). Group B asks for ≥1 seed in train and in test, which needs a same-domain T1 seed swap across the locked test split. Needs Prateek + Meet decision before any relock
 - Risk-type labels must be human-only (no LLM). Any LLM use on labels: log it here and tell Prateek
 - Long ATBench records are almost all UNSAFE: over 4,096 tokens = 51 UNSAFE / 5 SAFE, over 8,192 = 36 UNSAFE / 0 SAFE (longest 100,824, raw HTML pages in tool outputs). Dropping them (PLAN Step 16) shifts the label balance and lets the model learn "long = unsafe". Team to decide: drop, or shorten very long tool outputs. Details: `data/external/token_report.json`
@@ -120,6 +120,7 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 
 ## Activity Log (newest first)
 
+- 2026-10-28, Prateek: group C: IND-ACC-T5-007 (P_ACC_34 vs P_ACC_35, revoke_permission) and IND-FILE-T5-006 (P_FILE_39 vs P_FILE_40, move_file) become policy conflicts with new pairs (exact edits in `docs/check_tools_coverage.md` §11); payee-authorization schema for IND-FIN-T5-001/003 proposed, not applied
 - 2026-10-27, Prateek: check tools group A: 13 tools + `account_type` on `check_user_authorization` in `configs/check_tools.yaml` (each with a `facts` map: seed fact → returns field, with value maps) and `check_table.yaml` (only rows a policy needs; 4 unjustified rows removed); `configs/fact_checks.yaml` generated by `scripts/gen_fact_checks.py` (+ staleness test); typed simulator fields for groups A, B, D; coverage script reads the facts map, `requested_by` / `requester_team` bound and strict (gold mismatches 3 → 0; the 6 record labels were already right), per-split tool table. Failing seeds 81 → 22, policies 42 → 5 (all Param's P0 / group C / drafts). Always setting 2.96 → 3.31 (B) → 4.81 (A) checks/record. `scripts/preview_required_checks.py`: 323 of 344 check-needed records have a check
 - 2026-10-27, Prateek: check tools group B (rare facts): 3 new checks (`check_transfer_compliance`, `check_repository_activity`, OOD-only `check_customer_flags`), `dlp_scan` + `lifecycle` added to existing checks, typed simulator fields, gateway `run_check` + 33 tests; coverage script counts the 3-use rule per tool, skips phase 2 rules, reports always-setting checks (2.96 → 3.31/record) and hidden pairs. Failing seeds 81 → 72, policies 42 → 28 (the rest wait for Param's P0 and the group A/C/D review). OOD-CUST-T5-004 is not a facts_disagree (consent and dnc can both be true) → policy_conflict. Hashes of all 518 records saved in `outputs/coverage/records_before.json`
 - 2026-10-27, Meet: added **⚠️ Be careful** lists to both HIGH PRIORITY messages (leaks through tool descriptions or extra result fields, OOD-only tools, no hand edits of `data/records/`, relock only what changed, never `--reassign`, no tuning on test); new `scripts/changed_records.py` lists changed records + fields before a relock
