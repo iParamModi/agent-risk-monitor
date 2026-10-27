@@ -1,7 +1,7 @@
 # Project Progress
 
 > Check this file before starting any work. Update it and push to GitHub after every change.
-> Last updated: 2026-10-27 by Param
+> Last updated: 2026-10-28 by Param
 
 ## 🔴 HIGH PRIORITY: do these first (set by Meet, 2026-10-27)
 
@@ -12,7 +12,7 @@
 | 1 | **Finish the check tool decisions** (group A + group B): every deciding fact of a check-needed record is returned by a check tool. Today 115 of the 316 T1/T2 check-needed records (35 facts) have none; the 14 T5 facts_disagree seeds need both facts mapped. Then give Param the fact → check map | **Prateek** — 🟡 2026-10-27: group A + B configs ✅, `configs/fact_checks.yaml` ✅ (Param: use it for #4); check-needed records without a check 115 → 21 (13 fixed by Param's P0, 4 phase-2 `create_event`, 4 wait for Prateek's decision on 4 group C seeds) | none | `scripts/check_tool_coverage.py`: every in-scope seed passes |
 | 2 | **Check gateway** `src/gateway/gateway.py`: `for_record(record).call(tool, args) -> dict`, errors as data (R7.3, R7.4), only the tool's `returns` fields | **Prateek** | none (parallel with 1) | `tests/test_gateway_contract.py` passes (skipped until `for_record` exists) |
 | 3 | ~~**Group-B seed fixes → regenerate 18 records**~~ ✅ Done (Param, 2026-10-27). 8 seeds edited, 18 records regenerated, `make records` 0 problems, `split --relock`, Changelog row added | **Param** | task 1 (group B) | `make records`: 0 problems; `split --relock` + Changelog row; committed |
-| 4 | **`gold.required_checks` for all 344 check-needed records** (seed_to_record.md D4), by code | **Param** | task 1 | `make records`: 0 problems and `required_checks_missing: 0`; relock + Changelog row |
+| 4 | ~~**`gold.required_checks` for all check-needed records**~~ (seed_to_record.md D4), by code — 336/342 filled, `required_checks_missing: 6` (4 phase-2 `create_event` + 2 group-C IND-FILE-T5-006 awaiting Prateek). 0 merge problems; `split --relock`; Changelog row added | **Param** | task 1 | `make records`: 0 problems and `required_checks_missing: 0`; relock + Changelog row |
 | 5 | Then: wire `src/monitor/run.py` for our records (retrieval + gateway), Phase B on Kaggle (`build_sft --phase b`, ready) | Meet | 2, 3, 4 | Phase B adapter + val results |
 
 ## Team
