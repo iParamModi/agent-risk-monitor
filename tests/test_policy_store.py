@@ -42,8 +42,8 @@ def _seed_policy_ids(which):
 
 def test_stores_load_without_error():
     # store.py raises on empty text or a duplicate id
-    assert len(load_policies(POL / "policies.jsonl")) == 138
-    assert len(load_policies(POL / "policies_ood.jsonl")) == 152
+    assert len(load_policies(POL / "policies.jsonl")) == 139         # + P_FILE_38 (group B, 2026-10-27)
+    assert len(load_policies(POL / "policies_ood.jsonl")) == 155     # + P_FILE_38, P_CUST_17, P_CUST_18
 
 
 def test_no_duplicate_or_empty_text():

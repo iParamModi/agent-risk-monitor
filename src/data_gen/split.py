@@ -122,7 +122,8 @@ def listed_splits(path: Path = RECORDS / "splits.yaml") -> dict[str, str]:
 
 
 def sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    """Of the content with LF line ends: a Windows checkout (CRLF) of the same file gives the same hash."""
+    return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
 
 
 def read_lock(path: Path = LOCK) -> dict[str, str]:
@@ -228,8 +229,8 @@ def main(argv=None) -> int:
     seeds["ood_test"] = sorted({r["seed_id"] for r in ood})
     (RECORDS / "splits.yaml").write_text(
         "# Seed ids per split. Written by python -m src.data_gen.split (decisions.md R11.3); do not edit by hand.\n"
-        + yaml.safe_dump({"ratios": RATIOS, "seed": SEED, **seeds}, sort_keys=False), encoding="utf-8")
-    LOCK.write_text(lock_text(new_hashes), encoding="utf-8")
+        + yaml.safe_dump({"ratios": RATIOS, "seed": SEED, **seeds}, sort_keys=False), encoding="utf-8", newline="\n")
+    LOCK.write_text(lock_text(new_hashes), encoding="utf-8", newline="\n")
     write_json(REPORTS / "split_report.json", report)
     for name, c in report["splits"].items():
         print(f"{name:9} {c['seeds']:3} seeds {c['records']:3} records  {c['case_type']}")

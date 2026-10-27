@@ -245,6 +245,13 @@ def test_assign_keeps_listed_seeds_and_their_group():
         assign(groups, info, {"S000": "test", "S001": "train"})
 
 
+def test_lock_hash_ignores_windows_line_ends(tmp_path):
+    from src.data_gen.split import sha256
+    (tmp_path / "lf.jsonl").write_bytes(b'{"a": 1}\n{"b": 2}\n')
+    (tmp_path / "crlf.jsonl").write_bytes(b'{"a": 1}\r\n{"b": 2}\r\n')
+    assert sha256(tmp_path / "lf.jsonl") == sha256(tmp_path / "crlf.jsonl")
+
+
 def test_lock_file_round_trip(tmp_path):
     path = tmp_path / "LOCK"
     path.write_text(lock_text({"data/records/test.jsonl": "ab" * 32}), encoding="utf-8")
