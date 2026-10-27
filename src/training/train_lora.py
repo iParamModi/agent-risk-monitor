@@ -13,6 +13,7 @@ Each example = the chat-template prompt exactly as at inference (add_generation_
 Writes the adapter and train_stats.json (examples kept / dropped per source, losses) to --out.
 """
 import argparse
+import contextlib
 import json
 import math
 import random
@@ -48,6 +49,18 @@ def load(path: str, tokenizer, max_len: int, limit: int | None = None, seed: int
         else:
             kept.append(t)
     return kept, {"examples": len(rows), "kept": len(kept), "dropped_over_max_len": dict(dropped)}
+
+
+def efficient_attention():
+    """GPU training on a T4 (no flash attention). With no padding mask transformers asks SDPA for native GQA
+    (enable_gqa), which only the flash and math kernels support, so SDPA fell back to math: the full fp32 attention
+    matrix, out of memory on 4k-token examples. Repeating the k/v heads instead (~33 MB a layer) lets the
+    memory-efficient kernel run. Returns a context with the math kernel switched off: a fallback then fails at step 1
+    instead of running out of memory later."""
+    import transformers.integrations.sdpa_attention as sdpa
+    from torch.nn.attention import SDPBackend, sdpa_kernel
+    sdpa.use_gqa_in_sdpa = lambda *args, **kwargs: False
+    return sdpa_kernel([SDPBackend.EFFICIENT_ATTENTION, SDPBackend.FLASH_ATTENTION])
 
 
 def progress_callback(path: Path | None):
@@ -131,12 +144,12 @@ def main(argv=None) -> int:
 
     gpu = torch.cuda.is_available()
     if args.quant == "nf4":
-        # ~6.5 GB in 4-bit (embeddings and lm_head 1.2 GB each): a 3 GiB cap on GPU 0 = embeddings + ~1/3-1/2 of the
-        # layers there, the rest + lm_head on GPU 1, so each GPU keeps ~11 GB for activations
+        # ~6.5 GB in 4-bit (embeddings and lm_head 1.2 GB each). Placement keeps room for the largest module on GPU 0,
+        # so a 3 GiB cap put only 3 layers there; 5 GiB splits the layers about evenly
         split = torch.cuda.device_count() > 1
         model = AutoModelForCausalLM.from_pretrained(
             args.model, revision=args.revision, dtype=torch.float16,
-            device_map="auto" if split else {"": 0}, max_memory={0: "3GiB", 1: "13GiB"} if split else None,
+            device_map="auto" if split else {"": 0}, max_memory={0: "5GiB", 1: "13GiB"} if split else None,
             quantization_config=BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
                                                    bnb_4bit_compute_dtype=torch.float16, bnb_4bit_use_double_quant=True))
         model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=True)
@@ -166,7 +179,8 @@ def main(argv=None) -> int:
             optim="paged_adamw_8bit" if args.quant == "nf4" else "adamw_torch",
             report_to="none", seed=args.seed, remove_unused_columns=False,
             disable_tqdm=True))     # progress comes from progress_callback, one clean line per log step
-    result = trainer.train()
+    with efficient_attention() if gpu else contextlib.nullcontext():
+        result = trainer.train()
     model.save_pretrained(out)
     tokenizer.save_pretrained(out)
     stats = {"model": args.model, "revision": args.revision, "rank": args.rank, "alpha": args.alpha, "lr": args.lr,
