@@ -104,7 +104,7 @@ def main(argv=None):
         rows.append(run_monitor(rec, args.setting, model))
         if rows[-1]["output"] is None:
             invalid_raw.append({"record_id": rec["record_id"], "raw": [t[:RAW_CHARS] for t in model.texts]})
-        if i % 10 == 0 or i == len(records):
+        if i <= 3 or i % 10 == 0 or i == len(records):     # first records early: shows the speed at once
             print(progress_line(i, len(records), time.perf_counter() - start, rows), flush=True)
     n = write_jsonl(out_dir / "predictions.jsonl", rows)
     write_jsonl(out_dir / "invalid_outputs.jsonl", invalid_raw)

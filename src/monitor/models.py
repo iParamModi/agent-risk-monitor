@@ -60,6 +60,9 @@ class TransformersModel:
     def __init__(self, model: str, revision: str | None = None, adapter: str | None = None, dtype: str = "float16"):
         import torch
         from transformers import AutoModelForCausalLM, AutoTokenizer
+        import time
+        from collections import Counter
+        start = time.perf_counter()
         self.name = f"{model}+{adapter}" if adapter else model
         self.tokenizer = AutoTokenizer.from_pretrained(model, revision=revision)
         self.model = AutoModelForCausalLM.from_pretrained(model, revision=revision, dtype=getattr(torch, dtype),
@@ -68,6 +71,9 @@ class TransformersModel:
             from peft import PeftModel
             self.model = PeftModel.from_pretrained(self.model, adapter)
         self.model.eval()
+        # layers on 'cpu' or 'disk' mean the model did not fit on the GPUs (very slow generation)
+        where = Counter(str(d) for d in (getattr(self.model, "hf_device_map", None) or {}).values())
+        print(f"[run] model loaded in {time.perf_counter() - start:.0f}s | layers per device {dict(where)}", flush=True)
 
     def generate(self, messages: list[dict]) -> Generation:
         import torch
