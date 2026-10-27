@@ -89,6 +89,32 @@ reuse them.
 **Done when:** `tests/test_gateway_contract.py` passes (all 4 tests run, none skipped once Param has filled
 `required_checks`).
 
+## ⚠️ Be careful (these are the ways this can go wrong)
+
+1. **Tool descriptions reach the prompt.** `src/monitor/check_tools.py` shows every in-domain tool's name, params
+   and `returns` to the model in every prompt. Keep descriptions generic: no record names or values from our
+   data (no `user_23`, `org_4`, real amounts), nothing that hints at a decision.
+2. **One fact per tool, and no extra fields.** A result returns only its `returns` fields, never another hidden
+   fact (e.g. `check_user_clearance` must not also show `owner_approved`). An extra field is a leak: the model
+   would learn facts it did not ask for.
+3. **OOD-only tools stay OOD-only** (`ood: true`). The CUST tools are the `new_tools` shift of the OOD test; if an
+   in-domain prompt shows them, the OOD test no longer measures that shift.
+4. **The result must be the true value for that record.** T1 A and B have the same text but different hidden
+   facts, so the same call answers differently on each side; T2c's `hidden.state` is already after the write.
+   When a check expresses a fact in other words (`account_type: employee` → `recipient_type: internal`), use one
+   mapping for every record and write it down in the fact → check map.
+5. **The gateway never reads `gold`** (`tests/test_gateway_contract.py` checks this), never raises (errors are
+   dicts with the exact names `unknown_tool`, `invalid_args`, `not_found`, `write_not_allowed`), and is
+   deterministic. No LLM anywhere in it.
+6. **Renaming an existing check** breaks `configs/check_table.yaml`, the seed notes, the coverage script and
+   Param's `required_checks`. Avoid it; if you must, change all of them in one commit and tell Param.
+7. **Do not edit `data/records/`, `data/LOCKED_TEST.sha256` or `data/records/splits.yaml`**, and do not edit
+   records in `data/generated/` (that is Param's task 3). Seed changes go to Param.
+8. **Policy ids stay hidden.** `src/monitor/prompt_builder.py` now shows policies as `[1] [2] [3]`
+   (`number_policies`); keep it when you wire the gateway into the loop.
+9. **Before pushing:** `python scripts/check_tool_coverage.py`, then `make test` (must pass, R13.4). Follow
+   `CLAUDE.md` for the commit (PROGRESS.md, no AI attribution, no force push).
+
 ## Order and hand-off
 
 1. You: task 1 → send Param the fact → check map. Task 2 can run in parallel.

@@ -5,7 +5,7 @@
 
 ## 🔴 HIGH PRIORITY: do these first (set by Meet, 2026-10-27)
 
-**Prateek, Param: when you pull, start here, before any other task.** Phase B fine-tuning on our records, the oracle setting and the check metrics all wait on these, and the submission is 30 Oct. Full instructions: `docs/messages/2026-10-27_to_Prateek_phase_b_blockers.md`, `docs/messages/2026-10-27_to_Param_phase_b_blockers.md`. When one is done, remove its row here and add it to Completed.
+**Prateek, Param: when you pull, start here, before any other task.** Phase B fine-tuning on our records, the oracle setting and the check metrics all wait on these, and the submission is 30 Oct. Full instructions: `docs/messages/2026-10-27_to_Prateek_phase_b_blockers.md`, `docs/messages/2026-10-27_to_Param_phase_b_blockers.md`. Each file ends with a **⚠️ Be careful** list: read it before you start. When one is done, remove its row here and add it to Completed.
 
 | # | Task | Who | Needs | Done when |
 |---|------|-----|-------|-----------|
@@ -115,6 +115,7 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 
 ## Activity Log (newest first)
 
+- 2026-10-27, Meet: added **⚠️ Be careful** lists to both HIGH PRIORITY messages (leaks through tool descriptions or extra result fields, OOD-only tools, no hand edits of `data/records/`, relock only what changed, never `--reassign`, no tuning on test); new `scripts/changed_records.py` lists changed records + fields before a relock
 - 2026-10-27, Meet: 🔴 HIGH PRIORITY tasks for Prateek (check tools for every deciding fact, check gateway) and Param (group-B seed fixes + regenerate 34 records, `gold.required_checks` D4): table at the top of this file, messages in `docs/messages/2026-10-27_to_{Prateek,Param}_phase_b_blockers.md`; `CLAUDE.md` now says to start with a 🔴 HIGH PRIORITY task. Merge now validates filled `required_checks` and reports `required_checks_missing` (344 today); gateway contract test added (skipped until `for_record` exists)
 - 2026-10-27, Meet: Step 9 merge + Step 11 split done: 518 records in `data/records/` (0 problems in all automatic + leakage checks), split 60/10/30 by seed with policy groups, test + OOD locked; monitor now hides policy ids (STRICT task); Phase B SFT builder ready but waits for `required_checks` (D4) + the check gateway. **Param: after regenerating the 16 group-B seeds, tell Meet to rerun `make records` + relock**
 - 2026-10-27, Meet: started the Step 9 merge + Step 11 split/lock + leakage checks (Param is not doing the merge), then the Phase B SFT file
