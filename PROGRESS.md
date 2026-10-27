@@ -1,7 +1,7 @@
 # Project Progress
 
 > Check this file before starting any work. Update it and push to GitHub after every change.
-> Last updated: 2026-10-27 by Prateek
+> Last updated: 2026-10-27 by Meet
 
 ## Team
 
@@ -18,6 +18,7 @@
 |------|-----|---------|----------------|
 | Step 6: policy retrieval (`src/policies/store.py`, `retriever.py`: BM25 + `bge-base-en-v1.5`, top 3; recall@3 + T5 conflict recall) | Meet | 2026-10-26 | Temporary `data/policies/policies.jsonl` built from `docs/Policy.md` (visible text only) until Param's Step 5 replaces it. Query = action + args + seed `story_hint` for now. ✅ Code + tests: `scripts/build_policies.py`, `src/policies/store.py`, `retriever.py`, `scripts/eval_retrieval.py` (recall@1/3/5, T5 conflict recall, w = 0.0…1.0, in-domain seeds only). ✅ Temp store: 138 in-domain, 152 OOD. ✅ **First run (2026-10-26, CPU, ~1 min)**: 162 in-domain seeds, best w = 0.7: recall@3 64.8 (recall@5 72.2, T5 conflict 69.2); T3 93 / T4 90 / T5 80 but T1 52 / T2 54, because their deciding fact is hidden by design, so the query cannot tell apart several policies on the same action (e.g. 3 grant_permission policies). Report: `outputs/retrieval/seed_report_in_domain.md`. Next: after Step 5, retune w on val seeds; team to consider top 5, or adding all policies of the action type |
 | **Monitor loop + Qwen3-8B fine-tuning** (`src/monitor/`: prompt builder, parser, 4 settings `never`/`always`/`selective`/`oracle`, gateway calls; writes `outputs/runs/<run_id>/predictions.jsonl` per `docs/evaluation_metrics.md` §2 + §8; then SFT file + QLoRA, R13.1) | Prateek, Meet | 2026-10-25 | Shared M3 work (see `decisions.md` Changelog); split of parts to agree with Meet. **Loop done (2026-10-25)**: `src/monitor/` (4 settings, strict parser, prompt builder, OpenAI-compatible model client for vLLM / hosted API, `python -m src.monitor.run`), `prompts/monitor_v1.txt`, `monitor_risk_v1.txt`; dry run on 147 external val records → `src.eval.tables` OK. Our records wait for gateway (Step 4), retrieval (Step 6), check-tool list (R7.1), check table (R7.5). Next: GPU for Qwen3-8B (R13.3), SFT file Models: prompted base Qwen3-8B + one QLoRA run. Starting with the loop |
+| **Step 9 merge (§8) + Step 11 split/lock + leakage checks, then Phase B SFT file** (Param is not doing the merge) | Meet | 2026-10-27 | Merge `data/generated/` (518 records) into `data/records/`, one `hidden.state` format, automatic + leakage checks, split by seed, lock test + OOD by SHA-256 |
 | Step 8: in-domain seed specs (`data/seeds/in_domain/`) | Param, Moiesha | 2026-10-08 | **All 150 in-domain seeds reviewed + pushed** (T1/T4/T5 = Param 97, T2/T3 = Moiesha 53), schema-valid, 0 `reviewer: TBD`. Policies stubbed (P_*) until Step 5. **All 45 OOD seeds authored + pushed** (`data/seeds/ood/`), awaiting verification (see Next Up). Remaining Step 8: Step 9 record generation |
 
 ## Next Up
@@ -25,7 +26,6 @@
 | Task | Assigned To | Depends On | Notes |
 |------|-------------|------------|-------|
 | Check the Phase A gains for shortcuts: ATBench error/injection markers (known leak) and any surface cue in AgentRisk SAFE records (98.9 F1), before reporting the numbers | **Meet** | Step 16 + 17 done | `outputs/model_eval/base_vs_lora_phase_a.md` |
-| **Step 9 merge (§8)**: concatenate `data/generated/<T1..T5>/*.json` into `data/records/all_in_domain.jsonl` / `all_ood.jsonl` sorted by `record_id`, commit once, then freeze; reviewer reruns schema + automatic/leakage checks on the merged files | **TBD (Param?)** | all three thirds ✅ (Param 170, Meet 172, Prateek 176 = 518) | Note: `hidden.state` shape differs between chunks (Param + Prateek: flat true state; Meet: `{start_state, resolved_facts}`), and Param's gold has no `native_labels` key: normalise one way in the merge |
 | Step 9: optional code generator (`src/data_gen/`: skeleton via `lma_agent/sim`, gold engine over `policy_logic.yaml`+`conflicts.yaml`+trust rule, variants, assembly, schema-validate, `--person` CLI) — same spec `docs/seed_to_record.md` | Param (later, if we automate) | `required_checks` later; `decisions.md` lock | The by-hand route above is the one we're using now. This row is the eventual scripted version; `source` is `synthetic-data`. |
 | **Check tool decisions**: accept/reject the 13 proposed check tools + `account_type` on `check_user_authorization` (`docs/check_tools_coverage.md` §6), then their table rows and the simulator fields (§8). The 7 consistency table edits are already applied | **Prateek** | coverage report | Rerun `python scripts/check_tool_coverage.py` after each change |
 | **Seed fixes from the check-tool report**: one line each in `docs/check_tools_coverage.md` §11 (rare facts → covered fact or drop, `account_type` check name, T5 facts_disagree seeds) | **Param** | Prateek's decision on the proposed check tools | Rerun the script to confirm |
@@ -102,6 +102,7 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 
 ## Activity Log (newest first)
 
+- 2026-10-27, Meet: started the Step 9 merge + Step 11 split/lock + leakage checks (Param is not doing the merge), then the Phase B SFT file
 - 2026-10-27, Prateek: generated my third of Step 9 (`docs/seed_to_record.md` §10/§11): 69 seeds (`index%3==1`) → 176 records in `data/generated/<T1..T5>/` (T1 48, T2 76, T3 18, T4 16, T5 18; in_domain 136, ood 40). Gold from `policy_logic.yaml` matches all seed notes; §10.6 validation clean (0 invalid, 0 em dash, A/B + v1/v2 identical). All three thirds done (518): §8 merge next.
 - 2026-10-27, Meet: removed `data/generated/` from `.gitignore` and committed all of `data/generated/` (176 files): my 172 Step-9 records plus the normalized external dumps (`normalized/atbench.jsonl`, `normalized/r_judge.jsonl`, `reports/normalize_external.json`). Note: these normalized files are copies of external datasets (ATBench, R-Judge) — now tracked in git. Teammates' own local `data/generated/` is no longer ignored, so coordinate before committing more.
 - 2026-10-27, Meet: QLoRA Phase A adapter uploaded to the PRIVATE Hugging Face repo `meet5568/agent-risk-qwen3-8b-lora-phase-a` (adapter 175 MB, config, tokenizer, train_stats, model card); private checked before and after upload
