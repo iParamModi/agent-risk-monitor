@@ -99,6 +99,7 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 
 ## Activity Log (newest first)
 
+- 2026-10-27, Meet: QLoRA v4 trained fine (250 steps, 3 h 23 m, train loss 0.037, eval loss 0.023, adapter 175 MB saved on Kaggle) but its val run stopped: Kaggle's torchao 0.10 clashes with peft. Fix: uninstall torchao in `setup()`; new eval-only job `kaggle/lora_eval/` scores the saved adapter (no retraining)
 - 2026-10-27, Meet: QLoRA v3 reached step 10, then out of memory again. Root cause: with no padding mask transformers asks SDPA for native GQA, which a T4 can only run with the math kernel (full fp32 attention matrix). Fix in `train_lora.py`: repeat k/v heads so the memory-efficient kernel runs, math kernel switched off during training (same loss on a tiny Qwen3); GPU 0 cap 5 GiB for an even split; rerun as v4
 - 2026-10-27, Meet: QLoRA v2 passed step 1 but ran out of memory ~6 min in (attention backward of a 4k-token example on one T4). Fix: 4-bit model split over both T4s (`device_map` auto, GPU 0 capped at 3 GiB), no more `CUDA_VISIBLE_DEVICES=0`; rerun as v3
 - 2026-10-27, Meet: QLoRA v1 ran out of memory in the first step (full logits of a 4k-token example: 4k x 152k vocab). Fix in `train_lora.py`: logits + labels only for the target positions at the end (same loss, checked on a tiny Qwen3; CPU Trainer smoke test passes), step 1 logged; rerun as v2

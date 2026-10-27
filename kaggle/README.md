@@ -6,6 +6,7 @@ We have no GPU, so model runs go to Kaggle (free GPU T4 x2, 2 x 16 GB). Everythi
 |---|---|---|
 | 1. Base model on external val (no training) | `kaggle/base_eval/` | Qwen3-8B (float16, rev `b968826`), 241 external val records, scored with `src.eval.tables` |
 | 2. Fine-tune, then the same val | `kaggle/finetune/` | QLoRA (R13.1: r 16, alpha 32, lr 2e-4, 2 epochs, 4-bit NF4) on `phase_a_train.txt` (1,034), then the same 241 val records with the adapter (float16 base + LoRA) |
+| 2b. Saved adapter on the same val | `kaggle/lora_eval/` | the evaluation part of job 2 only, on the adapter from the last `agent-risk-finetune` run (Kaggle input, weights stay private); for when training finished but evaluation did not |
 
 Run 1 first, then 2 (Meet): comparing the two tables shows what training adds. Same records, code and precision.
 
@@ -25,12 +26,13 @@ kaggle kernels output meet6868/agent-risk-base-eval -p outputs/kaggle/base_eval 
 # after job 1 has finished:
 kaggle kernels push -p kaggle/finetune --accelerator NvidiaTeslaT4
 kaggle kernels output meet6868/agent-risk-finetune -p outputs/kaggle/finetune     # adapter + results
+kaggle kernels push -p kaggle/lora_eval --accelerator NvidiaTeslaT4                # only if job 2's evaluation failed
 ```
 
 ## Logs
 
-Kaggle shows a script's output only after the run (CLI `kernels logs` is empty while it runs; the web page shows
-it live). Each job also writes `/kaggle/working/progress.log` (kept even if the job fails):
+Live: `kaggle kernels logs -f <user>/<job>/<version>` (CLI 2.2+; plain `kernels logs` is empty while it runs).
+The CLI cannot cancel a run and a new version does not stop the old one: stop it on the web page. Each job also writes `/kaggle/working/progress.log` (kept even if the job fails):
 `[HH:MM:SS UTC] start: <step>` / `done` / `FAILED`, plus
 `[train] step 120/250 (48%) | epoch 0.96 | loss 0.3120 | lr 1.8e-04 | 0h 41m elapsed, ~0h 44m left` (every 10 steps,
 eval loss per epoch) and `[run] 40/241 (17%) | 6m 10s, ~31m left | invalid 2 | answer 28 tokens on average`
