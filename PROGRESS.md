@@ -9,7 +9,7 @@
 
 | # | Task | Who | Needs | Done when |
 |---|------|-----|-------|-----------|
-| 1 | **Finish the check tool decisions** (group A + group B): every deciding fact of a check-needed record is returned by a check tool. Today 115 of the 316 T1/T2 check-needed records (35 facts) have none; the 14 T5 facts_disagree seeds need both facts mapped. Then give Param the fact → check map | **Prateek** | none | `scripts/check_tool_coverage.py`: every in-scope seed passes |
+| 1 | **Finish the check tool decisions** (group A + group B): every deciding fact of a check-needed record is returned by a check tool. Today 115 of the 316 T1/T2 check-needed records (35 facts) have none; the 14 T5 facts_disagree seeds need both facts mapped. Then give Param the fact → check map | **Prateek** — 🟡 In Progress 2026-10-27: group B ✅ pushed; group A configs + `configs/fact_checks.yaml` + group C list for Param next (gateway after) | none | `scripts/check_tool_coverage.py`: every in-scope seed passes |
 | 2 | **Check gateway** `src/gateway/gateway.py`: `for_record(record).call(tool, args) -> dict`, errors as data (R7.3, R7.4), only the tool's `returns` fields | **Prateek** | none (parallel with 1) | `tests/test_gateway_contract.py` passes (skipped until `for_record` exists) |
 | 3 | **Group-B seed fixes → regenerate their 34 records** (16 seeds, 10 of them test/OOD) | **Param** | task 1 (group B) | `make records`: 0 problems; `split --relock` + Changelog row; committed |
 | 4 | **`gold.required_checks` for all 344 check-needed records** (seed_to_record.md D4), by code | **Param** | task 1 | `make records`: 0 problems and `required_checks_missing: 0`; relock + Changelog row |
