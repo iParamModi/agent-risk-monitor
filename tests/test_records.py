@@ -10,7 +10,7 @@ import yaml
 from src.common.io import REPO_ROOT, read_jsonl
 from src.data_gen.auto_checks import check_dataset, check_record
 from src.data_gen.leakage_check import check_pairs
-from src.data_gen.merge import RECORD_KEYS, load_seeds, read_tool_names
+from src.data_gen.merge import RECORD_KEYS, load_check_specs, load_seeds, read_tool_names
 from src.policies.store import IN_DOMAIN, OOD, load_policies
 
 RECORDS = REPO_ROOT / "data" / "records"
@@ -28,8 +28,8 @@ def test_every_record_passes_the_merge_checks(data):
     records = files["all_in_domain"] + files["all_ood"]
     stores = {"in_domain": {p["policy_id"] for p in load_policies(IN_DOMAIN)},
               "ood": {p["policy_id"] for p in load_policies(OOD)}}
-    reads = read_tool_names()
-    problems = [p for r in records for p in check_record(r, seeds[r["seed_id"]], stores[r["set"]], reads)[0]]
+    reads, specs = read_tool_names(), load_check_specs()
+    problems = [p for r in records for p in check_record(r, seeds[r["seed_id"]], stores[r["set"]], reads, specs)[0]]
     problems += check_dataset(records, seeds)
     problems += [f["seed_id"] for f in check_pairs(records)["failed"]]
     assert problems == []

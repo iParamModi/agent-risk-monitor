@@ -3,6 +3,18 @@
 > Check this file before starting any work. Update it and push to GitHub after every change.
 > Last updated: 2026-10-27 by Meet
 
+## 🔴 HIGH PRIORITY: do these first (set by Meet, 2026-10-27)
+
+**Prateek, Param: when you pull, start here, before any other task.** Phase B fine-tuning on our records, the oracle setting and the check metrics all wait on these, and the submission is 30 Oct. Full instructions: `docs/messages/2026-10-27_to_Prateek_phase_b_blockers.md`, `docs/messages/2026-10-27_to_Param_phase_b_blockers.md`. When one is done, remove its row here and add it to Completed.
+
+| # | Task | Who | Needs | Done when |
+|---|------|-----|-------|-----------|
+| 1 | **Finish the check tool decisions** (group A + group B): every deciding fact of a check-needed record is returned by a check tool. Today 115 of the 316 T1/T2 check-needed records (35 facts) have none; the 14 T5 facts_disagree seeds need both facts mapped. Then give Param the fact → check map | **Prateek** | none | `scripts/check_tool_coverage.py`: every in-scope seed passes |
+| 2 | **Check gateway** `src/gateway/gateway.py`: `for_record(record).call(tool, args) -> dict`, errors as data (R7.3, R7.4), only the tool's `returns` fields | **Prateek** | none (parallel with 1) | `tests/test_gateway_contract.py` passes (skipped until `for_record` exists) |
+| 3 | **Group-B seed fixes → regenerate their 34 records** (16 seeds, 10 of them test/OOD) | **Param** | task 1 (group B) | `make records`: 0 problems; `split --relock` + Changelog row; committed |
+| 4 | **`gold.required_checks` for all 344 check-needed records** (seed_to_record.md D4), by code | **Param** | task 1 | `make records`: 0 problems and `required_checks_missing: 0`; relock + Changelog row |
+| 5 | Then: wire `src/monitor/run.py` for our records (retrieval + gateway), Phase B on Kaggle (`build_sft --phase b`, ready) | Meet | 2, 3, 4 | Phase B adapter + val results |
+
 ## Team
 
 | Name | Role / Area |
@@ -25,10 +37,6 @@
 
 | Task | Assigned To | Depends On | Notes |
 |------|-------------|------------|-------|
-| **Phase B blocker 1 — `gold.required_checks` (seed_to_record.md D4)**: fill the gold check(s) of every check-needed record (all 518 are still `null`; 186 in the Phase B train/val records). Needs the final check tools: 74 of the 158 check-needed train records (33 seeds) have a deciding fact that no check tool returns yet. Also needed by the oracle setting and the check metrics | **Prateek (check tools) + Param (D4 pass)** | Prateek's check tool decisions | Then `make records` + `python -m src.data_gen.split --relock` (seed lists stay; only those records change) |
-| **Phase B blocker 2 — check gateway** (`src/gateway/gateway.py`): `for_record(record)` → object with `call(tool, args) -> dict`, errors as data (R7.3), the same object `src/monitor/loop.py` and `src/training/build_sft.py` use for the check results | **Prateek** | check tool decisions | `build_sft --phase b` already calls it; it stops with a clear message until it exists |
-| **Regenerate the 34 records of the 16 group-B seeds** (Prateek's check tool decisions), then tell Meet: `make records` re-merges and checks, `split --relock` relocks (10 of the 16 seeds are test/OOD) | **Param** (records), **Meet** (merge + relock) | Prateek's group B + Param's seed edits | Seeds keep their split (`data/records/splits.yaml`) |
-| **Phase B fine-tune on Kaggle**: `python -m src.training.build_sft --phase b` (ready, tested), then job 2 with `--phase b`; eval on our val records with the loop + gateway | **Meet** | both blockers above | ~1,785 examples (238 first-pass + 158 second-pass ×2, + 993 external) |
 | Check the Phase A gains for shortcuts: ATBench error/injection markers (known leak) and any surface cue in AgentRisk SAFE records (98.9 F1), before reporting the numbers | **Meet** | Step 16 + 17 done | `outputs/model_eval/base_vs_lora_phase_a.md` |
 | Step 9: optional code generator (`src/data_gen/`: skeleton via `lma_agent/sim`, gold engine over `policy_logic.yaml`+`conflicts.yaml`+trust rule, variants, assembly, schema-validate, `--person` CLI) — same spec `docs/seed_to_record.md` | Param (later, if we automate) | `required_checks` later; `decisions.md` lock | The by-hand route above is the one we're using now. This row is the eventual scripted version; `source` is `synthetic-data`. |
 | **Seed fixes from the check-tool report**: one line each in `docs/check_tools_coverage.md` §11 (rare facts → covered fact or drop, `account_type` check name, T5 facts_disagree seeds) | **Param** | Prateek's decision on the proposed check tools | Rerun the script to confirm |
@@ -107,6 +115,7 @@ Each reworded OOD seed is a copy of an existing in-domain rule in new words. To 
 
 ## Activity Log (newest first)
 
+- 2026-10-27, Meet: 🔴 HIGH PRIORITY tasks for Prateek (check tools for every deciding fact, check gateway) and Param (group-B seed fixes + regenerate 34 records, `gold.required_checks` D4): table at the top of this file, messages in `docs/messages/2026-10-27_to_{Prateek,Param}_phase_b_blockers.md`; `CLAUDE.md` now says to start with a 🔴 HIGH PRIORITY task. Merge now validates filled `required_checks` and reports `required_checks_missing` (344 today); gateway contract test added (skipped until `for_record` exists)
 - 2026-10-27, Meet: Step 9 merge + Step 11 split done: 518 records in `data/records/` (0 problems in all automatic + leakage checks), split 60/10/30 by seed with policy groups, test + OOD locked; monitor now hides policy ids (STRICT task); Phase B SFT builder ready but waits for `required_checks` (D4) + the check gateway. **Param: after regenerating the 16 group-B seeds, tell Meet to rerun `make records` + relock**
 - 2026-10-27, Meet: started the Step 9 merge + Step 11 split/lock + leakage checks (Param is not doing the merge), then the Phase B SFT file
 - 2026-10-27, Prateek: generated my third of Step 9 (`docs/seed_to_record.md` §10/§11): 69 seeds (`index%3==1`) → 176 records in `data/generated/<T1..T5>/` (T1 48, T2 76, T3 18, T4 16, T5 18; in_domain 136, ood 40). Gold from `policy_logic.yaml` matches all seed notes; §10.6 validation clean (0 invalid, 0 em dash, A/B + v1/v2 identical). All three thirds done (518): §8 merge next.

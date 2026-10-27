@@ -167,8 +167,31 @@ def traceable(value, text: str) -> bool:
 
 # ---------------------------------------------------------------- one record
 
-def check_record(rec: dict, seed: dict, store_ids: set[str], read_tools: set[str]) -> tuple[list[str], list[str]]:
-    """(problems, flags) for one record. store_ids = policy ids of the store for the record's set."""
+def check_required_checks(rec: dict, check_specs: dict) -> list[str]:
+    """gold.required_checks, once filled (seed_to_record.md D4): only on check-needed records, 1-2 checks, each a
+    tool of configs/check_tools.yaml (OOD-only tools on OOD records only) with its required arguments and no others."""
+    checks = rec["gold"]["required_checks"]
+    if checks is None:
+        return []
+    if not rec["gold"]["check_needed"]:
+        return ["required_checks set on a record that needs no check"]
+    problems = [] if 1 <= len(checks) <= 2 else [f"{len(checks)} required checks, expected 1 or 2"]
+    for c in checks:
+        spec = check_specs.get(c["tool"])
+        if spec is None or (spec.get("ood") and rec["set"] != "ood"):
+            problems.append(f"required check {c['tool']!r} is not a check tool for {rec['set']} records")
+            continue
+        args, params, required = set(c["args"]), set(spec["params"]), set(spec.get("required", spec["params"]))
+        if not required <= args <= params:
+            problems.append(f"required check {c['tool']} args {sorted(args)}: needs {sorted(required)}, "
+                            f"allows {sorted(params)}")
+    return problems
+
+
+def check_record(rec: dict, seed: dict, store_ids: set[str], read_tools: set[str],
+                 check_specs: dict | None = None) -> tuple[list[str], list[str]]:
+    """(problems, flags) for one record. store_ids = policy ids of the store for the record's set;
+    check_specs = configs/check_tools.yaml (to check gold.required_checks once they are filled)."""
     rid = rec.get("record_id", "?")
     problems = [f"schema: {e}" for e in schema_errors(rec)]
     if problems:
@@ -275,6 +298,8 @@ def check_record(rec: dict, seed: dict, store_ids: set[str], read_tools: set[str
     for field in ("native_labels", "source_note", "source_taxonomy"):
         if gold.get(field) is not None:
             problems.append(f"gold.{field} must be null (ours)")
+    if check_specs is not None:
+        problems += check_required_checks(rec, check_specs)
 
     # hidden part: key facts as the seed names them, and the state agrees with them
     facts = hidden["key_facts"]

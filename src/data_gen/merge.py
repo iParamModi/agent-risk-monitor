@@ -35,6 +35,7 @@ RECORDS = REPO_ROOT / "data" / "records"
 REPORTS = GENERATED / "reports"
 SEEDS = REPO_ROOT / "data" / "seeds"
 TOOL_PHASES = REPO_ROOT / "configs" / "tool_phases.yaml"
+CHECK_TOOLS = REPO_ROOT / "configs" / "check_tools.yaml"
 CASE_DIRS = ("T1", "T2", "T3", "T4", "T5")
 RECORD_KEYS = ("record_id", "seed_id", "source", "set", "split", "domain", "case_type", "subtype", "pair_side",
                "version", "task", "visible", "hidden", "gold", "meta")
@@ -107,8 +108,12 @@ def normalize(rec: dict) -> tuple[dict, list[str]]:
     return ordered(out, RECORD_KEYS), notes
 
 
+def load_check_specs(path: Path = CHECK_TOOLS) -> dict:
+    return yaml.safe_load(path.read_text(encoding="utf-8"))
+
+
 def merge(raw: list[dict], seeds: dict[str, dict], tokenizer, stores: dict[str, set[str]],
-          read_tools: set[str]) -> tuple[list[dict], dict, dict]:
+          read_tools: set[str], check_specs: dict | None = None) -> tuple[list[dict], dict, dict]:
     """(records, report, leakage). The report lists problems (any problem = do not write) and flags.
     tokenizer None leaves meta.n_tokens null (tests)."""
     from src.common.tokens import count_tokens
@@ -122,7 +127,7 @@ def merge(raw: list[dict], seeds: dict[str, dict], tokenizer, stores: dict[str, 
     problems, flags = [], []
     for rec in records:
         if rec.get("seed_id") in seeds:
-            p, f = check_record(rec, seeds[rec["seed_id"]], stores[rec["set"]], read_tools)
+            p, f = check_record(rec, seeds[rec["seed_id"]], stores[rec["set"]], read_tools, check_specs)
             problems += p
             flags += f
     problems += check_dataset(records, seeds)
@@ -145,6 +150,8 @@ def merge(raw: list[dict], seeds: dict[str, dict], tokenizer, stores: dict[str, 
                        "kept_in_key_facts_only": {rid: [n for n in ns if n.startswith("kept")]
                                                   for rid, ns in notes.items() if any(n.startswith("kept") for n in ns)}},
         "t1_pairs": leakage["pairs"], "t1_pairs_failed": len(leakage["failed"]),
+        # D4: check-needed records whose gold checks are not filled yet (Phase B and the oracle need 0)
+        "required_checks_missing": sum(r["gold"]["check_needed"] and not r["gold"]["required_checks"] for r in records),
         "problems": problems, "flags": flags,
     }
     return records, report, leakage
@@ -156,11 +163,12 @@ def main() -> int:
     seeds = load_seeds()
     stores = {"in_domain": {p["policy_id"] for p in load_policies(IN_DOMAIN)},
               "ood": {p["policy_id"] for p in load_policies(OOD)}}
-    records, report, leakage = merge(load_generated(), seeds, load_tokenizer(), stores, read_tool_names())
+    records, report, leakage = merge(load_generated(), seeds, load_tokenizer(), stores, read_tool_names(),
+                                     load_check_specs())
     write_json(REPORTS / "merge_report.json", report)
     write_json(REPORTS / "leakage.json", leakage)
     print(json.dumps({k: report[k] for k in ("records", "seeds", "by_set", "by_chunk", "n_tokens", "t1_pairs",
-                                             "t1_pairs_failed")}))
+                                             "t1_pairs_failed", "required_checks_missing")}))
     print(f"normalised {report['normalised']['records']} records: {report['normalised']['what']}")
     print(f"{len(report['flags'])} flags for a human (merge_report.json)")
     if report["problems"]:

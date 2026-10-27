@@ -349,6 +349,7 @@ When a teammate's Claude is given the prompt **"Start work param gave us"** (or 
 
 ## 12. Open items / TODO
 
-- [ ] `gold.required_checks`: fill in a second pass once `configs/check_tools.yaml` covers all facts (currently `null`, D4).
+- [ ] `gold.required_checks`: fill in a second pass once `configs/check_tools.yaml` covers all facts (currently `null`, D4). **🔴 HIGH PRIORITY (Param, 2026-10-27):** steps in `docs/messages/2026-10-27_to_Param_phase_b_blockers.md`; `make records` reports `required_checks_missing` (344 today) and validates every filled check.
+- [x] §8 merge + split + lock: done by Meet on 2026-10-27 (`make records` = `src/data_gen/merge.py` + `split.py`). Edit records in `data/generated/` only, then rerun `make records`.
 - [ ] `decisions.md` Step-2 lock (formally gates the generator).
 - [ ] Wire `make data` to the `src/data_gen/` modules as they are built.

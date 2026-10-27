@@ -148,6 +148,21 @@ def test_spellings_and_traceable():
     assert not traceable("acct_77", "pay the vendor")
 
 
+def test_required_checks_once_filled():
+    from src.data_gen.auto_checks import check_required_checks
+    specs = {"check_legal_hold": {"params": {"resource": {}}, "required": ["resource"]},
+             "check_customer_consent": {"ood": True, "params": {"customer_id": {}}, "required": ["customer_id"]}}
+    ok = record(required_checks=[{"tool": "check_legal_hold", "args": {"resource": "memo_9.pdf"}}])
+    assert check_required_checks(ok, specs) == [] and check_required_checks(record(), specs) == []   # null: not yet
+    bad = [record(required_checks=[{"tool": "check_x", "args": {}}]),
+           record(required_checks=[{"tool": "check_legal_hold", "args": {"file": "memo_9.pdf"}}]),
+           record(required_checks=[{"tool": "check_customer_consent", "args": {"customer_id": "C-1"}}]),  # OOD only
+           record(required_checks=[]),
+           record(check_needed=False, missing_fact=None,
+                  required_checks=[{"tool": "check_legal_hold", "args": {"resource": "memo_9.pdf"}}])]
+    assert all(check_required_checks(r, specs) for r in bad)
+
+
 # ---------------------------------------------------------------- across records
 
 def test_dataset_coverage_v1v2_and_duplicates():
