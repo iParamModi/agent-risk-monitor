@@ -1,7 +1,7 @@
 """Kaggle job: score a saved QLoRA adapter on the external val records, without training again.
 
-The adapter is the output of the private kernel meet6868/agent-risk-finetune (input `kernel_sources`, so the weights
-stay on Kaggle). Same steps, code and float16 precision as the evaluation part of kaggle/finetune (its setup() and
+The adapter comes from the PRIVATE Kaggle dataset meet6868/agent-risk-adapter (the adapter folder that
+kaggle/finetune saved; uploaded by hand because Kaggle does not offer a failed run's output as input). Same steps, code and float16 precision as the evaluation part of kaggle/finetune (its setup() and
 evaluate()), so the result compares with kaggle/base_eval. Used on 2026-10-27: fine-tune v4 trained and saved the
 adapter, then its evaluation stopped on a torchao version clash (fixed in setup()).
 """
@@ -35,6 +35,7 @@ def main() -> int:
     base = finetune.load_base()
     found = glob.glob("/kaggle/input/**/adapter_config.json", recursive=True)
     if len(found) != 1:
+        subprocess.run(["find", "/kaggle/input", "-maxdepth", "4"], check=False)
         raise SystemExit(f"expected one adapter in /kaggle/input, found {found}")
     adapter = Path(found[0]).parent
     base.log(f"adapter: {adapter}")

@@ -6,7 +6,7 @@ We have no GPU, so model runs go to Kaggle (free GPU T4 x2, 2 x 16 GB). Everythi
 |---|---|---|
 | 1. Base model on external val (no training) | `kaggle/base_eval/` | Qwen3-8B (float16, rev `b968826`), 241 external val records, scored with `src.eval.tables` |
 | 2. Fine-tune, then the same val | `kaggle/finetune/` | QLoRA (R13.1: r 16, alpha 32, lr 2e-4, 2 epochs, 4-bit NF4) on `phase_a_train.txt` (1,034), then the same 241 val records with the adapter (float16 base + LoRA) |
-| 2b. Saved adapter on the same val | `kaggle/lora_eval/` | the evaluation part of job 2 only, on the adapter from the last `agent-risk-finetune` run (Kaggle input, weights stay private); for when training finished but evaluation did not |
+| 2b. Saved adapter on the same val | `kaggle/lora_eval/` | the evaluation part of job 2 only, on an adapter uploaded as the PRIVATE dataset `meet6868/agent-risk-adapter` (a failed run's output cannot be a Kaggle input); for when training finished but evaluation did not |
 
 Run 1 first, then 2 (Meet): comparing the two tables shows what training adds. Same records, code and precision.
 
