@@ -9,6 +9,7 @@ Only results go to /kaggle/working/results (predictions hold ids, gold labels an
 """
 import glob
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -26,6 +27,8 @@ RUN_TAG = "base_qwen3_8b_fp16"
 PIP = ["transformers>=4.56", "accelerate", "peft", "bitsandbytes", "jsonschema", "pyyaml", "python-dotenv", "tokenizers"]
 WORK = Path("/tmp/repo")
 OUT = Path("/kaggle/working/results")
+# eval runs (also kaggle/finetune): less memory fragmentation with prompts of very different lengths
+EVAL_ENV = {**os.environ, "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"}
 
 
 PROGRESS = Path("/kaggle/working/progress.log")     # kept in the job output even if the job fails
@@ -102,7 +105,7 @@ def main() -> int:
     for name in SOURCES:
         sh(sys.executable, "-m", "src.monitor.run", "--records", f"inputs/{name}_val.jsonl", "--split", "val",
            "--setting", "never", "--backend", "transformers", "--model", MODEL, "--revision", MODEL_REVISION,
-           "--run-id", f"{RUN_TAG}_{name}")
+           "--run-id", f"{RUN_TAG}_{name}", env=EVAL_ENV)
     merged = runs / f"{RUN_TAG}_val"
     merged.mkdir(parents=True, exist_ok=True)
     with (merged / "predictions.jsonl").open("w", encoding="utf-8") as out:

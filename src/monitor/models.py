@@ -9,6 +9,7 @@ from dataclasses import dataclass
 
 TEMPERATURE = 0.0
 MAX_NEW_TOKENS = 512
+PREFILL_CHUNK = 1024    # transformers backend: longer prompts fill the KV cache in pieces of this many tokens
 BACKOFF_SECONDS = [2, 4, 8, 16]
 
 
@@ -55,6 +56,8 @@ class TransformersModel:
     """Hugging Face model on local GPUs (e.g. Kaggle 2x T4): float16, spread over the GPUs, greedy decoding.
 
     adapter: a LoRA adapter (folder or Hub id) loaded on top of the base model (Step 17 fine-tuned run).
+    Prompts longer than PREFILL_CHUNK are read in pieces: a T4 has no flash attention, so one pass over a
+    7k-token prompt builds the full attention matrix (several GB) and runs out of memory. Same answers.
     """
 
     def __init__(self, model: str, revision: str | None = None, adapter: str | None = None, dtype: str = "float16"):
@@ -80,8 +83,15 @@ class TransformersModel:
         text = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True,
                                                   enable_thinking=False)
         inputs = self.tokenizer(text, return_tensors="pt", add_special_tokens=False).to(self.model.device)
+        ids, cache = inputs["input_ids"], None
         with torch.no_grad():   # temperature 0 = greedy; unset the sampling defaults of generation_config.json
-            out = self.model.generate(**inputs, max_new_tokens=MAX_NEW_TOKENS, do_sample=False,
+            if ids.shape[1] > PREFILL_CHUNK:    # all but the last token; generate() then starts from the cache
+                from transformers import DynamicCache
+                cache = DynamicCache(config=self.model.config)
+                for s in range(0, ids.shape[1] - 1, PREFILL_CHUNK):
+                    self.model(input_ids=ids[:, s:min(s + PREFILL_CHUNK, ids.shape[1] - 1)], past_key_values=cache,
+                               use_cache=True, logits_to_keep=1)
+            out = self.model.generate(**inputs, past_key_values=cache, max_new_tokens=MAX_NEW_TOKENS, do_sample=False,
                                       temperature=None, top_p=None, top_k=None)
         new = out[0, inputs["input_ids"].shape[1]:]
         return Generation(self.tokenizer.decode(new, skip_special_tokens=True), inputs["input_ids"].shape[1], len(new))

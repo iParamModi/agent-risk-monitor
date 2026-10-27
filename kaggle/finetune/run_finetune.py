@@ -56,7 +56,7 @@ def main() -> int:
     for name in base.SOURCES:
         sh(sys.executable, "-m", "src.monitor.run", "--records", f"inputs/{name}_val.jsonl", "--split", "val",
            "--setting", "never", "--backend", "transformers", "--model", base.MODEL, "--revision", base.MODEL_REVISION,
-           "--adapter", str(ADAPTER), "--run-id", f"{RUN_TAG}_{name}")
+           "--adapter", str(ADAPTER), "--run-id", f"{RUN_TAG}_{name}", env=base.EVAL_ENV)
     merged = runs / f"{RUN_TAG}_val"
     merged.mkdir(parents=True, exist_ok=True)
     with (merged / "predictions.jsonl").open("w", encoding="utf-8") as out:
