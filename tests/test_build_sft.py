@@ -48,6 +48,10 @@ def test_loss_only_on_target_and_long_examples_dropped():
     t = tokenize(ex, FakeTokenizer(), max_len=10)
     assert t["input_ids"] == [1, 1, 1, 7, 7] and t["labels"] == [-100, -100, -100, 7, 7]
     assert tokenize(ex, FakeTokenizer(), max_len=4) is None
-    batch = Collator(pad_id=0)([t, {"input_ids": [5], "labels": [5]}])
-    assert batch["labels"][1].tolist() == [5, -100, -100, -100, -100]
-    assert batch["attention_mask"][1].tolist() == [1, 0, 0, 0, 0]
+    batch = Collator(pad_id=0)([t, {"input_ids": [5, 6], "labels": [-100, 6]}])
+    assert batch["input_ids"][1].tolist() == [5, 6, 0, 0, 0]
+    assert batch["attention_mask"][1].tolist() == [1, 1, 0, 0, 0]
+    # logits only from one token before the earliest target (row 2: index 1), labels cut the same way
+    assert batch["logits_to_keep"] == 5 and batch["labels"].tolist() == [[-100, -100, -100, 7, 7], [-100, 6, -100, -100, -100]]
+    one = Collator(pad_id=0)([t])
+    assert one["logits_to_keep"] == 3 and one["labels"].tolist() == [[-100, 7, 7]]

@@ -78,6 +78,11 @@ def progress_callback(path: Path | None):
 
 
 class Collator:
+    """Pads a batch. The loss is only on the target at the end of each example, so the model computes logits for the
+    last `logits_to_keep` positions only (full logits of a 4k-token example are 4k x 152k vocab: out of memory on a
+    T4), and the labels are cut to the same positions. The model shifts labels by one, so the cut starts one token
+    before the first target token: same loss as with full logits."""
+
     def __init__(self, pad_id: int):
         self.pad_id = pad_id
 
@@ -85,8 +90,10 @@ class Collator:
         import torch
         n = max(len(b["input_ids"]) for b in batch)
         pad = lambda seq, value: seq + [value] * (n - len(seq))   # noqa: E731
+        labels = [pad(b["labels"], -100) for b in batch]
+        keep = min(n, 1 + max(n - next((i for i, x in enumerate(lab) if x != -100), n - 1) for lab in labels))
         return {"input_ids": torch.tensor([pad(b["input_ids"], self.pad_id) for b in batch]),
-                "labels": torch.tensor([pad(b["labels"], -100) for b in batch]),
+                "labels": torch.tensor(labels)[:, n - keep:], "logits_to_keep": keep,
                 "attention_mask": torch.tensor([pad([1] * len(b["input_ids"]), 0) for b in batch])}
 
 
@@ -146,7 +153,7 @@ def main(argv=None) -> int:
         args=TrainingArguments(
             output_dir=str(out / "checkpoints"), num_train_epochs=args.epochs, learning_rate=args.lr,
             per_device_train_batch_size=1, per_device_eval_batch_size=1, gradient_accumulation_steps=args.grad_accum,
-            lr_scheduler_type="cosine", warmup_steps=warmup, logging_steps=10, eval_strategy="epoch",
+            lr_scheduler_type="cosine", warmup_steps=warmup, logging_steps=10, logging_first_step=True, eval_strategy="epoch",
             save_strategy="no", fp16=gpu, gradient_checkpointing=True,
             gradient_checkpointing_kwargs={"use_reentrant": False},
             optim="paged_adamw_8bit" if args.quant == "nf4" else "adamw_torch",
