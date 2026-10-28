@@ -17,7 +17,7 @@
 
 Seeds failing each item: 2: 2, 3: 1, 4: 1, 11: 1, 13: 2.
 
-Old check names mapped: `check_retention` → `check_retention_status`. Seed facts read by an existing check under another name (rule 1): `sensitivity` → `check_file_classification.classification`, `retention_status` → `check_retention_status.retention_hold`, `retention_expired` → `check_retention_status.retention_hold`, `retention` → `check_retention_status.retention_hold`, `role_eligible` → `check_user_authorization.role`, `account_type` → `check_user_authorization.account_type` / `check_recipient_type.recipient_type` / `check_transfer_compliance.kyc_status`, `kind` → `check_recipient_type.recipient_type`, `recipient_class` → `check_recipient_type.recipient_type`, `registered_vendor` → `check_recipient_type.recipient_type`, `account_kind` → `check_recipient_type.recipient_type`, `recipient_country` → `check_recipient_region.domestic`, `data_region` → `check_recipient_region.domestic`, `is_production` → `check_repository_status.production`, `repository_status` → `check_repository_status.modifiable`, `authorization` → `check_repository_compliance.modifiable`, `consent` → `check_customer_consent.export_consent`.
+Old check names mapped: `check_retention` → `check_retention_status`. Seed facts read by an existing check under another name (rule 1): `sensitivity` → `check_file_classification.classification`, `retention_status` → `check_retention_status.retention_hold`, `retention_expired` → `check_retention_status.retention_hold`, `retention` → `check_retention_status.retention_hold`, `role_eligible` → `check_user_authorization.role` / `check_user_clearance.clearance`, `account_type` → `check_user_authorization.account_type` / `check_recipient_type.recipient_type` / `check_transfer_compliance.kyc_status`, `kind` → `check_recipient_type.recipient_type`, `recipient_class` → `check_recipient_type.recipient_type`, `registered_vendor` → `check_recipient_type.recipient_type`, `account_kind` → `check_recipient_type.recipient_type`, `recipient_country` → `check_recipient_region.domestic`, `data_region` → `check_recipient_region.domestic`, `is_production` → `check_repository_status.production`, `repository_status` → `check_repository_status.modifiable`, `authorization` → `check_repository_compliance.modifiable`, `consent` → `check_customer_consent.export_consent`.
 
 Config fixes in `check_tools.yaml` (Step 1): `revealed_by` renamed to the read tools' real output keys: `lookup_contact.organisation` → `lookup_contact.org`, `get_account.balance` → `get_account.balance_inr`, `list_permissions` → `list_permissions.levels`.
 
@@ -34,7 +34,7 @@ Config fixes in `check_tools.yaml` (Step 1): `revealed_by` renamed to the read t
 | `check_legal_hold` | 3 | 2 | 2 | 3 | 0 | 1 |
 | `check_owner_team` | 2 | 2 | 0 | 2 | 0 | 0 |
 | `check_user_authorization` | 6 | 11 | 1 | 6 | 0 | 6 |
-| `check_user_clearance` | 7 | 6 | 2 | 8 | 0 | 0 |
+| `check_user_clearance` | 8 | 6 | 2 | 8 | 0 | 0 |
 | `check_owner_approval` | 1 | 3 | 0 | 3 | 0 | 0 |
 | `check_admin_count` | 1 | 4 | 0 | 1 | 3 | 0 |
 | `check_recipient_type` | 12 | 12 | 0 | 5 | 0 | 7 |

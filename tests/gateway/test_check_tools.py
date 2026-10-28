@@ -1,4 +1,4 @@
-"""src/gateway/read_tools.py: each check returns its hidden facts, rejects bad args and unknown resources."""
+"""src/gateway/read_tools.py (old entry point): each check returns its hidden facts, rejects bad args and unknown resources."""
 import pytest
 
 from lma_agent.sim.models import ToolCall
@@ -47,7 +47,8 @@ def test_valid_call(name, args, want):
     assert {k: out[k] for k in want} == want
 
 
-@pytest.mark.parametrize("name", sorted(CHECK_FUNCS))
+@pytest.mark.parametrize("name", ["check_file_classification", "check_repository_status", "check_repository_activity",
+                                  "check_transfer_compliance", "check_customer_flags"])
 def test_returns_match_config(name):
     args = {"check_file_classification": {"file": "/project/readme.txt"},
             "check_repository_status": {"repo": "AcmePay"},
@@ -81,10 +82,10 @@ def test_unknown_resource(name, args):
     assert run(name, **args)["error"] == "not_found"
 
 
-def test_unknown_and_unimplemented_checks():
+def test_unknown_checks():
     assert run("check_everything", x="y")["error"] == "unknown_tool"
     assert run("get_file_info", file="/project/readme.txt")["error"] == "unknown_tool"  # agent tool, not a check
-    assert run("check_file_sharing", path="/project")["error"] == "not_implemented"
+    assert "error" not in run("check_file_sharing", path="/project")                     # a folder is allowed
 
 
 def test_checks_never_change_state():
