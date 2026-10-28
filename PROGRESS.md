@@ -1,7 +1,7 @@
 # Project Progress
 
 > Check this file before starting any work. Update it and push to GitHub after every change.
-> Last updated: 2026-10-28 by Prateek
+> Last updated: 2026-10-28 by Meet
 
 ## 🔴 HIGH PRIORITY: do these first (set by Meet, 2026-10-27)
 
@@ -14,7 +14,9 @@
 | 3 | ~~**Group-B seed fixes → regenerate 18 records**~~ ✅ Done (Param, 2026-10-27). 8 seeds edited, 18 records regenerated, `make records` 0 problems, `split --relock`, Changelog row added | **Param** | task 1 (group B) | `make records`: 0 problems; `split --relock` + Changelog row; committed |
 | 4 | ~~**`gold.required_checks` for all check-needed records**~~ ✅ Done (Param, 2026-10-28). 338/342 filled (all phase-1); remaining 4 are phase-2 `create_event` (not in scope). Group-C seed fixes applied (4 seeds, 8 records); 0 merge problems; `split --relock`; Changelog rows added | **Param** | task 1 | `make records`: 0 problems and `required_checks_missing: 4` (phase-2 only); relock + Changelog row |
 | 6 | ~~**P_CAL_12 vs P_CAL_06 clash: BLOCK wins**~~ ✅ Done (Meet, 2026-10-28, Param unavailable): P_CAL_06 → BLOCK in the IND-CAL-T1-004 + OOD-CAL-T1-001 seed notes, `docs/Policy.md` and `policy_logic.yaml` (only P_CAL_06 edited: regenerating the whole store would also change P_CUST_06, P_CUST_18, P_FILE_11, P_FILE_19, see Blockers); gold of IND-CAL-T1-004-A (val) and OOD-CAL-T1-001-B (locked OOD) ASK_CONFIRMATION → BLOCK; `changed_records.py`: only those 2 records, `gold.decision` only; `split --relock`; coverage gold mismatches 3 → 1 | Meet | none | done |
-| 5 | Then: wire `src/monitor/run.py` for our records (retrieval + gateway), Phase B on Kaggle (`build_sft --phase b`, ready) | Meet — 🟡 2026-10-28: Phase B trained (v5); now wiring the 4 settings on our records + traces + interactive check | 2, 3, 4 | Phase B adapter + val results |
+| 5 | ~~Then: wire `src/monitor/run.py` for our records, Phase B on Kaggle~~ ✅ Done (Meet, 2026-10-28): 4 settings x 2 policy conditions, base + Phase B, 40 val records, results in the Activity Log | Meet | 2, 3, 4 | done |
+| 7 | 🔴 **Always-setting checks that fail: check table** (56 records, 28 seeds): grant_permission runs `check_file_sharing` on systems (`prod_db`, `hr_records`…), share_file runs `check_user_authorization` on `external_link`/`team_drive`/`general_drive`. Instructions: `docs/messages/2026-10-28_to_Prateek_always_table_errors.md` | **Prateek** | none | `python scripts/check_table_errors.py`: no grant_permission or link/drive rows; tell Meet (reruns always) |
+| 8 | 🔴 **Users and files missing from record states** (24 records, 8 seeds): `user_60`/`61`/`80`/`81`, `partner`, attachments `invite.ics`, `pii_1.csv`, the OOD kickoff `.ics`. Instructions: `docs/messages/2026-10-28_to_Param_state_gaps.md` | **Param** | none (parallel with 7) | `scripts/check_table_errors.py`: none of these rows; `make records` 0 problems; relock + Changelog row |
 
 ## Team
 
@@ -112,6 +114,7 @@
 
 ## Activity Log (newest first)
 
+- 2026-10-28, Meet: **our val records, 4 settings, done** (Kaggle `agent-risk-our-eval` v1, 40 records, correct decisions never/always/selective/oracle): base gold 23/29/27/32, base retrieval 21/24/26/28, **Phase B gold 26/31/34/39**, **Phase B retrieval 24/27/29/33**; gateway calls always 204, selective 16-30, oracle 30; 0 invalid outputs. Phase B beats base in every setting; selective beats always for Phase B with about 86% fewer checks, but on 40 records the hypothesis test is inconclusive. New `scripts/check_table_errors.py`: on all 528 records every oracle (gold) check answers, but 104 always table checks in 80 records fail → 🔴 HIGH PRIORITY #7 (Prateek, table) and #8 (Param, state)
 - 2026-10-28, Meet: 4-setting evaluation on our val records in two policy conditions (gold + 2, as in training; and real retrieval, tuned w 0.6): Kaggle job `kaggle/our_eval/` (base + Phase B adapter, 16 runs, traces per pass); adapter uploaded as PRIVATE dataset `meet6868/agent-risk-adapter-phase-b`
 - 2026-10-28, Meet: **Phase B trained** (Kaggle v5, 5 h 54 m, 456 steps, eval loss 0.026 both epochs, adapter + epoch_1/epoch_2 saved). External val: risk-label F1 91.5 (Phase A 93.4), type macro-F1 55.6 (59.6). **4 settings now run on our records** (`src/monitor/run.py` + `case_inputs.py`, traces.jsonl, `scripts/show_traces.py`); dry run on our 40 val records: all 4 settings OK, all oracle gold checks answer. Found: (1) **retrieval top-3 shows the gold policy in only 14/40 val records** (best query/weight on train+val: recall@3 0.55, @5 0.62): decision needed before the GPU eval; (2) always setting: 16 table checks hit `not_found` (grant_permission file checks on `dataset_fin`/`hr_records`, CAL attachment `invite.ics` not in state, IND-FILE-T2-003 recipient `user_60` not in state): **Prateek (table) / Param (state)**
 - 2026-10-28, Meet: started wiring the 4 settings for our records in `src/monitor/run.py` (retrieval + gateway + check table), with per-pass traces and an interactive tool
