@@ -14,7 +14,7 @@
 | 3 | ~~**Group-B seed fixes → regenerate 18 records**~~ ✅ Done (Param, 2026-10-27). 8 seeds edited, 18 records regenerated, `make records` 0 problems, `split --relock`, Changelog row added | **Param** | task 1 (group B) | `make records`: 0 problems; `split --relock` + Changelog row; committed |
 | 4 | ~~**`gold.required_checks` for all check-needed records**~~ ✅ Done (Param, 2026-10-28). 338/342 filled (all phase-1); remaining 4 are phase-2 `create_event` (not in scope). Group-C seed fixes applied (4 seeds, 8 records); 0 merge problems; `split --relock`; Changelog rows added | **Param** | task 1 | `make records`: 0 problems and `required_checks_missing: 4` (phase-2 only); relock + Changelog row |
 | 6 | ~~**P_CAL_12 vs P_CAL_06 clash: BLOCK wins**~~ ✅ Done (Meet, 2026-10-28, Param unavailable): P_CAL_06 → BLOCK in the IND-CAL-T1-004 + OOD-CAL-T1-001 seed notes, `docs/Policy.md` and `policy_logic.yaml` (only P_CAL_06 edited: regenerating the whole store would also change P_CUST_06, P_CUST_18, P_FILE_11, P_FILE_19, see Blockers); gold of IND-CAL-T1-004-A (val) and OOD-CAL-T1-001-B (locked OOD) ASK_CONFIRMATION → BLOCK; `changed_records.py`: only those 2 records, `gold.decision` only; `split --relock`; coverage gold mismatches 3 → 1 | Meet | none | done |
-| 5 | Then: wire `src/monitor/run.py` for our records (retrieval + gateway), Phase B on Kaggle (`build_sft --phase b`, ready) | Meet | 2, 3, 4 | Phase B adapter + val results |
+| 5 | Then: wire `src/monitor/run.py` for our records (retrieval + gateway), Phase B on Kaggle (`build_sft --phase b`, ready) | Meet — 🟡 2026-10-28: Phase B trained (v5); now wiring the 4 settings on our records + traces + interactive check | 2, 3, 4 | Phase B adapter + val results |
 
 ## Team
 
@@ -112,6 +112,7 @@
 
 ## Activity Log (newest first)
 
+- 2026-10-28, Meet: started wiring the 4 settings for our records in `src/monitor/run.py` (retrieval + gateway + check table), with per-pass traces and an interactive tool
 - 2026-10-28, Meet: Phase B Kaggle run (job `agent-risk-finetune` v5, code e2bb0c3) training since 07:44 UTC on **synthetic + external on purpose** (PLAN Step 16 mix, from base Qwen3-8B, kept after discussing synthetic-only): 1,858 train = 824 synthetic (first pass 496 + second pass 328, x2) + 1,034 external; 313 val. ~7 h
 - 2026-10-28, Meet: started the Phase B Kaggle fine-tune
 - 2026-10-28, Meet: **verified Prateek's gateway: `tests/test_gateway_contract.py` 4/4 pass**, 508 tests pass. Fixed the only failing gold checks: OOD-CUST-T1-006-A/B had `check_user_clearance` with `user: null` ($current_user on a seed without `requested_by`) → `user_sup6` (the key fact's resource, as `fact_checks.yaml` says); relocked (OOD test, only `gold.required_checks` of those 2 changed). The merge now rejects empty check args. **Param:** your fill script is not in the repo; if you rerun it, resolve `$current_user` from the key fact when the seed has no `requested_by`. **Phase B builds: 1,858 train / 313 val examples** (first pass 496, second pass 328, risk 1,034); next: Meet starts the Kaggle run
