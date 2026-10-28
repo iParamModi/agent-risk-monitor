@@ -15,6 +15,22 @@ Run 1 first, then 2 (Meet): comparing the two tables shows what training adds. S
 stops and writes nothing until every check-needed record has `gold.required_checks` (seed_to_record.md D4) and the
 check gateway exists (`src/gateway/gateway.py: for_record`); then job 2 runs with `--phase b`.
 
+## Final 30 Oct run: our val + test records (`kaggle/our_eval_final_base/`, `kaggle/our_eval_final_phase_b/`)
+
+One job per model (they can run at the same time), each: val (40) + locked in-domain test (120 phase 1 records; the 4
+phase-2 `create_event` records are left out, as in training) x 2 policy conditions x 4 settings, then one
+`src.eval.tables` report per condition and split (`ours_<model>_<policies>_<split>`). Run ids:
+`ours_<model>_<policies>_<setting>_<split>`. Every finished run is copied to `/kaggle/working/results` at once.
+Nothing trains or tunes on test. OOD is not run (after 30 Oct).
+
+```bash
+bash scripts/kaggle_push_code.sh "final run"            # code dataset = the commit on GitHub
+kaggle kernels push -p kaggle/our_eval_final_base --accelerator NvidiaTeslaT4
+kaggle kernels push -p kaggle/our_eval_final_phase_b --accelerator NvidiaTeslaT4
+kaggle kernels output meet6868/agent-risk-final-base -p outputs/kaggle/final_base
+kaggle kernels output meet6868/agent-risk-final-phase-b -p outputs/kaggle/final_phase_b
+```
+
 ## Our records in 4 settings (`kaggle/our_eval/`) and talking to the model
 
 `kaggle kernels push -p kaggle/our_eval --accelerator NvidiaTeslaT4`: our 40 val records, base and Phase B adapter, each

@@ -1,7 +1,7 @@
 # Project Progress
 
 > Check this file before starting any work. Update it and push to GitHub after every change.
-> Last updated: 2026-10-28 by Meet
+> Last updated: 2026-10-29 by Meet
 
 ## 📄 Everyone: read `docs/reports/our_eval_walkthrough.pdf` (Meet, 2026-10-28)
 
@@ -33,6 +33,7 @@ How our monitor really runs on our records: diagrams of the loop and the 4 setti
 
 | Task | Who | Started | Status / Notes |
 |------|-----|---------|----------------|
+| **Final 30 Oct run** on Kaggle: base + Phase B on our val (40) + test (120) records, 4 settings x 2 policy conditions (`kaggle/our_eval_final_base/`, `kaggle/our_eval_final_phase_b/`); rule baselines (never / always) on CPU meanwhile | Meet | 2026-10-29 | Checked first: Prateek's gateway (gold checks identical to training, 67,846-call crash sweep 0), Param's #8 (24 records, hidden.state only, same entity per set), `check_table_errors.py` 0, 532 tests, CPU rehearsal of the whole job on val + test |
 | **Phase B QLoRA on Kaggle** (our phase 1 train records (a)+(b) x2 + external (c)), job `meet6868/agent-risk-finetune` with `--phase b` | Meet | 2026-10-28 | 1,858 train / 313 val examples; extra logging for tracing errors |
 | Step 6: policy retrieval (`src/policies/store.py`, `retriever.py`: BM25 + `bge-base-en-v1.5`, top 3; recall@3 + T5 conflict recall) | Meet | 2026-10-26 | Temporary `data/policies/policies.jsonl` built from `docs/Policy.md` (visible text only) until Param's Step 5 replaces it. Query = action + args + seed `story_hint` for now. ✅ Code + tests: `scripts/build_policies.py`, `src/policies/store.py`, `retriever.py`, `scripts/eval_retrieval.py` (recall@1/3/5, T5 conflict recall, w = 0.0…1.0, in-domain seeds only). ✅ Temp store: 138 in-domain, 152 OOD. ✅ **First run (2026-10-26, CPU, ~1 min)**: 162 in-domain seeds, best w = 0.7: recall@3 64.8 (recall@5 72.2, T5 conflict 69.2); T3 93 / T4 90 / T5 80 but T1 52 / T2 54, because their deciding fact is hidden by design, so the query cannot tell apart several policies on the same action (e.g. 3 grant_permission policies). Report: `outputs/retrieval/seed_report_in_domain.md`. Next: after Step 5, retune w on val seeds; team to consider top 5, or adding all policies of the action type |
 | **Monitor loop + Qwen3-8B fine-tuning** (`src/monitor/`: prompt builder, parser, 4 settings `never`/`always`/`selective`/`oracle`, gateway calls; writes `outputs/runs/<run_id>/predictions.jsonl` per `docs/evaluation_metrics.md` §2 + §8; then SFT file + QLoRA, R13.1) | Prateek, Meet | 2026-10-25 | Shared M3 work (see `decisions.md` Changelog); split of parts to agree with Meet. **Loop done (2026-10-25)**: `src/monitor/` (4 settings, strict parser, prompt builder, OpenAI-compatible model client for vLLM / hosted API, `python -m src.monitor.run`), `prompts/monitor_v1.txt`, `monitor_risk_v1.txt`; dry run on 147 external val records → `src.eval.tables` OK. Our records wait for gateway (Step 4), retrieval (Step 6), check-tool list (R7.1), check table (R7.5). Next: GPU for Qwen3-8B (R13.3), SFT file Models: prompted base Qwen3-8B + one QLoRA run. Starting with the loop |

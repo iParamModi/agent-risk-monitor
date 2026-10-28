@@ -13,15 +13,16 @@ def checks_before_pass(setting: str, action: dict, check_table: dict, gold: dict
     """Checks the loop runs before the first model pass: all table checks (always), the gold checks
     (oracle), none otherwise. gold is read here only to pick the oracle checks; it never reaches the prompt.
 
-    check_table maps an action name to [{"tool": <check tool>, "args": {<tool arg>: <action arg name>}}];
+    check_table maps an action name to [{"check" (or "tool"): <check tool>, "args": {<tool arg>: <action arg name>}}];
     the args are filled from the proposed action. A table arg missing from the action is left out
-    (the gateway then answers invalid_args, which counts as a call, R7.6).
+    (the gateway then answers invalid_args, which counts as a call, R7.6). Evaluation runs pass run_monitor's
+    table_checks instead (src.gateway.gateway.table_calls: $current_user, if_arg, unless_kind).
     """
     if setting == "always":
         out = []
         for entry in check_table.get(action["name"], []):
             args = {k: action["args"][v] for k, v in entry.get("args", {}).items() if v in action["args"]}
-            out.append({"tool": entry["tool"], "args": args})
+            out.append({"tool": entry.get("check", entry.get("tool")), "args": args})
         return out
     if setting == "oracle":
         return [{"tool": c["tool"], "args": dict(c["args"])} for c in (gold.get("required_checks") or [])]
