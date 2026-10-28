@@ -3,6 +3,10 @@
 > Check this file before starting any work. Update it and push to GitHub after every change.
 > Last updated: 2026-10-28 by Meet
 
+## 📄 Everyone: read `docs/reports/our_eval_walkthrough.pdf` (Meet, 2026-10-28)
+
+How our monitor really runs on our records: diagrams of the loop and the 4 settings, the exact prompt, results, and 18 real examples with every model answer and gateway call. What to look at for your part: `docs/messages/2026-10-28_to_team_eval_walkthrough.md`.
+
 ## 🔴 HIGH PRIORITY: do these first (set by Meet, 2026-10-27)
 
 **Prateek, Param: when you pull, start here, before any other task.** Phase B fine-tuning on our records, the oracle setting and the check metrics all wait on these, and the submission is 30 Oct. Full instructions: `docs/messages/2026-10-27_to_Prateek_phase_b_blockers.md`, `docs/messages/2026-10-27_to_Param_phase_b_blockers.md`. Each file ends with a **⚠️ Be careful** list: read it before you start. When one is done, remove its row here and add it to Completed.
@@ -114,6 +118,7 @@
 
 ## Activity Log (newest first)
 
+- 2026-10-28, Meet: walkthrough PDF for the team, `docs/reports/our_eval_walkthrough.pdf` (`scripts/make_eval_pdf.py`), notice at the top of this file; prompt example fixed (`check_file_sharing` takes `path`); verified Prateek's #7: `check_table_errors.py` 104 → 48 failing calls, all in Param's #8 records
 - 2026-10-28, Prateek: **check gateway done** (part 2): `run_always`/`run_oracle`, A6 noise, enums, no-bypass + parity tests, sample log `docs/gateway_samples/`. Full suite 531 pass, 1 fail (`test_build_sft`: no torch locally). **Meet:** for the always and oracle settings you can call `run_always(gw)` / `run_oracle(gw, record)` (same calls as your `table_checks` path); for A6 pass `noise=NoiseConfig(rate, seed)` to `for_record`. The old `checks_before_pass` always branch (`entry["tool"]`) is dead code now, safe to delete
 - 2026-10-28, Prateek: always check table fixed (HIGH PRIORITY #7): grant_permission on a system and share_file to a link/drive no longer get a file/user check (`configs/resource_kinds.yaml`, `unless_kind`); `check_table_errors.py` 80 → 24 records, all Param's #8. **Meet: rerun the always setting** (`table_calls` changed, nothing else). Next: gateway part 2
 - 2026-10-28, Meet: **our val records, 4 settings, done** (Kaggle `agent-risk-our-eval` v1, 40 records, correct decisions never/always/selective/oracle): base gold 23/29/27/32, base retrieval 21/24/26/28, **Phase B gold 26/31/34/39**, **Phase B retrieval 24/27/29/33**; gateway calls always 204, selective 16-30, oracle 30; 0 invalid outputs. Phase B beats base in every setting; selective beats always for Phase B with about 86% fewer checks, but on 40 records the hypothesis test is inconclusive. New `scripts/check_table_errors.py`: on all 528 records every oracle (gold) check answers, but 104 always table checks in 80 records fail → 🔴 HIGH PRIORITY #7 (Prateek, table) and #8 (Param, state)
