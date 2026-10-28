@@ -4,6 +4,32 @@ From Meet, 2026-10-27. **Start here when you pull, before any other task.** Phas
 the oracle setting and the check metrics (check recall, correct missing fact) all wait on these two tasks, and the
 submission is 30 Oct. Param's tasks (`2026-10-27_to_Param_phase_b_blockers.md`) need your task 1 first.
 
+## 🔴 Update 2026-10-28: the gateway (task 2) is now the ONLY thing blocking Phase B
+
+Param's tasks are done and verified (`required_checks` filled, 0 merge problems, test lock OK). The Phase B
+builder's readiness check now lists one missing item: `src/gateway/gateway.py: for_record`.
+
+### Why we cannot train without the gateway
+
+1. **The second-pass examples need real check results.** Half of what Phase B teaches is "ask for a check, read the
+   result, then decide". The result in the training prompt must be exactly what the gateway returns at evaluation
+   (same fields, same values, same wording). If we wrote the results with some other code, the model would learn
+   one format and see another at test time.
+2. **T1 pairs cannot be learned without results.** A and B have byte-identical text and opposite gold (e.g. ALLOW vs
+   BLOCK). Without a check result in the prompt, training would show the model the same input with two opposite
+   answers: it learns nothing, or learns to guess.
+3. **Training only first passes is worse than not training.** The model would learn to ask for checks but never to
+   decide after one, so in the selective setting it would fail exactly at the step we want to measure.
+4. **We cannot evaluate the fine-tuned model either.** The selective, always and oracle settings all call the
+   gateway; without it only the never setting runs on our records, and the main hypothesis (selective vs always)
+   cannot be tested.
+5. **Time.** One Phase B run is about 5 to 6 hours on Kaggle T4 x2 and we submit on 30 Oct. The run must start as
+   soon as the gateway is in, so there is time for one evaluation.
+
+What is ready and waiting: `python -m src.training.build_sft --phase b` (builds as soon as `for_record` exists) and
+`tests/test_gateway_contract.py` (4 tests: errors as data, OOD-only tools, every gold check answers with only its
+`returns` fields, gold never read). Make that file pass, push, and tell Meet: Meet starts the Kaggle run.
+
 ## Where we are
 
 - All 518 records are merged, checked, split and locked in `data/records/` (`make records`; report:
