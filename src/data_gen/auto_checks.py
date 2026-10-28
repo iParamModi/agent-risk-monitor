@@ -182,6 +182,9 @@ def check_required_checks(rec: dict, check_specs: dict) -> list[str]:
             problems.append(f"required check {c['tool']!r} is not a check tool for {rec['set']} records")
             continue
         args, params, required = set(c["args"]), set(spec["params"]), set(spec.get("required", spec["params"]))
+        empty = sorted(k for k, v in c["args"].items() if v is None or (isinstance(v, str) and not v.strip()))
+        if empty:       # e.g. $current_user on a seed without requested_by: the gateway answers invalid_args
+            problems.append(f"required check {c['tool']} has empty args {empty}")
         if not required <= args <= params:
             problems.append(f"required check {c['tool']} args {sorted(args)}: needs {sorted(required)}, "
                             f"allows {sorted(params)}")

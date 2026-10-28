@@ -158,6 +158,7 @@ def test_required_checks_once_filled():
            record(required_checks=[{"tool": "check_legal_hold", "args": {"file": "memo_9.pdf"}}]),
            record(required_checks=[{"tool": "check_customer_consent", "args": {"customer_id": "C-1"}}]),  # OOD only
            record(required_checks=[]),
+           record(required_checks=[{"tool": "check_legal_hold", "args": {"resource": None}}]),      # unresolved arg
            record(check_needed=False, missing_fact=None,
                   required_checks=[{"tool": "check_legal_hold", "args": {"resource": "memo_9.pdf"}}])]
     assert all(check_required_checks(r, specs) for r in bad)
