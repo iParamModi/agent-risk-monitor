@@ -22,8 +22,9 @@ Param has the state gaps (other rows of that output), you have the table rows.
    IND-FILE-T1-006/010/014, IND-PRIV-T1-002/007/011; targets `external_link`, `team_drive`, `general_drive`).
    They are not users. Skip the user check for these targets (a fixed list in `check_table.yaml`), or let the
    simulator answer them.
-3. Not a bug: 2 `invalid_args` in the eval are the base model writing `file` instead of `path` for
-   `check_file_sharing`. The gateway answered correctly. Do not rename tool arguments.
+3. Nothing for you: 2 `invalid_args` in the eval are the base model writing `file` instead of `path` for
+   `check_file_sharing`. The gateway answered correctly; the cause is our prompt's format example
+   (`src/monitor/prompt_builder.py`, Meet's). Do not rename tool arguments.
 
 ## ⚠️ Be careful
 
