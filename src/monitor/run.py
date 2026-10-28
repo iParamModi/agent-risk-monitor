@@ -9,8 +9,14 @@ The API key is read from the env var named by --api-key-env (default MONITOR_API
     python -m src.monitor.run --records ... --setting never --backend transformers \
         --model Qwen/Qwen3-8B --revision b968826d9c46dd6066d109eabc6255188de91218 [--adapter <LoRA>] --run-id ...
 
-Our records (task = decide_action) also need the check gateway (Step 4), retrieval (Step 6), the
-check-tool list (R7.1) and the check table (R7.5); until those exist only external records can run.
+Our records (task = decide_action) get the top 3 retrieved policies, the check-tool list, a gateway per record
+and the always-setting checks (src/monitor/case_inputs.py), e.g. all 4 settings on our val records:
+    for s in never always selective oracle; do python -m src.monitor.run --records data/records/val.jsonl \
+        --setting $s --backend transformers --model Qwen/Qwen3-8B --revision ... --adapter <LoRA> --run-id ours_$s; done
+For our records the run also writes traces.jsonl: per record, every pass (prompt and raw answer), every gateway
+call with its result, which policies were shown (and whether the gold ones were), and the final output; read it
+with python scripts/show_traces.py outputs/runs/<run_id>. --dry-run on our records answers with a scripted model
+(selective: ask for the first table check, then ALLOW), so the gateway, retrieval and scoring run without a GPU.
 """
 import argparse
 import json
@@ -34,11 +40,52 @@ class Recording:
 
     def __init__(self, model):
         self.inner, self.name, self.texts = model, model.name, []
+        self.passes: list[dict] = []        # prompt + raw answer of every pass of the current record
 
     def generate(self, messages):
         gen = self.inner.generate(messages)
         self.texts.append(gen.text)
+        self.passes.append({"messages": messages, "answer": gen.text})
         return gen
+
+
+class RecordingGateway:
+    """Wraps a gateway and keeps each call with the result the monitor saw (for traces.jsonl)."""
+
+    def __init__(self, gateway):
+        self.inner, self.calls = gateway, []
+
+    def call(self, tool, args):
+        result = self.inner.call(tool, args)
+        self.calls.append({"tool": tool, "args": args, "result": result})
+        return result
+
+
+def scripted_answers(setting: str, table_checks: list[dict]) -> list[str]:
+    """--dry-run on our records: selective asks for the first table check, then every setting answers ALLOW."""
+    decide = json.dumps({"type": "DECISION", "decision": "ALLOW", "risk_label": "SAFE", "risk_type": "NONE",
+                         "evidence": {"facts": [], "policy_ids": ["1"]}})
+    if setting == "selective" and table_checks:
+        need = json.dumps({"type": "NEED_INFORMATION", "reason": "Dry run.", "missing_fact": "dry run",
+                           "checks": [table_checks[0]]})
+        return [need, decide]
+    return [decide]
+
+
+def trace(record: dict, setting: str, kwargs: dict, passes: list[dict], calls: list[dict], row: dict) -> dict:
+    """One record's run for a human to read (scripts/show_traces.py). Gold is copied for the reader only."""
+    from src.monitor.prompt_builder import number_policies
+    shown = number_policies(kwargs["policies"], record["record_id"])
+    gold = record["gold"]
+    output = row["output"]
+    return {"record_id": record["record_id"], "setting": setting, "case_type": record["case_type"],
+            "subtype": record["subtype"], "pair_side": record["pair_side"],
+            "gold": {k: gold[k] for k in ("decision", "risk_label", "risk_type", "check_needed", "missing_fact",
+                                          "required_checks", "policy_ids")},
+            "shown_policies": [{"ref": p["ref"], "policy_id": p["policy_id"], "text": p["text"]} for p in shown],
+            "gold_policies_shown": all(pid in {p["policy_id"] for p in shown} for pid in gold["policy_ids"]),
+            "passes": passes, "calls": calls, "output": output,
+            "correct": bool(output and output.get("decision") == gold["decision"])}
 
 
 RAW_CHARS = 1000
@@ -77,10 +124,10 @@ def main(argv=None):
     args = ap.parse_args(argv)
 
     records = load_records(args.records, args.split, args.limit)
-    ours = [r["record_id"] for r in records if r["task"] == "decide_action"]
-    if ours:
-        raise SystemExit(f"{len(ours)} decide_action records (e.g. {ours[0]}): the gateway, retriever and "
-                         "check-tool list are not built yet (Steps 4, 6, R7.1). Run external records only for now.")
+    inputs = None
+    if any(r["task"] == "decide_action" for r in records):
+        from src.monitor.case_inputs import CaseInputs
+        inputs = CaseInputs()
 
     if args.dry_run:
         model = FakeModel([DRY_RISK] * len(records))
@@ -97,17 +144,29 @@ def main(argv=None):
 
     out_dir = RUNS_DIR / args.run_id
     model = Recording(model)
-    rows, invalid_raw = [], []
+    rows, invalid_raw, traces = [], [], []
     start = time.perf_counter()
     for i, rec in enumerate(records, 1):
-        model.texts = []
-        rows.append(run_monitor(rec, args.setting, model))
+        model.texts, model.passes = [], []
+        kwargs = {}
+        if rec["task"] == "decide_action":
+            kwargs = inputs.for_record(rec, args.setting, args.run_id)
+            kwargs["gateway"] = RecordingGateway(kwargs["gateway"])
+            if args.dry_run:
+                model.inner = FakeModel(scripted_answers(args.setting, kwargs["table_checks"]))
+        elif args.dry_run:
+            model.inner = FakeModel([DRY_RISK])
+        rows.append(run_monitor(rec, args.setting, model, **kwargs))
+        if kwargs:
+            traces.append(trace(rec, args.setting, kwargs, model.passes, kwargs["gateway"].calls, rows[-1]))
         if rows[-1]["output"] is None:
             invalid_raw.append({"record_id": rec["record_id"], "raw": [t[:RAW_CHARS] for t in model.texts]})
         if i <= 3 or i % 10 == 0 or i == len(records):     # first records early: shows the speed at once
             print(progress_line(i, len(records), time.perf_counter() - start, rows), flush=True)
     n = write_jsonl(out_dir / "predictions.jsonl", rows)
     write_jsonl(out_dir / "invalid_outputs.jsonl", invalid_raw)
+    if traces:              # our records only: external prompts (AgentRisk has no licence) are never written
+        write_jsonl(out_dir / "traces.jsonl", traces)
     write_json(out_dir / "run_config.json", {
         "run_id": args.run_id, "setting": args.setting, "model": model.name, "base_url": args.base_url,
         "thinking_off": args.thinking_off, "backend": args.backend,

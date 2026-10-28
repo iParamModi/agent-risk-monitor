@@ -80,7 +80,8 @@ def _never(case: _Case, visible, policies, check_tools) -> dict | None:
 
 
 def run_monitor(record: dict, setting: str, model, gateway=None, policies: list[dict] = (),
-                check_tools: list[dict] = (), check_table: dict | None = None) -> dict:
+                check_tools: list[dict] = (), check_table: dict | None = None,
+                table_checks: list[dict] | None = None) -> dict:
     """One record, one setting.
 
     model:       has generate(messages) -> Generation (src/monitor/models.py)
@@ -88,6 +89,8 @@ def run_monitor(record: dict, setting: str, model, gateway=None, policies: list[
     policies:    the top 3 retrieved policies [{"policy_id", "text"}] (Step 6); the prompt shows them by number
     check_tools: the check-tool list shown to the model (configs/tools.yaml, R7.1)
     check_table: action -> checks for the always setting (configs/check_table.yaml, R7.5)
+    table_checks: the always checks of this record, already filled ([{"tool", "args"}], e.g. from
+                 src.gateway.gateway.table_calls, which also fills $current_user); used instead of check_table
     """
     if setting not in SETTINGS:
         raise ValueError(f"unknown setting {setting!r}, expected one of {SETTINGS}")
@@ -104,7 +107,11 @@ def run_monitor(record: dict, setting: str, model, gateway=None, policies: list[
     elif setting == "never":
         output = _never(case, visible, policies, check_tools)
     else:   # always, oracle: fixed checks first, then one pass
-        case.check(checks_before_pass(setting, visible["proposed_action"], check_table or {}, record["gold"]))
+        if setting == "always" and table_checks is not None:
+            before = [{"tool": c["tool"], "args": dict(c["args"])} for c in table_checks]
+        else:
+            before = checks_before_pass(setting, visible["proposed_action"], check_table or {}, record["gold"])
+        case.check(before)
         prompt = build_decide_prompt(visible, policies, check_tools, may_check=False, results=case.results)
         output, _ = case.ask(as_messages(prompt), ("DECISION",))
     output = refs_to_ids(output, policies)
