@@ -41,7 +41,7 @@ def load(path: str, tokenizer, max_len: int, limit: int | None = None, seed: int
     rows = [json.loads(line) for line in Path(path).read_text(encoding="utf-8").splitlines() if line.strip()]
     if limit and len(rows) > limit:
         rows = random.Random(seed).sample(rows, limit)
-    kept, dropped = [], Counter()
+    kept, dropped, lengths = [], Counter(), {}
     for r in rows:
         t = tokenize(r, tokenizer, max_len)
         if t is None:
@@ -49,7 +49,10 @@ def load(path: str, tokenizer, max_len: int, limit: int | None = None, seed: int
             dropped[f"{r['source']} {target.get('risk_label') or target['type']}"] += 1
         else:
             kept.append(t)
-    return kept, {"examples": len(rows), "kept": len(kept), "dropped_over_max_len": dict(dropped)}
+            lengths.setdefault(r.get("kind", "risk"), []).append(len(t["input_ids"]))
+    tokens = {k: {"n": len(v), "mean": sum(v) // len(v), "max": max(v)} for k, v in sorted(lengths.items())}
+    return kept, {"examples": len(rows), "kept": len(kept), "dropped_over_max_len": dict(dropped),
+                  "tokens_by_kind": tokens}
 
 
 def efficient_attention():
@@ -74,8 +77,11 @@ def progress_callback(path: Path | None):
             self.start = time.perf_counter()
 
         def on_log(self, args, state, control, logs=None, **kw):
+            import torch
             logs = logs or {}
             el = time.perf_counter() - self.start
+            # peak GPU memory per device since the start (an out-of-memory crash shows where it grew)
+            mem = "/".join(f"{torch.cuda.max_memory_allocated(i) / 2**30:.1f}" for i in range(torch.cuda.device_count()))
             left = el / state.global_step * (state.max_steps - state.global_step) if state.global_step else 0
             fmt = lambda s: f"{int(s // 3600)}h {int(s % 3600 // 60):02d}m"   # noqa: E731
             parts = [f"[train] step {state.global_step}/{state.max_steps} ({100 * state.global_step // max(state.max_steps, 1)}%)",
@@ -83,13 +89,27 @@ def progress_callback(path: Path | None):
                      f"loss {logs['loss']:.4f}" if "loss" in logs else "",
                      f"eval_loss {logs['eval_loss']:.4f}" if "eval_loss" in logs else "",
                      f"lr {logs['learning_rate']:.2e}" if "learning_rate" in logs else "",
-                     f"{fmt(el)} elapsed, ~{fmt(left)} left"]
+                     f"{fmt(el)} elapsed, ~{fmt(left)} left",
+                     f"peak GPU {mem} GiB" if mem else ""]
             line = " | ".join(p for p in parts if p)
             print(line, flush=True)
             if path:
                 with open(path, "a", encoding="utf-8") as f:
                     f.write(line + "\n")
     return Progress()
+
+
+def epoch_saver(out: Path):
+    """Saves the adapter (LoRA weights only) to out/epoch_<n> after every epoch, so a run that dies later in a
+    long Kaggle session still leaves the last finished epoch."""
+    from transformers import TrainerCallback
+
+    class EpochSaver(TrainerCallback):
+        def on_epoch_end(self, args, state, control, model=None, **kw):
+            path = out / f"epoch_{round(state.epoch)}"
+            model.save_pretrained(path)
+            print(f"[train] saved the epoch {round(state.epoch)} adapter to {path}", flush=True)
+    return EpochSaver()
 
 
 class Collator:
@@ -170,7 +190,7 @@ def main(argv=None) -> int:
     warmup = max(1, round(0.03 * math.ceil(len(train) / args.grad_accum) * args.epochs))
     trainer = Trainer(
         model=model, train_dataset=train, eval_dataset=val, data_collator=Collator(tokenizer.pad_token_id),
-        callbacks=[progress_callback(Path(args.progress_file) if args.progress_file else None)],
+        callbacks=[progress_callback(Path(args.progress_file) if args.progress_file else None), epoch_saver(out)],
         args=TrainingArguments(
             output_dir=str(out / "checkpoints"), num_train_epochs=args.epochs, learning_rate=args.lr,
             per_device_train_batch_size=1, per_device_eval_batch_size=1, gradient_accumulation_steps=args.grad_accum,

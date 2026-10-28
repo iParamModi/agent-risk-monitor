@@ -18,6 +18,7 @@ fi
 echo "uploading code at $(git log -1 --format='%h %s')"
 DIR=$(mktemp -d)
 git archive --format=tar.gz -o "$DIR/code.tar.gz" HEAD
+git log -1 --format="%H %s" > "$DIR/code_commit.txt"     # the job logs which code it runs
 if git archive HEAD | tar -t | grep -E '(^|/)\.env$|agentrisk\.jsonl$|^data/raw/agentrisk/|^data/external/agentrisk/|\.gguf$|\.safetensors$'; then
   echo "refusing: secret, AgentRisk data or weights in the archive" >&2; exit 1
 fi
