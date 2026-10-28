@@ -60,13 +60,8 @@ def requested_by(record):
 
 def table_calls(record):
     """The always-setting calls for a record's action (configs/check_table.yaml), args filled from the action."""
-    action, out = record["visible"]["proposed_action"], []
-    for e in TABLE.get(action["name"]) or []:
-        if "if_arg" in e and e["if_arg"] not in action["args"]:
-            continue
-        args = {k: requested_by(record) if v == "$current_user" else action["args"].get(v) for k, v in e["args"].items()}
-        out.append((e["check"], {k: v for k, v in args.items() if v is not None}))
-    return out
+    from src.gateway.gateway import table_calls as fill
+    return fill(record["visible"]["proposed_action"], requested_by(record))
 
 
 # ---------- basic (1-5) ----------
@@ -275,6 +270,31 @@ def test_log_flags_a_call_on_another_resource(tmp_path):
     gw.write_log(tmp_path / "gateway_log.jsonl")
     rows = [json.loads(line) for line in (tmp_path / "gateway_log.jsonl").read_text().splitlines()]
     assert len(rows) == 2 and rows[0]["case_id"] == r["record_id"]
+
+
+def test_table_skips_by_resource_kind_only():
+    """No file check on a system, no user check on a link; an unknown name keeps every check (a state gap
+    stays visible as not_found, it is never skipped)."""
+    from src.gateway.gateway import table_calls as fill
+    on_system = [t for t, _ in fill({"name": "grant_permission", "args": {"user": "u1", "resource": "prod_db"}}, "u0")]
+    on_unknown = [t for t, _ in fill({"name": "grant_permission", "args": {"user": "u1", "resource": "x_9"}}, "u0")]
+    assert "check_file_sharing" not in on_system and "check_file_sharing" in on_unknown
+    assert len(on_unknown) == len(on_system) + 1
+    to_link = [t for t, _ in fill({"name": "share_file", "args": {"file": "a.pdf", "with": "external_link"}}, "u0")]
+    to_user = [t for t, _ in fill({"name": "share_file", "args": {"file": "a.pdf", "with": "user_7"}}, "u0")]
+    assert "check_user_authorization" not in to_link and "check_user_authorization" in to_user
+
+
+def test_resource_kinds_never_name_a_file_folder_or_user_of_a_record():
+    """configs/resource_kinds.yaml must not hide anything a record state holds as a file, folder, user or contact."""
+    from src.gateway.gateway import RESOURCE_KINDS
+    listed = set().union(*RESOURCE_KINDS.values())
+    for r in RECORDS:
+        st = r["hidden"]["state"]
+        names = {f["file_id"] for f in st.get("files", [])} | {f.get("path") for f in st.get("folders", [])}
+        names |= {u["user_id"] for u in st.get("users", [])} | {c.get("address") for c in st.get("contacts", [])}
+        names |= {n.rstrip("/").rsplit("/", 1)[-1] for n in names if n}
+        assert not listed & names, r["record_id"]
 
 
 def test_call_check_wrapper():

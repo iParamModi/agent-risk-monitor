@@ -31,6 +31,8 @@ ROOT = Path(__file__).resolve().parents[2]
 MAX_CALLS_SELECTIVE = 4    # R9.4; the monitor loop keeps to it, the gateway only guards against a caller bug
 _DEFAULT = object()
 CHECK_TABLE = yaml.safe_load(CHECK_TABLE_PATH.read_text(encoding="utf-8")) or {}
+RESOURCE_KINDS = {k: set(v) for k, v in
+                  (yaml.safe_load((ROOT / "configs" / "resource_kinds.yaml").read_text(encoding="utf-8")) or {}).items()}
 
 
 class MissingFact(ValueError):
@@ -177,11 +179,20 @@ def _requested_by(seed_id: str, set_name: str) -> str:
     return _REQUESTERS[seed_id]
 
 
+def resource_kind(name) -> str | None:
+    """The kind configs/resource_kinds.yaml gives a name (system, link), None for anything else."""
+    return next((kind for kind, names in RESOURCE_KINDS.items() if str(name) in names), None)
+
+
 def table_calls(action: dict, current_user: str) -> list[tuple[str, dict]]:
-    """The calls configs/check_table.yaml lists for an action, args filled from the action (R7.5)."""
+    """The calls configs/check_table.yaml lists for an action, args filled from the action (R7.5).
+    A row is skipped when its if_arg is absent or an unless_kind argument names a resource of that kind,
+    never because a resource is missing from the state."""
     out = []
     for e in CHECK_TABLE.get(action["name"]) or []:
         if "if_arg" in e and e["if_arg"] not in action["args"]:
+            continue
+        if any(resource_kind(action["args"].get(arg)) == kind for arg, kind in (e.get("unless_kind") or {}).items()):
             continue
         args = {k: current_user if v == "$current_user" else action["args"].get(v) for k, v in e["args"].items()}
         out.append((e["check"], {k: v for k, v in args.items() if v is not None}))

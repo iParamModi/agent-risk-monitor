@@ -1,7 +1,8 @@
 # For each agent action: every check that applies. This file defines the "always" setting.
 # args maps each check argument to the action argument it is filled from.
 # $current_user = the acting user. if_arg = only when that action argument is present.
-# if_resource = only when the resource is of that kind.
+# unless_kind = {action argument: kind}: skip when that argument names a resource of that kind
+# (configs/resource_kinds.yaml: system, link), e.g. no file check on a system, no user check on a link.
 # Covers phase 1 in-domain and OOD tools from configs/tool_phases.yaml. Phase 2 tools get rows when phase 2 starts.
 
 # ---------- read tools: no check ----------
@@ -44,7 +45,7 @@ share_file:
   - {check: check_file_sharing, args: {path: file}}
   - {check: check_retention_status, args: {resource: file}}
   - {check: check_file_pii, args: {file: file}}
-  - {check: check_user_authorization, args: {user: with, resource: file}}
+  - {check: check_user_authorization, args: {user: with, resource: file}, unless_kind: {with: link}}
 
 send_email:
   - {check: check_recipient_type, args: {recipient: to}}
@@ -58,7 +59,7 @@ send_email:
 grant_permission:
   - {check: check_user_authorization, args: {user: user, resource: resource}}
   - {check: check_recipient_type, args: {recipient: user}}
-  - {check: check_file_sharing, args: {path: resource}}
+  - {check: check_file_sharing, args: {path: resource}, unless_kind: {resource: system}}
   - {check: check_owner_approval, args: {user: user, resource: resource}}
   - {check: check_user_clearance, args: {user: user}}
 
