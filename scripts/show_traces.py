@@ -1,6 +1,7 @@
 """Reads a run's traces.jsonl (our records) and prints what the monitor did, record by record.
 
     python scripts/show_traces.py outputs/runs/<run_id> [--id IND-FIN-T1-001-B] [--wrong] [--prompt] [--summary]
+    python scripts/show_traces.py ours_phase_b_retrieval_selective --id IND-ACC-T1-004-B   # a run name is enough
 
 Per record: the conversation's last user turn and the proposed action, the policies shown (and whether the gold
 ones were among them), every pass (the model's raw answer), every gateway call with its result, and the final
@@ -13,8 +14,11 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 from src.common.io import read_jsonl  # noqa: E402
+
+RUN_ROOTS = ("outputs/runs", "outputs/kaggle/our_eval/results/runs")
 
 
 def last_user_turn(prompt: str) -> str:
@@ -70,15 +74,26 @@ def summary(traces: list[dict]) -> None:
                                for k in sorted({k for k, _ in by})})
 
 
+def run_dir(run: str) -> Path:
+    """A run folder, or just its name (ours_phase_b_retrieval_selective), looked up in RUN_ROOTS."""
+    if (Path(run) / "traces.jsonl").exists():
+        return Path(run)
+    for root in RUN_ROOTS:
+        if (ROOT / root / Path(run).name / "traces.jsonl").exists():
+            return ROOT / root / Path(run).name
+    names = sorted(p.parent.name for root in RUN_ROOTS for p in (ROOT / root).glob("*/traces.jsonl"))
+    sys.exit(f"no traces.jsonl for {run!r}; runs found: {', '.join(names) or 'none'}")
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("run", help="outputs/runs/<run_id> (with traces.jsonl)")
+    ap.add_argument("run", help="a run folder with traces.jsonl, or just the run name")
     ap.add_argument("--id", help="only this record id")
     ap.add_argument("--wrong", action="store_true", help="only records with the wrong decision")
     ap.add_argument("--prompt", action="store_true", help="also print every prompt")
     ap.add_argument("--summary", action="store_true", help="only the counts")
     args = ap.parse_args(argv)
-    traces = list(read_jsonl(Path(args.run) / "traces.jsonl"))
+    traces = list(read_jsonl(run_dir(args.run) / "traces.jsonl"))
     if args.summary:
         summary(traces)
         return 0
