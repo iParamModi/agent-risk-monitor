@@ -1,7 +1,7 @@
 # Project Progress
 
 > Check this file before starting any work. Update it and push to GitHub after every change.
-> Last updated: 2026-10-28 by Meet
+> Last updated: 2026-10-28 by Prateek
 
 ## 🔴 HIGH PRIORITY: do these first (set by Meet, 2026-10-27)
 
@@ -9,7 +9,7 @@
 
 | # | Task | Who | Needs | Done when |
 |---|------|-----|-------|-----------|
-| 1 | **Finish the check tool decisions** (group A + group B): every deciding fact of a check-needed record is returned by a check tool. Today 115 of the 316 T1/T2 check-needed records (35 facts) have none; the 14 T5 facts_disagree seeds need both facts mapped. Then give Param the fact → check map | **Prateek** — 🟡 2026-10-27: group A + B configs ✅, `configs/fact_checks.yaml` ✅ (Param: use it for #4); check-needed records without a check 115 → 21 (13 fixed by Param's P0, 4 phase-2 `create_event`, 4 wait for Prateek's decision on 4 group C seeds) | none | `scripts/check_tool_coverage.py`: every in-scope seed passes |
+| 1 | **Finish the check tool decisions** (group A + group B): every deciding fact of a check-needed record is returned by a check tool. Today 115 of the 316 T1/T2 check-needed records (35 facts) have none; the 14 T5 facts_disagree seeds need both facts mapped. Then give Param the fact → check map | **Prateek** — 🟡 2026-10-27: group A + B configs ✅, `configs/fact_checks.yaml` ✅ (Param: use it for #4); check-needed records without a check 115 → 21 (13 fixed by Param's P0, 4 phase-2 `create_event`, 4 wait for Prateek's decision on 4 group C seeds); ⏳ 2026-10-28 Prateek: applying group C (IND-ACC-T5-007 + IND-FILE-T5-006 → policy conflicts; IND-FIN-T5-001/003 → `account_type` also mapped on `check_transfer_compliance.kyc_status`, no new tool) | none | `scripts/check_tool_coverage.py`: every in-scope seed passes |
 | 2 | 🔴🔴 **THE ONLY PHASE B BLOCKER LEFT (2026-10-28)**: no training and no evaluation on our records without it, why in `docs/messages/2026-10-27_to_Prateek_phase_b_blockers.md` (top). **Check gateway** `src/gateway/gateway.py`: `for_record(record).call(tool, args) -> dict`, errors as data (R7.3, R7.4), only the tool's `returns` fields | **Prateek** | none (parallel with 1) | `tests/test_gateway_contract.py` passes (skipped until `for_record` exists) |
 | 3 | ~~**Group-B seed fixes → regenerate 18 records**~~ ✅ Done (Param, 2026-10-27). 8 seeds edited, 18 records regenerated, `make records` 0 problems, `split --relock`, Changelog row added | **Param** | task 1 (group B) | `make records`: 0 problems; `split --relock` + Changelog row; committed |
 | 4 | ~~**`gold.required_checks` for all check-needed records**~~ ✅ Done (Param, 2026-10-28). 338/342 filled (all phase-1); remaining 4 are phase-2 `create_event` (not in scope). Group-C seed fixes applied (4 seeds, 8 records); 0 merge problems; `split --relock`; Changelog rows added | **Param** | task 1 | `make records`: 0 problems and `required_checks_missing: 4` (phase-2 only); relock + Changelog row |
@@ -111,6 +111,7 @@
 
 ## Activity Log (newest first)
 
+- 2026-10-28, Prateek: started group C seeds (IND-ACC-T5-007, IND-FILE-T5-006, IND-FIN-T5-001/003). FIN decision: no `check_vendor_master`; `account_type` mapped onto `check_transfer_compliance.kyc_status`, P_FIN_07 and IND-FIN-T1-005 unchanged
 - 2026-10-28, Meet: **Prateek: the gateway (row 2) is the only Phase B blocker left.** Added why training and evaluation cannot run without it to the top of your message file
 - 2026-10-28, Meet: P_CAL clash fixed (BLOCK wins): P_CAL_06 → BLOCK, 2 records' gold changed (IND-CAL-T1-004-A val, OOD-CAL-T1-001-B locked OOD), relocked, coverage mismatches 3 → 1, 437 tests pass. Found that `make policies` drifts from the committed policy_logic.yaml (Blockers)
 - 2026-10-28, Meet: took over HIGH PRIORITY row 6 (P_CAL clash, BLOCK wins) because Param is unavailable
