@@ -15,6 +15,29 @@ Run 1 first, then 2 (Meet): comparing the two tables shows what training adds. S
 stops and writes nothing until every check-needed record has `gold.required_checks` (seed_to_record.md D4) and the
 check gateway exists (`src/gateway/gateway.py: for_record`); then job 2 runs with `--phase b`.
 
+## Our records in 4 settings (`kaggle/our_eval/`) and talking to the model
+
+`kaggle kernels push -p kaggle/our_eval --accelerator NvidiaTeslaT4`: our 40 val records, base and Phase B adapter, each
+in 2 policy conditions (gold + 2 look-alikes; real top-3 retrieval) x 4 settings, one model load per model. Download
+with `kaggle kernels output meet6868/agent-risk-our-eval -p outputs/kaggle/our_eval`, then read what the model did:
+`python scripts/show_traces.py outputs/kaggle/our_eval/results/runs/ours_phase_b_gold_selective [--wrong] [--prompt]`.
+
+Talk to the model yourself (needs the GPU): new Kaggle notebook, accelerator GPU T4 x2, internet on, add the datasets
+`meet6868/agent-risk-code` and `meet6868/agent-risk-adapter-phase-b`, then:
+```python
+import glob, shutil, sys, subprocess
+src = glob.glob("/kaggle/input/**/src/monitor/run.py", recursive=True)[0].rsplit("/src/", 1)[0]
+shutil.copytree(src, "/tmp/repo", dirs_exist_ok=True); sys.path.insert(0, "/tmp/repo")
+subprocess.run([sys.executable, "-m", "pip", "install", "-q", "peft", "sentence-transformers", "rank-bm25", "jsonschema"])
+subprocess.run([sys.executable, "-m", "pip", "uninstall", "-y", "-q", "torchao"])
+from scripts.chat_monitor import Chat
+adapter = glob.glob("/kaggle/input/**/adapter_config.json", recursive=True)[0].rsplit("/", 1)[0]
+chat = Chat(adapter=adapter)                       # Chat(adapter=None) for the base model
+chat.record("IND-FIN-T1-001-B")                     # replay a val/train record, selective, gold policies
+chat.ask("Send 3,50,000 from acct_12 to acct_77.", {"name": "transfer_money", "args": {"from_account": "acct_12",
+         "to_account": "acct_77", "amount_inr": 350000}}, world="IND-FIN-T1-001-B")   # your own request
+```
+
 ## One-time setup
 
 1. `.env` (git-ignored) holds `KAGGLE_USERNAME`, `KAGGLE_API_TOKEN`, `HF_TOKEN`. Never commit it.

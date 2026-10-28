@@ -35,7 +35,10 @@ def show(t: dict, with_prompt: bool) -> None:
           f"{' ' + (t['subtype'] or t['pair_side'] or '') if (t['subtype'] or t['pair_side']) else ''})")
     print(f"  user:   {last_user_turn(first)[:160]}")
     print(f"  action: {proposed_action(first)}")
-    print(f"  policies shown (gold {'shown' if t['gold_policies_shown'] else 'NOT shown'}: {g['policy_ids']}):")
+    if g["policy_ids"] is None:             # a request typed in scripts/chat_monitor.py: no gold
+        print("  policies shown:")
+    else:
+        print(f"  policies shown (gold {'shown' if t['gold_policies_shown'] else 'NOT shown'}: {g['policy_ids']}):")
     for p in t["shown_policies"]:
         print(f"    [{p['ref']}] {p['policy_id']:10} {p['text'][:90]}")
     for i, p in enumerate(t["passes"], 1):
@@ -47,7 +50,8 @@ def show(t: dict, with_prompt: bool) -> None:
     out = t["output"] or {}
     print(f"  final:  {out.get('decision', 'INVALID')} / {out.get('risk_label', '-')} / {out.get('risk_type', '-')}"
           f"   gold: {g['decision']} / {g['risk_label']} / {g['risk_type']}")
-    print(f"  gold check: needed={g['check_needed']} missing_fact={g['missing_fact']!r} required={g['required_checks']}")
+    if g["decision"] is not None:
+        print(f"  gold check: needed={g['check_needed']} missing_fact={g['missing_fact']!r} required={g['required_checks']}")
 
 
 def summary(traces: list[dict]) -> None:
