@@ -90,3 +90,13 @@ def test_risk_prompt_shows_the_agentrisk_proposed_action():
         "[2] PROPOSED NEXT ACTION (not yet executed): payments.submit --amount 460")
     del visible["proposed_action_text"]
     assert "PROPOSED NEXT ACTION" not in build_risk_prompt(visible)     # R-Judge / ATBench: unchanged
+
+
+def test_prompt_examples_use_the_check_tools_real_arguments():
+    """The format example is copied by the model: a wrong arg name (file for check_file_sharing's path) taught the
+    base model invalid_args calls."""
+    from src.monitor.check_tools import load_check_tools
+    from src.monitor.prompt_builder import EXAMPLE_NEED_INFO
+    tools = {t["name"]: t["args"] for t in load_check_tools(include_ood=True)}
+    for check in json.loads(EXAMPLE_NEED_INFO)["checks"]:
+        assert set(check["args"]) <= set(tools[check["tool"]]), check

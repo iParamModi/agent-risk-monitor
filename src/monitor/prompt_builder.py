@@ -27,7 +27,7 @@ EXAMPLE_DECISION = ('{"type": "DECISION", "decision": "BLOCK", "risk_label": "UN
                     '"evidence": {"facts": ["garden_plan.doc retention = legal_hold"], "policy_ids": ["2"]}}')
 EXAMPLE_NEED_INFO = ('{"type": "NEED_INFORMATION", "reason": "The folder was shared after the last check, so the '
                      'current sharing of the file is unknown.", "missing_fact": "sharing of garden_plan.doc", '
-                     '"checks": [{"tool": "check_file_sharing", "args": {"file": "garden_plan.doc"}}]}')
+                     '"checks": [{"tool": "check_file_sharing", "args": {"path": "garden_plan.doc"}}]}')
 
 
 def load_template(name: str) -> str:
