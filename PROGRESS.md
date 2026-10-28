@@ -43,6 +43,7 @@ How our monitor really runs on our records: diagrams of the loop and the 4 setti
 
 | Task | Assigned To | Depends On | Notes |
 |------|-------------|------------|-------|
+| **Rerun the always setting** on our val records (base + Phase B, both policy conditions): the check table changed (#7). No retraining: the 204 train/val gold-check results are byte-identical to the gateway Phase B was trained with. Instructions: `docs/messages/2026-10-28_to_Meet_gateway_done.md` | **Meet** | none (again after Param's #8) | A6 noise ready: `for_record(..., noise=NoiseConfig(rate, seed))`, evaluation only |
 | ~~**P0 · Param · do first**: group B seed + policy edits~~ ✅ Done 2026-10-27 | **Param** | none | Completed: 8 seeds, policy_logic.yaml, conflicts.yaml, policies.jsonl, policies_ood.jsonl edited; 18 records regenerated; merge 518/0 problems; split --relock; Changelog row in decisions.md |
 | **Group C · Param · after P0**: exact seed edits in `docs/check_tools_coverage.md` §11 (OOD-ACC-T1-001, OOD-REPO-T1-001, OOD-CUST-T1-006, IND-FILE-T5-005, IND-REPO-T5-002: notes / `requested_by` only, no record changes) | **Param** | P0 | ✅ 4 T5 group-C seeds fixed (IND-ACC-T5-007, IND-FILE-T5-006, IND-FIN-T5-001/003): key_facts remapped to existing check tools, 8 records updated, required_checks filled. Remaining 5 seeds are notes/requested_by edits only (no record changes) |
 | Check the Phase A gains for shortcuts: ATBench error/injection markers (known leak) and any surface cue in AgentRisk SAFE records (98.9 F1), before reporting the numbers | **Meet** | Step 16 + 17 done | `outputs/model_eval/base_vs_lora_phase_a.md` |
@@ -118,6 +119,7 @@ How our monitor really runs on our records: diagrams of the loop and the 4 setti
 
 ## Activity Log (newest first)
 
+- 2026-10-28, Prateek: message to Meet, gateway done and what to do (`docs/messages/2026-10-28_to_Meet_gateway_done.md`): rerun always, no retraining (gold-check results unchanged, checked), A6 how-to
 - 2026-10-28, Meet: walkthrough PDF for the team, `docs/reports/our_eval_walkthrough.pdf` (`scripts/make_eval_pdf.py`), notice at the top of this file; prompt example fixed (`check_file_sharing` takes `path`); verified Prateek's #7: `check_table_errors.py` 104 → 48 failing calls, all in Param's #8 records
 - 2026-10-28, Prateek: **check gateway done** (part 2): `run_always`/`run_oracle`, A6 noise, enums, no-bypass + parity tests, sample log `docs/gateway_samples/`. Full suite 531 pass, 1 fail (`test_build_sft`: no torch locally). **Meet:** for the always and oracle settings you can call `run_always(gw)` / `run_oracle(gw, record)` (same calls as your `table_checks` path); for A6 pass `noise=NoiseConfig(rate, seed)` to `for_record`. The old `checks_before_pass` always branch (`entry["tool"]`) is dead code now, safe to delete
 - 2026-10-28, Prateek: always check table fixed (HIGH PRIORITY #7): grant_permission on a system and share_file to a link/drive no longer get a file/user check (`configs/resource_kinds.yaml`, `unless_kind`); `check_table_errors.py` 80 → 24 records, all Param's #8. **Meet: rerun the always setting** (`table_calls` changed, nothing else). Next: gateway part 2
