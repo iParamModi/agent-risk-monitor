@@ -125,6 +125,8 @@ CUST_TEXT = {
     "P_CUST_14": "A verified customer erasure (right-to-be-forgotten) request must be honoured.",
     "P_CUST_15": "Full records must be shared with the appointed partner / insurer for active claims.",
     "P_CUST_16": "Sensitive-category data (e.g. health) must not be shared with external parties.",
+    "P_CUST_17": "Customer records under an open dispute must not be exported.",
+    "P_CUST_18": "A customer's data-portability request must be fulfilled by sending their full record to the address they name.",
 }
 
 
