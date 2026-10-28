@@ -11,6 +11,10 @@ Four jobs, in this order, stopping at the first failure:
 
 It never chooses a tool, adds a missing check or judges a call; the monitor does that and is scored later.
 Error messages come from the fixed templates below and name only what the call itself sent.
+
+Settings (proposal §10): never = no calls (the gateway is still built, so the log shows 0); always =
+run_always(gw), every check_table.yaml row of the action; selective = only the monitor's calls, 4 max;
+oracle = run_oracle(gw, record), exactly the gold required_checks. A6 noise: Gateway(..., noise=NoiseConfig).
 """
 import json
 from pathlib import Path
@@ -24,6 +28,7 @@ from lma_agent.sim.models import CompanyState
 from lma_agent.sim.readers import Ambiguous, NotFound
 from src.gateway.checks import _UNSET, CHECK_FUNCS, _lookup
 from src.gateway.log import CallLogEntry, summarize, write_jsonl
+from src.gateway.noise import NoiseConfig, apply_noise
 from src.gateway.record_state import state_from_record
 from src.gateway.registry import CHECK_TABLE_PATH, REGISTRY, WRITE_ACTIONS, check_types
 
@@ -50,6 +55,7 @@ class CallResult(BaseModel):
     error_code: Literal["unknown_tool", "invalid_args", "not_found", "write_not_allowed"] | None
     message: str | None                 # fixed templates only
     retry_available: bool               # the monitor may still retry after an error in this case
+    noisy: bool = False                 # A6 flipped a value in facts
 
     def as_data(self, allowed: list[str]) -> dict:
         """What the monitor sees (R7.3, R7.4)."""
@@ -89,8 +95,8 @@ class Gateway:
     """One per case: counts, the retry flag and the log never leak between cases."""
 
     def __init__(self, state: CompanyState, case_id: str, setting: str = "selective", *, ood: bool = False,
-                 action: dict | None = None, run_id: str = "", max_calls=_DEFAULT):
-        self.state, self.case_id, self.setting, self.run_id = state, case_id, setting, run_id
+                 action: dict | None = None, run_id: str = "", max_calls=_DEFAULT, noise: NoiseConfig | None = None):
+        self.state, self.case_id, self.setting, self.run_id, self.noise = state, case_id, setting, run_id, noise
         self.action = action or {}
         self.allowed = sorted(t for t, spec in REGISTRY.items() if ood or not spec.ood)
         if max_calls is _DEFAULT:
@@ -143,8 +149,11 @@ class Gateway:
             ref = args[spec.resource_param]
             return self._error(tool, args, "not_found", f"no {_KIND.get(spec.resource_param, 'resource')} named '{ref}'")
         check_types(spec, facts)
+        noisy = False
+        if self.noise is not None:
+            facts, noisy = apply_noise(self.noise, spec, facts, self.case_id, len(self.log) + 1)
         return CallResult(status="ok", tool=tool, args=args, facts=facts, error_code=None, message=None,
-                          retry_available=self._retry_available)
+                          retry_available=self._retry_available, noisy=noisy)
 
     def _matches_action(self, tool: str, args: dict) -> bool | None:
         spec = REGISTRY.get(tool)
@@ -161,7 +170,7 @@ class Gateway:
             run_id=self.run_id, case_id=self.case_id, setting=self.setting, call_index=len(self.log) + 1,
             tool=res.tool, args=res.args, status=res.status, error_code=res.error_code, facts=res.facts,
             is_retry=prev is not None and prev.status == "error",
-            resource_matches_action=self._matches_action(res.tool, res.args), noisy=False))
+            resource_matches_action=self._matches_action(res.tool, res.args), noisy=res.noisy))
 
 
 # ---------- builders ----------------------------------------------------------------------------------
@@ -231,7 +240,7 @@ def verify_key_facts(record: dict, state: CompanyState, current_user: str) -> No
 
 
 def for_record(record: dict, setting: str = "selective", run_id: str = "", max_calls=_DEFAULT,
-               verify: bool = True) -> Gateway:
+               verify: bool = True, noise: NoiseConfig | None = None) -> Gateway:
     """A gateway over the state stored in the record (training data and evaluation on our records).
     Reads record["hidden"], record["set"], the proposed action and the seed's requested_by; never
     record["gold"]. Raises MissingFact when the hidden state cannot answer one of its own key facts."""
@@ -240,7 +249,20 @@ def for_record(record: dict, setting: str = "selective", run_id: str = "", max_c
     if verify:
         verify_key_facts(record, state, current)
     return Gateway(state, record["record_id"], setting, ood=record["set"] == "ood",
-                   action=record["visible"]["proposed_action"], run_id=run_id, max_calls=max_calls)
+                   action=record["visible"]["proposed_action"], run_id=run_id, max_calls=max_calls, noise=noise)
+
+
+def run_always(gw: Gateway, action: dict | None = None) -> list[dict]:
+    """The always setting (and the rule baselines): every configs/check_table.yaml check of the action, in table
+    order, args from the action. [{"tool", "args", "result"}], result as the monitor sees it."""
+    action = action or gw.action
+    return [{"tool": t, "args": a, "result": gw.call(t, a)} for t, a in table_calls(action, gw.state.current_user)]
+
+
+def run_oracle(gw: Gateway, record: dict) -> list[dict]:
+    """The oracle setting (upper limit only): exactly the record's gold required_checks, in gold order."""
+    return [{"tool": c["tool"], "args": dict(c["args"]), "result": gw.call(c["tool"], c["args"])}
+            for c in record["gold"].get("required_checks") or []]
 
 
 def call_check(state: CompanyState, tool: str, args: dict, ood: bool = True) -> dict:

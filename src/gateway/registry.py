@@ -1,7 +1,8 @@
 """Check tool registry: configs/check_tools.yaml is the single source of truth (decisions.md R7.1, R7.2).
 
 Each tool: argument schema (same style as lma_agent/tools.yaml), the param that names its resource,
-its returns fields with types, the facts map (record fact -> returns field) and whether it is OOD-only.
+its returns fields with types, the allowed values of its category fields (enums), the facts map
+(record fact -> returns field) and whether it is OOD-only.
 The registry refuses to load if configs/check_table.yaml or configs/fact_checks.yaml names a tool that is
 not here, or if a returns field has no known type.
 """
@@ -35,6 +36,7 @@ class Tool:
     resource_param: str
     facts: dict              # record fact -> {"field", "values"}
     ood: bool
+    enums: dict = None       # string returns field -> allowed values
 
 
 def _facts(raw: dict) -> dict:
@@ -59,9 +61,14 @@ def load_registry(path: Path = CHECK_TOOLS_PATH, table_path: Path = CHECK_TABLE_
         unknown = {f: t["field"] for f, t in facts.items() if t["field"] not in spec["returns"]}
         if unknown:
             raise ValueError(f"{name}: facts map to fields it does not return: {unknown}")
+        enums = {f: tuple(v) for f, v in (spec.get("enums") or {}).items()}
+        not_str = sorted(f for f in enums if spec["returns"].get(f) != "string")
+        if not_str:
+            raise ValueError(f"{name}: enums on fields that are not string returns: {not_str}")
         tools[name] = Tool(name=name, params=spec["params"], required=tuple(spec.get("required", [])),
                            schema=args_schema(spec), returns=dict(spec["returns"]),
-                           resource_param=spec["resource_param"], facts=facts, ood=bool(spec.get("ood")))
+                           resource_param=spec["resource_param"], facts=facts, ood=bool(spec.get("ood")),
+                           enums=enums)
     table = yaml.safe_load(table_path.read_text(encoding="utf-8")) or {}
     missing = sorted({e["check"] for row in table.values() for e in (row or [])} - set(tools))
     if missing:
@@ -86,6 +93,8 @@ def check_types(tool: Tool, result: dict) -> None:
         ok = isinstance(value, want) and not (want is int and isinstance(value, bool))
         if not ok:
             raise TypeError(f"{tool.name}.{field} = {value!r} is not {type_name}")
+        if field in tool.enums and value not in tool.enums[field]:
+            raise TypeError(f"{tool.name}.{field} = {value!r} is not one of {list(tool.enums[field])}")
 
 
 REGISTRY = load_registry()

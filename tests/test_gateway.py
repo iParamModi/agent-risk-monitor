@@ -247,6 +247,150 @@ def test_ood_tools_only_on_ood_records():
     assert "error" not in ood.call("check_customer_flags", {"customer_id": cid})
 
 
+# ---------- parity (14) ----------
+
+def _flat(model, drop=()):
+    d = model.model_dump(mode="json")
+    attrs = d.pop("attrs", {}) or {}
+    for k in drop:
+        d.pop(k, None)
+    return {**d, **attrs}
+
+
+def _as_record(state):
+    """A simulator state written the way records store hidden state (docs/seed_to_record.md §10)."""
+    st = {"users": [_flat(u, ("name", "email")) for u in state.users.values()],
+          "folders": [dict(_flat(f), folder_id=f.path) for f in state.folders.values()],
+          "files": [dict(_flat(f, ("path", "modified", "content")), file_id=f.path, last_modified=str(f.modified))
+                    for f in state.files.values()],
+          "contacts": [dict(_flat(c, ("contact_id", "name", "org")), address=c.contact_id) for c in state.contacts.values()],
+          "accounts": [_flat(a) for a in state.accounts.values()],
+          "repositories": [dict(_flat(r, ("name", "owner", "description")), repo_id=r.name) for r in state.repos.values()],
+          "customer_records": [_flat(c, ("name", "email", "data")) for c in state.customers.values()],
+          "permissions": {k: dict(v) for k, v in state.permissions.items()}}
+    return {"record_id": "parity", "hidden": {"state": st}}
+
+
+def _shuffle_hidden_facts(state, seed):
+    """Every boolean and Literal field of every entity set to a random allowed value, so parity covers values
+    the seed state leaves at their defaults."""
+    import random
+    import typing
+    rng = random.Random(seed)
+    for group in (state.users, state.files, state.contacts, state.accounts, state.repos, state.customers):
+        for e in group.values():
+            for name, info in type(e).model_fields.items():
+                ann = info.annotation
+                if ann is bool:
+                    setattr(e, name, rng.random() < 0.5)
+                elif typing.get_origin(ann) is typing.Literal and name not in ("kind", "type", "classification"):
+                    setattr(e, name, rng.choice(typing.get_args(ann)))
+    return state
+
+
+@pytest.mark.parametrize("seed", [0, 1, 2])
+def test_14_parity_simulator_and_for_record_state(seed):
+    """The simulator state and the same state stored as a record (then rebuilt by for_record's builder) give
+    byte-identical serialised results, errors included, for every tool on every resource and user."""
+    from src.gateway.gateway import serialize
+    from src.gateway.record_state import state_from_record
+    sim = _shuffle_hidden_facts(build_seed_state(seed), seed)
+    rec = state_from_record(_as_record(sim), sim.current_user)
+    names = [*sim.files, *sim.folders, *sim.users, *sim.contacts, *sim.accounts, *sim.repos, *sim.customers]
+    n = ok = 0
+    for tool, spec in REGISTRY.items():
+        for ref in names:
+            for user in (sim.users if "user" in spec.params and spec.resource_param != "user" else [None]):
+                args = {spec.resource_param: ref, **({"user": user} if user else {})}
+                if "amount_inr" in spec.params:
+                    args["amount_inr"] = 75000
+                a = serialize(Gateway(sim, "p", "always", ood=True).call(tool, args))
+                b = serialize(Gateway(rec, "p", "always", ood=True).call(tool, args))
+                assert a == b, (tool, args)
+                n, ok = n + 1, ok + ("error" not in a)
+    assert n > 1000 and ok > 250
+
+
+# ---------- settings (16, 17) ----------
+
+def test_16_run_always_calls_exactly_the_table():
+    from src.gateway.gateway import run_always, table_calls as fill
+    for r in RECORDS[::7]:
+        if r["task"] != "decide_action":
+            continue
+        gw = for_record(r, setting="always")
+        out = run_always(gw)
+        want = fill(r["visible"]["proposed_action"], requested_by(r))
+        assert [(c["tool"], c["args"]) for c in out] == want
+        assert [(e.tool, e.args) for e in gw.log] == want
+
+
+def test_16_never_makes_no_call():
+    r = RECORDS[0]
+    assert for_record(r, setting="never").summary()["calls"] == 0
+
+
+def test_17_run_oracle_calls_exactly_the_gold_checks():
+    from src.gateway.gateway import run_oracle
+    n = 0
+    for r in RECORDS:
+        want = [(c["tool"], c["args"]) for c in r["gold"].get("required_checks") or []]
+        gw = for_record(r, setting="oracle")
+        out = run_oracle(gw, r)
+        assert [(c["tool"], c["args"]) for c in out] == [(e.tool, e.args) for e in gw.log] == want
+        assert all("error" not in c["result"] for c in out), r["record_id"]
+        n += len(out)
+    assert n > 300
+
+
+# ---------- A6 noise (18) ----------
+
+def _noisy_run(rate, seed, r):
+    from src.gateway.gateway import run_always
+    from src.gateway.noise import NoiseConfig
+    gw = for_record(r, setting="always", noise=NoiseConfig(rate, seed))
+    return run_always(gw), gw.log
+
+
+def test_18_noise_rate_zero_changes_nothing():
+    from src.gateway.gateway import run_always
+    for r in RECORDS[::11]:
+        if r["task"] != "decide_action":
+            continue
+        clean = run_always(for_record(r, setting="always"))
+        noisy, log = _noisy_run(0.0, 1, r)
+        assert noisy == clean and not any(e.noisy for e in log)
+
+
+def test_18_noise_is_seeded_typed_and_logged():
+    rs = [r for r in RECORDS if r["task"] == "decide_action"][:60]
+    flips = 0
+    for r in rs:
+        a, log_a = _noisy_run(0.3, 7, r)
+        b, log_b = _noisy_run(0.3, 7, r)
+        assert a == b and [e.noisy for e in log_a] == [e.noisy for e in log_b]
+        gw_clean = for_record(r, setting="always")
+        for c in a:
+            ref = gw_clean.call(c["tool"], c["args"])
+            if "error" in ref:
+                assert c["result"] == ref     # errors are never noised
+                continue
+            check_types(REGISTRY[c["tool"]], c["result"])     # flipped values keep their type and enum
+            entry = next(e for e in log_a if e.tool == c["tool"] and e.args == c["args"])
+            changed = {k for k in ref if ref[k] != c["result"][k]}
+            assert entry.noisy == bool(changed)
+            assert all(REGISTRY[c["tool"]].returns[k] == "boolean" or k in REGISTRY[c["tool"]].enums for k in changed)
+            flips += bool(changed)
+    assert flips > 0
+    assert any(_noisy_run(0.3, 7, r)[0] != _noisy_run(0.3, 8, r)[0] for r in rs)     # another seed, other flips
+
+
+def test_enums_are_enforced():
+    with pytest.raises(TypeError):
+        check_types(REGISTRY["check_user_clearance"], {"user": "u", "authorized_hr": True, "authorized_financial": True,
+                                                       "authorized_pii": True, "authorized_legal": True, "clearance": "mid"})
+
+
 # ---------- determinism (15), log ----------
 
 def test_15_same_case_twice_same_log():
