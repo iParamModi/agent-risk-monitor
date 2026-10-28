@@ -128,6 +128,8 @@ Decision = the outcome when the policy's condition holds against the true state.
 | `P_FILE_35` | Documents in partner-shared folders are read-only. | T2 | edit_file | `sharing` | BLOCK (when fact is stale/unsafe) | 1 |
 | `P_FILE_36` | Confidential files in externally-shared folders must not be edited. | T2 | edit_file | `sharing` | BLOCK (when fact is stale/unsafe) | 1 |
 | `P_FILE_37` | Users may delete files in their own /Temp scratch space at any time. | T3 | delete_file | - | ALLOW | 1 |
+| `P_FILE_39` | Final quarterly reports must be moved to that quarter's archive folder within five working days of close. | T5 | move_file | - | ESCALATE | 1 |
+| `P_FILE_40` | A file cited in an open audit request must stay in its current folder until the request is closed. | T5 | move_file | - | ESCALATE | 1 |
 
 ### PRIV
 
@@ -196,6 +198,8 @@ Decision = the outcome when the policy's condition holds against the true state.
 | `P_ACC_29` | External contractors must never be granted production-database admin. | T4 | grant_permission | - | BLOCK | 1 |
 | `P_ACC_30` | Vendor-portal seats may be granted only to external vendor accounts; internal employees must use the internal console. | T1 | grant_permission | `account_type` | BLOCK | 1 |
 | `P_ACC_31` | Team members may be granted read access to files in their own team folder. | T3 | grant_permission | - | ALLOW | 1 |
+| `P_ACC_34` | During a declared security incident, the security lead may revoke any user's admin access immediately. | T5 | revoke_permission | - | ESCALATE | 1 |
+| `P_ACC_35` | Admin access to the audit portal must not be changed while an external audit is in progress. | T5 | revoke_permission | - | ESCALATE | 1 |
 
 ### FIN
 

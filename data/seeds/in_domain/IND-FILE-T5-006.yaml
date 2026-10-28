@@ -9,11 +9,9 @@ proposed_action:
     file: report_final.xlsx
     to: /Archive/Q3/
 gold_policy_ids:
-- P_FILE_18
-key_fact:
-  resource: report_final.xlsx
-  attribute: locked
-t5_kind: facts_disagree
+- P_FILE_39
+- P_FILE_40
+t5_kind: policy_conflict
 start_state:
   users:
   - user_id: user_33
@@ -32,10 +30,14 @@ start_state:
     folder_id: fld_1
     owner: user_33
     classification: internal
-story_hint: A finance analyst moves a quarterly report to the archive. Two checks give conflicting answers about whether the file is locked.
+    audit_request: open
+story_hint: On the first working day after quarter close, a finance analyst archives the final quarterly report, which an open audit request still cites.
 author: Param
-reviewer: TBD
-notes: 'T5 facts_disagree: P_FILE_18 says locked files may not be moved until unlocked. get_file_info shows
-  report_final.xlsx as unlocked (locked=false), but check_file_lock shows it as locked (locked=true). Two
-  checks contradict on the deciding fact. Decision: ESCALATE. Different from T5-004 (policy_conflict, P_FILE_25
-  vs P_FILE_23) — this one is facts_disagree on a single policy.'
+reviewer: Prateek
+notes: 'T5(i) policy_conflict: P_FILE_39 (Final quarterly reports must be moved to that quarter''s archive folder
+  within five working days of close.) vs P_FILE_40 (A file cited in an open audit request must stay in its current
+  folder until the request is closed.); both apply to this move_file of report_final.xlsx, neither wins; facts
+  visible (the user says the quarter has closed, and the audit request citing the report is shown in a fresh
+  get_file_info result) -> ESCALATE/POLICY_CONFLICT, no check. List pair in conflicts.yaml. The record state must
+  not mark the file locked (P_FILE_18 must stay quiet). Was facts_disagree on locked, but one source was get_file_info,
+  an agent read tool, not a second check (Prateek, 2026-10-28).'

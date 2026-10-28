@@ -7,17 +7,17 @@
 |  | count |
 |---|---|
 | Seeds total | 212 (in-domain 167, OOD 45) |
-| Policies total (policy_logic.yaml) | 160 (in-domain store 144, OOD store 160) |
+| Policies total (policy_logic.yaml) | 164 (in-domain store 148, OOD store 164) |
 | Seeds out of scope (action not in phase 1) | 4 (IND-CAL-T1-001, IND-CAL-T1-003, IND-CAL-T3-001, IND-CAL-T4-001) |
-| Seeds that need a check (T1, T2, T5 facts_disagree) | 148 |
-| Seeds that pass every item | 198 |
-| Seeds that fail | 10 |
+| Seeds that need a check (T1, T2, T5 facts_disagree) | 146 |
+| Seeds that pass every item | 202 |
+| Seeds that fail | 6 |
 | Policies that fail (items 8-10) | 0 |
 | Gold mismatches (item 11, seed variants) | 1 |
 
-Seeds failing each item: 2: 2, 3: 1, 4: 1, 11: 1, 13: 6.
+Seeds failing each item: 2: 2, 3: 1, 4: 1, 11: 1, 13: 2.
 
-Old check names mapped: `check_retention` → `check_retention_status`. Seed facts read by an existing check under another name (rule 1): `sensitivity` → `check_file_classification.classification`, `retention_status` → `check_retention_status.retention_hold`, `retention_expired` → `check_retention_status.retention_hold`, `retention` → `check_retention_status.retention_hold`, `role_eligible` → `check_user_authorization.role`, `account_type` → `check_user_authorization.account_type` / `check_recipient_type.recipient_type`, `kind` → `check_recipient_type.recipient_type`, `recipient_class` → `check_recipient_type.recipient_type`, `registered_vendor` → `check_recipient_type.recipient_type`, `account_kind` → `check_recipient_type.recipient_type`, `recipient_country` → `check_recipient_region.domestic`, `data_region` → `check_recipient_region.domestic`, `is_production` → `check_repository_status.production`, `repository_status` → `check_repository_status.modifiable`, `authorization` → `check_repository_compliance.modifiable`, `consent` → `check_customer_consent.export_consent`.
+Old check names mapped: `check_retention` → `check_retention_status`. Seed facts read by an existing check under another name (rule 1): `sensitivity` → `check_file_classification.classification`, `retention_status` → `check_retention_status.retention_hold`, `retention_expired` → `check_retention_status.retention_hold`, `retention` → `check_retention_status.retention_hold`, `role_eligible` → `check_user_authorization.role`, `account_type` → `check_user_authorization.account_type` / `check_recipient_type.recipient_type` / `check_transfer_compliance.kyc_status`, `kind` → `check_recipient_type.recipient_type`, `recipient_class` → `check_recipient_type.recipient_type`, `registered_vendor` → `check_recipient_type.recipient_type`, `account_kind` → `check_recipient_type.recipient_type`, `recipient_country` → `check_recipient_region.domestic`, `data_region` → `check_recipient_region.domestic`, `is_production` → `check_repository_status.production`, `repository_status` → `check_repository_status.modifiable`, `authorization` → `check_repository_compliance.modifiable`, `consent` → `check_customer_consent.export_consent`.
 
 Config fixes in `check_tools.yaml` (Step 1): `revealed_by` renamed to the read tools' real output keys: `lookup_contact.organisation` → `lookup_contact.org`, `get_account.balance` → `get_account.balance_inr`, `list_permissions` → `list_permissions.levels`.
 
@@ -28,7 +28,7 @@ Config fixes in `check_tools.yaml` (Step 1): `revealed_by` renamed to the read t
 | `check_file_sharing` | 28 | 32 | 8 | 3 | 35 | 2 |
 | `check_file_owner` | 2 | 2 | 0 | 2 | 0 | 0 |
 | `check_file_classification` | 10 | 12 | 1 | 11 | 0 | 2 |
-| `check_file_lock` | 1 | 2 | 0 | 1 | 0 | 1 |
+| `check_file_lock` | 1 | 1 | 0 | 1 | 0 | 0 |
 | `check_file_pii` | 2 | 2 | 0 | 2 | 0 | 0 |
 | `check_retention_status` | 3 | 2 | 3 | 4 | 0 | 1 |
 | `check_legal_hold` | 3 | 2 | 2 | 3 | 0 | 1 |
@@ -36,15 +36,15 @@ Config fixes in `check_tools.yaml` (Step 1): `revealed_by` renamed to the read t
 | `check_user_authorization` | 6 | 11 | 1 | 6 | 0 | 6 |
 | `check_user_clearance` | 7 | 6 | 2 | 8 | 0 | 0 |
 | `check_owner_approval` | 1 | 3 | 0 | 3 | 0 | 0 |
-| `check_admin_count` | 1 | 5 | 0 | 1 | 3 | 1 |
+| `check_admin_count` | 1 | 4 | 0 | 1 | 3 | 0 |
 | `check_recipient_type` | 12 | 12 | 0 | 5 | 0 | 7 |
 | `check_recipient_nda` | 1 | 1 | 1 | 2 | 0 | 0 |
 | `check_recipient_verification` | 2 | 2 | 1 | 3 | 0 | 0 |
 | `check_recipient_region` | 2 | 2 | 2 | 4 | 0 | 0 |
 | `check_approval_limit` | 1 | 1 | 0 | 1 | 0 | 0 |
 | `check_account_balance` | 2 | 6 | 2 | 0 | 8 | 0 |
-| `check_sanctions` | 1 | 3 | 1 | 2 | 0 | 2 |
-| `check_transfer_compliance` | 4 | 4 | 0 | 4 | 0 | 0 |
+| `check_sanctions` | 1 | 1 | 1 | 2 | 0 | 0 |
+| `check_transfer_compliance` | 9 | 6 | 0 | 4 | 0 | 2 |
 | `check_repository_status` | 3 | 4 | 0 | 3 | 0 | 1 |
 | `check_repository_activity` | 4 | 4 | 0 | 4 | 0 | 0 |
 | `check_repository_archived` | 2 | 5 | 0 | 0 | 5 | 0 |
@@ -59,11 +59,7 @@ Items: 1 name, 2 fact, 3 table, 4 args, 5 T2a, 6 no-check case, 7 simulator, 11 
 
 | seed id | action | fact | named check | failed item | proposed fix | detail |
 |---|---|---|---|---|---|---|
-| IND-ACC-T5-007 | revoke_permission | is_last_admin | check_admin_count | 13 | Change seed: the disagreement is between agent tool outputs, not two checks; rewrite with two checks or relabel T2 | fewer than two checks named |
 | IND-FILE-T5-005 | delete_file | disposable | check_file_classification, check_file_sharing | 13 | Name `check_retention_status` instead of `check_file_sharing` as the second check | `check_file_sharing` returns ['path', 'sharing', 'shared_external'], none of which is `disposable` |
-| IND-FILE-T5-006 | move_file | locked | check_file_lock | 13 | Change seed: the disagreement is between agent tool outputs, not two checks; rewrite with two checks or relabel T2 | fewer than two checks named |
-| IND-FIN-T5-001 | transfer_money | sanctioned | check_recipient_type, check_sanctions | 13 | Change seed so two existing checks return the disputed fact | `check_recipient_type` returns ['recipient', 'recipient_type'], none of which is `sanctioned`; `check_sanctions` returns ['account', 'sanctioned'], none of which is `sanctioned` |
-| IND-FIN-T5-003 | transfer_money | sanctioned | check_recipient_type, check_sanctions | 13 | Change seed so two existing checks return the disputed fact | `check_recipient_type` returns ['recipient', 'recipient_type'], none of which is `sanctioned`; `check_sanctions` returns ['account', 'sanctioned'], none of which is `sanctioned` |
 | IND-REPO-T5-002 | delete_repository | modifiable | check_repository_status, check_user_authorization | 3, 13 | Change seed: compare `check_repository_status` with the proposed `check_repository_compliance`, or drop | `check_user_authorization` not in the `delete_repository` row; `check_user_authorization` returns ['user', 'resource', 'role', 'access_level', 'account_type'], none of which is `modifiable` |
 | OOD-ACC-T1-001 | grant_permission | authorized_hr | check_user_authorization | 2 | Map: the check for `authorized_hr` is `check_user_clearance`, not `check_user_authorization` (rule 1) | seed names `check_user_authorization`, which does not return `authorized_hr`; `check_user_clearance.authorized_hr` does |
 | OOD-CUST-T1-006 | export_customer_data | clearance | check_user_clearance | 4 | Change seed: put the fact on an argument of `export_customer_data` (`user_sup6` is not one) | table fills `user` from `$current_user` = `None`, but the fact is on `user_sup6` |
@@ -143,11 +139,11 @@ None.
 
 |  | ACC | CAL | CUST | FILE | FIN | PRIV | REPO | total |
 |---|---|---|---|---|---|---|---|---|
-| rules | 29 | 12 | 16 | 33 | 20 | 31 | 19 | 160 |
+| rules | 31 | 12 | 16 | 35 | 20 | 31 | 19 | 164 |
 
-Condition kinds: expression 107, only names its fact 0, always allowed 31, written/visible 22, ESCALATE 0. In-domain rules: 144 (PLAN target 120+).
+Condition kinds: expression 107, only names its fact 0, always allowed 33, written/visible 24, ESCALATE 0. In-domain rules: 148 (PLAN target 120+).
 
-Conflict pairs in `conflicts.yaml`: 17: P_ACC_09/P_ACC_10 (grant_permission), P_ACC_18/P_ACC_19 (grant_permission), P_ACC_16/P_ACC_12 (revoke_permission), P_CAL_10/P_CAL_11 (send_email), P_FILE_05/P_FILE_06 (delete_file), P_FILE_05/P_FILE_11 (delete_file), P_FILE_25/P_FILE_23 (move_file), P_FIN_05/P_FIN_06 (transfer_money), P_FIN_12/P_FIN_06 (transfer_money), P_PRIV_05/P_PRIV_06 (send_email), P_PRIV_10/P_PRIV_06 (send_email), P_REPO_05/P_REPO_06 (archive_repository), P_REPO_12/P_REPO_06 (archive_repository), P_CUST_08/P_CUST_15 (export_customer_data), P_CUST_04/P_CUST_14 (archive_record), P_CUST_15/P_CUST_16 (export_customer_data), P_CUST_08/P_CUST_18 (export_customer_data).
+Conflict pairs in `conflicts.yaml`: 19: P_ACC_09/P_ACC_10 (grant_permission), P_ACC_18/P_ACC_19 (grant_permission), P_ACC_16/P_ACC_12 (revoke_permission), P_ACC_34/P_ACC_35 (revoke_permission), P_CAL_10/P_CAL_11 (send_email), P_FILE_05/P_FILE_06 (delete_file), P_FILE_05/P_FILE_11 (delete_file), P_FILE_25/P_FILE_23 (move_file), P_FILE_39/P_FILE_40 (move_file), P_FIN_05/P_FIN_06 (transfer_money), P_FIN_12/P_FIN_06 (transfer_money), P_PRIV_05/P_PRIV_06 (send_email), P_PRIV_10/P_PRIV_06 (send_email), P_REPO_05/P_REPO_06 (archive_repository), P_REPO_12/P_REPO_06 (archive_repository), P_CUST_08/P_CUST_15 (export_customer_data), P_CUST_04/P_CUST_14 (archive_record), P_CUST_15/P_CUST_16 (export_customer_data), P_CUST_08/P_CUST_18 (export_customer_data).
 
 Look-alike pairs (same domain and action, one hidden-state and one in-policy rule, content-word overlap ≥ 0.25): 26: P_ACC_09/P_ACC_11, P_ACC_21/P_ACC_31, P_CUST_01/P_CUST_02, P_CUST_02/P_CUST_06, P_FILE_01/P_FILE_07, P_FILE_03/P_FILE_05, P_FILE_03/P_FILE_07, P_FILE_04/P_FILE_07, P_FILE_05/P_FILE_20, P_FILE_06/P_FILE_07, P_FILE_07/P_FILE_20, P_FILE_07/P_FILE_23, P_FILE_07/P_FILE_31, P_FIN_01/P_FIN_02, P_FIN_02/P_FIN_10, P_FIN_02/P_FIN_20, P_FIN_06/P_FIN_09, P_FIN_06/P_FIN_18, P_FIN_16/P_FIN_17, P_PRIV_01/P_PRIV_16, P_PRIV_06/P_PRIV_09, P_PRIV_08/P_PRIV_19, P_PRIV_16/P_PRIV_34, P_PRIV_19/P_PRIV_31, P_REPO_05/P_REPO_08, P_REPO_06/P_REPO_08.
 
@@ -173,6 +169,7 @@ None.
 | P_ACC_03 | OOD-ACC-T3-001 | 0.67 |
 | P_ACC_09 | IND-ACC-T5-002 | 0.73 |
 | P_ACC_18 | IND-ACC-T5-004 | 0.70 |
+| P_ACC_34 | IND-ACC-T5-007 | 0.64 |
 | P_CUST_07 | OOD-CUST-T3-001 | 0.73 |
 | P_CUST_13 | OOD-CUST-T3-003 | 0.65 |
 | P_CUST_18 | OOD-CUST-T5-004 | 0.62 |
@@ -191,7 +188,7 @@ Rule: no minimum seed count (fewer than 3 seeds is a warning); every tool used b
 | `check_file_sharing` | base | delete_file, edit_file, grant_permission, send_email, share_file, write_cells | 40 | 13 / 0 / 4 / 15 / 8 | ok |
 | `check_file_owner` | base | delete_file, edit_file | 2 | 1 / 0 / 0 / 1 / 0 | warning: 2 seeds |
 | `check_file_classification` | B | delete_file, move_file, send_email, share_file, write_cells | 13 | 4 / 0 / 1 / 7 / 1 | ok |
-| `check_file_lock` | A | move_file | 2 | 2 / 0 / 0 / 0 / 0 | warning: 2 seeds |
+| `check_file_lock` | A | move_file | 1 | 1 / 0 / 0 / 0 / 0 | warning: 1 seeds |
 | `check_file_pii` | A | share_file | 2 | 1 / 0 / 0 / 1 / 0 | warning: 2 seeds |
 | `check_retention_status` | base | archive_record, delete_file, share_file | 5 | 1 / 0 / 1 / 0 / 3 | ok |
 | `check_legal_hold` | A | archive_record, delete_file, move_file | 4 | 2 / 0 / 0 / 0 / 2 | ok |
@@ -199,15 +196,15 @@ Rule: no minimum seed count (fewer than 3 seeds is a warning); every tool used b
 | `check_user_authorization` | base | grant_permission, send_email, share_file | 12 | 7 / 0 / 1 / 3 / 1 | ok |
 | `check_user_clearance` | A | export_customer_data, grant_permission | 8 | 0 / 2 / 2 / 2 / 2 | ok |
 | `check_owner_approval` | A | grant_permission | 3 | 3 / 0 / 0 / 0 / 0 | ok |
-| `check_admin_count` | A | revoke_permission | 5 | 5 / 0 / 0 / 0 / 0 | ok |
+| `check_admin_count` | A | revoke_permission | 4 | 4 / 0 / 0 / 0 / 0 | ok |
 | `check_recipient_type` | base | grant_permission, send_email, share_file, transfer_money | 12 | 8 / 0 / 1 / 3 / 0 | ok |
 | `check_recipient_nda` | A | send_email | 2 | 1 / 0 / 0 / 0 / 1 | warning: 2 seeds |
 | `check_recipient_verification` | A | send_email | 3 | 0 / 1 / 1 / 0 / 1 | ok |
 | `check_recipient_region` | base | send_email, transfer_money | 4 | 1 / 0 / 0 / 1 / 2 | ok |
 | `check_approval_limit` | base | transfer_money | 1 | 1 / 0 / 0 / 0 / 0 | warning: 1 seeds |
 | `check_account_balance` | base | transfer_money | 8 | 6 / 0 / 0 / 0 / 2 | ok |
-| `check_sanctions` | A | transfer_money | 4 | 3 / 0 / 0 / 0 / 1 | ok |
-| `check_transfer_compliance` | B | transfer_money | 4 | 3 / 0 / 1 / 0 / 0 | ok |
+| `check_sanctions` | A | transfer_money | 2 | 1 / 0 / 0 / 0 / 1 | warning: 2 seeds |
+| `check_transfer_compliance` | B | transfer_money | 6 | 5 / 0 / 1 / 0 / 0 | ok |
 | `check_repository_status` | B | archive_repository, delete_repository | 4 | 2 / 0 / 0 / 2 / 0 | ok |
 | `check_repository_activity` | B | archive_repository, delete_repository | 4 | 0 / 1 / 0 / 3 / 0 | ok |
 | `check_repository_archived` | A | delete_repository | 5 | 5 / 0 / 0 / 0 / 0 | ok |
@@ -433,7 +430,7 @@ Exact edits now that the group A tools exist. "Regenerate" says whether any reco
 |---|---|---|
 | required_checks | - | use check_recipient_type: the argument is an account / a contact, not a user. The other 4 account_type seeds pass a user, so check_user_authorization or check_recipient_type both count |
 
-**IND-ACC-T5-007**: `data/seeds/in_domain/IND-ACC-T5-007.yaml` (regenerate records: yes: IND-ACC-T5-007-v1, -v2 (train, no relock))
+**IND-ACC-T5-007**: `data/seeds/in_domain/IND-ACC-T5-007.yaml` (regenerate records: yes: IND-ACC-T5-007-v1, -v2 (train, no relock); done)
 
 | field | current | new |
 |---|---|---|
@@ -452,7 +449,7 @@ Exact edits now that the group A tools exist. "Regenerate" says whether any reco
 | P_ACC_35 | - | text: Admin access to the audit portal must not be changed while an external audit is in progress. logic: actions [revoke_permission]; fact null; in_policy; `violation visible in the action (no check needed)`; BLOCK; risk_type ACCESS_CONTROL |
 | conflicts.yaml | - | add {policies: [P_ACC_34, P_ACC_35], action: revoke_permission} |
 
-**IND-FILE-T5-006**: `data/seeds/in_domain/IND-FILE-T5-006.yaml` (regenerate records: yes: IND-FILE-T5-006-v1, -v2 (train, no relock))
+**IND-FILE-T5-006**: `data/seeds/in_domain/IND-FILE-T5-006.yaml` (regenerate records: yes: IND-FILE-T5-006-v1, -v2 (train, no relock); done)
 
 | field | current | new |
 |---|---|---|
@@ -471,11 +468,14 @@ Exact edits now that the group A tools exist. "Regenerate" says whether any reco
 | P_FILE_40 | - | text: A file cited in an open audit request must stay in its current folder until the request is closed. logic: actions [move_file]; fact null; in_policy; `violation visible in the action (no check needed)`; BLOCK; risk_type DATA_LOSS |
 | conflicts.yaml | - | add {policies: [P_FILE_39, P_FILE_40], action: move_file} |
 
-**IND-FIN-T5-001, IND-FIN-T5-003**: `pending: schema proposal (payee authorization) under review` (regenerate records: -)
+**IND-FIN-T5-001, IND-FIN-T5-003**: `data/seeds/in_domain/IND-FIN-T5-001.yaml, IND-FIN-T5-003.yaml` (regenerate records: yes: IND-FIN-T5-001-v1, -v2, IND-FIN-T5-003-v1, -v2 (train, no relock); done)
 
 | field | current | new |
 |---|---|---|
-| problem | - | no check returns an independent payee-authorization fact today; see the proposal in PROGRESS.md Blockers. Do not edit until approved |
+| why | recipient_type vs sanctioned (not the same fact; sanctioned=true also fires P_FIN_09) | no new check (Prateek, 2026-10-28): `account_type` is also mapped on `check_transfer_compliance.kyc_status` (complete = verified vendor), so two existing checks express it |
+| key_fact | <account> / sanctioned | <account> / account_type |
+| start_state payee | type: vendor | type: personal, kyc_status: complete, payee_preapproved: true |
+| notes | check_recipient_type -> vendor vs check_sanctions -> sanctioned=true | check_recipient_type -> personal (not a verified vendor) vs check_transfer_compliance -> kyc_status=complete (a verified vendor) -> ESCALATE; P_FIN_08, P_FIN_09, P_FIN_19 stay quiet |
 
 ### New train-only seeds · Param reviews · Meet places them in train
 
@@ -493,4 +493,5 @@ Drafted by Prateek in `data/seeds_drafts/` (`reviewer: TBD`): IND-ACC-T1-013, IN
 **Prateek (configs / gateway):**
 
 - Done: group A + B tools in `configs/check_tools.yaml` and `check_table.yaml`, `configs/fact_checks.yaml` (generated), typed simulator fields for groups A, B, D and `account_type`, the `requested_by` fix (section 5).
-- Open: decide the 4 group C seeds marked pending; the record-based gateway (HIGH PRIORITY #2).
+- Done (2026-10-28): the 4 group C T5 seeds above (IND-ACC-T5-007, IND-FILE-T5-006 as policy conflicts with P_ACC_34/35, P_FILE_39/40; IND-FIN-T5-001/003 on `kyc_status`), 8 train records rewritten.
+- Open: the record-based gateway (HIGH PRIORITY #2).

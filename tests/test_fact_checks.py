@@ -22,6 +22,7 @@ def test_every_tool_maps_its_facts_to_real_fields():
         assert spec["resource_param"] in spec["params"], tool
 
 
-def test_account_type_has_two_tools():
+def test_account_type_has_three_tools():
     tools = {e["tool"] for e in gen.build(CHECK_TOOLS)["account_type"]}
-    assert tools == {"check_recipient_type", "check_user_authorization"}
+    # check_transfer_compliance via kyc_status: the second source of the IND-FIN-T5 facts_disagree seeds (2026-10-28)
+    assert tools == {"check_recipient_type", "check_user_authorization", "check_transfer_compliance"}

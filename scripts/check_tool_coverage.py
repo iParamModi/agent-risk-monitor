@@ -202,7 +202,7 @@ GROUP_C = [
          "neither wins; facts visible (the request states the incident, and the running audit is shown in the "
          "conversation) -> ESCALATE/POLICY_CONFLICT, no check. List pair in conflicts.yaml.' The record state must not "
          "say user_18 is the last admin (P_ACC_12 must stay quiet)."),
-    ], "yes: IND-ACC-T5-007-v1, -v2 (train, no relock)"),
+    ], "yes: IND-ACC-T5-007-v1, -v2 (train, no relock); done"),
     ("P_ACC_34 + P_ACC_35 (new rules) + conflicts.yaml", "policy store + policy_logic.yaml + conflicts.yaml", [
         ("P_ACC_34", "-", "text: During a declared security incident, the security lead may revoke any user's admin access "
          "immediately. logic: actions [revoke_permission]; fact null; in_policy; `always allowed (no hidden "
@@ -227,7 +227,7 @@ GROUP_C = [
          "report_final.xlsx, neither wins; facts visible (the user says the quarter has closed, and the audit request "
          "citing the report is shown in a fresh tool result) -> ESCALATE/POLICY_CONFLICT, no check. List pair in "
          "conflicts.yaml.' The record state must not mark the file locked (P_FILE_18 must stay quiet)."),
-    ], "yes: IND-FILE-T5-006-v1, -v2 (train, no relock)"),
+    ], "yes: IND-FILE-T5-006-v1, -v2 (train, no relock); done"),
     ("P_FILE_39 + P_FILE_40 (new rules) + conflicts.yaml", "policy store + policy_logic.yaml + conflicts.yaml", [
         ("P_FILE_39", "-", "text: Final quarterly reports must be moved to that quarter's archive folder within five "
          "working days of close. logic: actions [move_file]; fact null; in_policy; `always allowed (no hidden "
@@ -237,10 +237,16 @@ GROUP_C = [
          "needed)`; BLOCK; risk_type DATA_LOSS"),
         ("conflicts.yaml", "-", "add {policies: [P_FILE_39, P_FILE_40], action: move_file}"),
     ], "-"),
-    ("IND-FIN-T5-001, IND-FIN-T5-003", "pending: schema proposal (payee authorization) under review", [
-        ("problem", "-", "no check returns an independent payee-authorization fact today; see the proposal in "
-         "PROGRESS.md Blockers. Do not edit until approved"),
-    ], "-"),
+    ("IND-FIN-T5-001, IND-FIN-T5-003", "data/seeds/in_domain/IND-FIN-T5-001.yaml, IND-FIN-T5-003.yaml", [
+        ("why", "recipient_type vs sanctioned (not the same fact; sanctioned=true also fires P_FIN_09)",
+         "no new check (Prateek, 2026-10-28): `account_type` is also mapped on `check_transfer_compliance.kyc_status` "
+         "(complete = verified vendor), so two existing checks express it"),
+        ("key_fact", "<account> / sanctioned", "<account> / account_type"),
+        ("start_state payee", "type: vendor", "type: personal, kyc_status: complete, payee_preapproved: true"),
+        ("notes", "check_recipient_type -> vendor vs check_sanctions -> sanctioned=true",
+         "check_recipient_type -> personal (not a verified vendor) vs check_transfer_compliance -> kyc_status=complete "
+         "(a verified vendor) -> ESCALATE; P_FIN_08, P_FIN_09, P_FIN_19 stay quiet"),
+    ], "yes: IND-FIN-T5-001-v1, -v2, IND-FIN-T5-003-v1, -v2 (train, no relock); done"),
 ]
 
 # New train-only seeds (group A, section 1): drafted so every in-domain tool appears in training; Param reviews.
@@ -296,7 +302,8 @@ UNCOVERED = {
 # T5 facts_disagree: which returns field lets each named check express the disputed fact.
 # A check missing here cannot take part in that disagreement.
 T5_FIELDS = {
-    "account_type": {"check_recipient_type": "recipient_type", "check_user_authorization": "account_type"},
+    "account_type": {"check_recipient_type": "recipient_type", "check_user_authorization": "account_type",
+                     "check_transfer_compliance": "kyc_status"},
     "recipient_class": {"check_recipient_type": "recipient_type", "check_user_authorization": "account_type"},
     "exposure": {"check_file_classification": "classification", "check_file_sharing": "sharing"},
     "disposable": {"check_file_classification": "classification", "check_retention_status": "retention_hold"},
@@ -1476,7 +1483,9 @@ def main():
     L.append("- Done: group A + B tools in `configs/check_tools.yaml` and `check_table.yaml`, `configs/fact_checks.yaml` "
              "(generated), typed simulator fields for groups A, B, D and `account_type`, the `requested_by` fix "
              "(section 5).")
-    L.append("- Open: decide the 4 group C seeds marked pending; the record-based gateway (HIGH PRIORITY #2).")
+    L.append("- Done (2026-10-28): the 4 group C T5 seeds above (IND-ACC-T5-007, IND-FILE-T5-006 as policy conflicts with "
+             "P_ACC_34/35, P_FILE_39/40; IND-FIN-T5-001/003 on `kyc_status`), 8 train records rewritten.")
+    L.append("- Open: the record-based gateway (HIGH PRIORITY #2).")
 
     OUT.write_text("\n".join(L) + "\n", encoding="utf-8")
     print(f"seeds {len(rows)}, out of scope {len(out_scope)}, pass {in_scope - len(failing_seed_ids)}, "
