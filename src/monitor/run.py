@@ -22,6 +22,7 @@ import argparse
 import json
 import os
 import time
+from pathlib import Path
 from datetime import datetime, timezone
 
 from src.common.io import REPO_ROOT, read_jsonl, write_json, write_jsonl
@@ -72,7 +73,8 @@ def scripted_answers(setting: str, table_checks: list[dict]) -> list[str]:
     return [decide]
 
 
-def trace(record: dict, setting: str, kwargs: dict, passes: list[dict], calls: list[dict], row: dict) -> dict:
+def trace(record: dict, setting: str, kwargs: dict, passes: list[dict], calls: list[dict], row: dict,
+          policy_mode: str = "retrieval") -> dict:
     """One record's run for a human to read (scripts/show_traces.py). Gold is copied for the reader only."""
     from src.monitor.prompt_builder import number_policies
     shown = number_policies(kwargs["policies"], record["record_id"])
@@ -84,6 +86,7 @@ def trace(record: dict, setting: str, kwargs: dict, passes: list[dict], calls: l
                                           "required_checks", "policy_ids")},
             "shown_policies": [{"ref": p["ref"], "policy_id": p["policy_id"], "text": p["text"]} for p in shown],
             "gold_policies_shown": all(pid in {p["policy_id"] for p in shown} for pid in gold["policy_ids"]),
+            "policy_mode": policy_mode,
             "passes": passes, "calls": calls, "output": output,
             "correct": bool(output and output.get("decision") == gold["decision"])}
 
@@ -106,6 +109,41 @@ def load_records(paths: list[str], split: str | None, limit: int | None) -> list
     return records[:limit] if limit else records
 
 
+def run_records(records: list[dict], setting: str, model: "Recording", inputs, run_id: str, out_dir: Path,
+                dry_run: bool = False, config: dict | None = None) -> list[dict]:
+    """One setting over records with an already loaded model (Recording); writes predictions.jsonl,
+    invalid_outputs.jsonl, traces.jsonl (our records) and run_config.json to out_dir. Returns the rows.
+    inputs: a CaseInputs for our records (None if there are none). Kaggle jobs call this for several settings
+    and policy conditions with one model load."""
+    rows, invalid_raw, traces = [], [], []
+    start = time.perf_counter()
+    for i, rec in enumerate(records, 1):
+        model.texts, model.passes = [], []
+        kwargs = {}
+        if rec["task"] == "decide_action":
+            kwargs = inputs.for_record(rec, setting, run_id)
+            kwargs["gateway"] = RecordingGateway(kwargs["gateway"])
+            if dry_run:
+                model.inner = FakeModel(scripted_answers(setting, kwargs["table_checks"]))
+        elif dry_run:
+            model.inner = FakeModel([DRY_RISK])
+        rows.append(run_monitor(rec, setting, model, **kwargs))
+        if kwargs:
+            traces.append(trace(rec, setting, kwargs, model.passes, kwargs["gateway"].calls, rows[-1],
+                                inputs.policy_mode))
+        if rows[-1]["output"] is None:
+            invalid_raw.append({"record_id": rec["record_id"], "raw": [t[:RAW_CHARS] for t in model.texts]})
+        if i <= 3 or i % 10 == 0 or i == len(records):     # first records early: shows the speed at once
+            print(progress_line(i, len(records), time.perf_counter() - start, rows), flush=True)
+    write_jsonl(out_dir / "predictions.jsonl", rows)
+    write_jsonl(out_dir / "invalid_outputs.jsonl", invalid_raw)
+    if traces:              # our records only: external prompts (AgentRisk has no licence) are never written
+        write_jsonl(out_dir / "traces.jsonl", traces)
+    write_json(out_dir / "run_config.json", {**(config or {"run_id": run_id, "setting": setting, "model": model.name}),
+                                             "n": len(rows), "started": datetime.now(timezone.utc).isoformat(timespec="seconds")})
+    return rows
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--records", nargs="+", required=True, help="record .jsonl files")
@@ -121,13 +159,15 @@ def main(argv=None):
     ap.add_argument("--run-id", required=True)
     ap.add_argument("--limit", type=int)
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--policies", choices=["retrieval", "gold"], default="retrieval",
+                    help="our records: real top-3 retrieval, or the gold policies + 2 retrieved look-alikes (as in training)")
     args = ap.parse_args(argv)
 
     records = load_records(args.records, args.split, args.limit)
     inputs = None
     if any(r["task"] == "decide_action" for r in records):
         from src.monitor.case_inputs import CaseInputs
-        inputs = CaseInputs()
+        inputs = CaseInputs(policy_mode=args.policies)
 
     if args.dry_run:
         model = FakeModel([DRY_RISK] * len(records))
@@ -143,38 +183,13 @@ def main(argv=None):
         model = OpenAICompatModel(args.model, args.base_url, os.getenv(args.api_key_env, ""), args.thinking_off)
 
     out_dir = RUNS_DIR / args.run_id
-    model = Recording(model)
-    rows, invalid_raw, traces = [], [], []
-    start = time.perf_counter()
-    for i, rec in enumerate(records, 1):
-        model.texts, model.passes = [], []
-        kwargs = {}
-        if rec["task"] == "decide_action":
-            kwargs = inputs.for_record(rec, args.setting, args.run_id)
-            kwargs["gateway"] = RecordingGateway(kwargs["gateway"])
-            if args.dry_run:
-                model.inner = FakeModel(scripted_answers(args.setting, kwargs["table_checks"]))
-        elif args.dry_run:
-            model.inner = FakeModel([DRY_RISK])
-        rows.append(run_monitor(rec, args.setting, model, **kwargs))
-        if kwargs:
-            traces.append(trace(rec, args.setting, kwargs, model.passes, kwargs["gateway"].calls, rows[-1]))
-        if rows[-1]["output"] is None:
-            invalid_raw.append({"record_id": rec["record_id"], "raw": [t[:RAW_CHARS] for t in model.texts]})
-        if i <= 3 or i % 10 == 0 or i == len(records):     # first records early: shows the speed at once
-            print(progress_line(i, len(records), time.perf_counter() - start, rows), flush=True)
-    n = write_jsonl(out_dir / "predictions.jsonl", rows)
-    write_jsonl(out_dir / "invalid_outputs.jsonl", invalid_raw)
-    if traces:              # our records only: external prompts (AgentRisk has no licence) are never written
-        write_jsonl(out_dir / "traces.jsonl", traces)
-    write_json(out_dir / "run_config.json", {
+    rows = run_records(records, args.setting, Recording(model), inputs, args.run_id, out_dir, args.dry_run, config={
         "run_id": args.run_id, "setting": args.setting, "model": model.name, "base_url": args.base_url,
         "thinking_off": args.thinking_off, "backend": args.backend,
-        "revision": args.revision, "adapter": args.adapter, "split": args.split, "records": args.records, "n": n,
-        "prompts": template_names(), "dry_run": args.dry_run,
-        "started": datetime.now(timezone.utc).isoformat(timespec="seconds")})
+        "revision": args.revision, "adapter": args.adapter, "split": args.split, "records": args.records,
+        "prompts": template_names(), "dry_run": args.dry_run, "policies": args.policies})
     invalid = sum(r["output"] is None for r in rows)
-    print(json.dumps({"written": str(out_dir / "predictions.jsonl"), "n": n, "invalid": invalid}))
+    print(json.dumps({"written": str(out_dir / "predictions.jsonl"), "n": len(rows), "invalid": invalid}))
 
 
 if __name__ == "__main__":

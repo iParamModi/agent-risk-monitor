@@ -14,6 +14,9 @@ EMBED_MODEL = "BAAI/bge-base-en-v1.5"
 EMBED_REVISION = "a5beb1e3e68b9ab74eb54cfd186867f64f240e1a"
 QUERY_PREFIX = "Represent this sentence for searching relevant passages: "     # bge v1.5, short query -> passage
 DEFAULT_W = 0.5     # until tuned on validation
+# Tuned on our train + val records (2026-10-28, never test): query = action + all user and agent turns, w 0.6 gives
+# recall@3 0.55 / @5 0.62 (last user turn only, w 0.5: 0.48 / 0.60). Used by the evaluation runs (case_inputs.py).
+EVAL_W = 0.6
 TOP_K = 3
 
 STOPWORDS = frozenset("""a an the and or of to in on at for by with from as is are be been was were it its this that
@@ -44,8 +47,12 @@ def build_query(action: dict, user_request: str | None = None) -> str:
     return f"{action_text(action)}. {user_request.strip()}" if user_request else action_text(action)
 
 
-def query_for(visible: dict) -> str:
-    """The query for one of our records: its proposed action + the last user turn (used for training and eval alike)."""
+def query_for(visible: dict, all_turns: bool = False) -> str:
+    """The query for one of our records: its proposed action + the last user turn, or with all_turns every user and
+    agent turn (the tuned evaluation query, EVAL_W). The Phase B training file used the last-turn form for look-alikes."""
+    if all_turns:
+        text = " ".join(m["text"] for m in visible["trajectory"] if m["role"] in ("user", "agent") and m["text"])
+        return build_query(visible["proposed_action"], text or None)
     users = [m["text"] for m in visible["trajectory"] if m["role"] == "user" and m["text"]]
     return build_query(visible["proposed_action"], users[-1] if users else None)
 

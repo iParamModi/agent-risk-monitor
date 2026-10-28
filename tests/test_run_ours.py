@@ -55,3 +55,12 @@ def test_always_uses_the_filled_table_checks_even_without_check_table(records):
     inputs = CaseInputs(embedder=FakeEmbedder()).for_record(rec, "always")
     row = run_monitor(rec, "always", FakeModel(scripted_answers("always", [])), **inputs)
     assert [c["tool"] for c in row["calls"]] == [c["tool"] for c in inputs["table_checks"]]
+
+
+def test_gold_policy_mode_shows_the_gold_policy_plus_look_alikes(records):
+    for rec in records:
+        shown = CaseInputs(embedder=FakeEmbedder(), policy_mode="gold").policies(rec)
+        ids = [p["policy_id"] for p in shown]
+        assert len(ids) == 3 and len(set(ids)) == 3 and all(g in ids for g in rec["gold"]["policy_ids"])
+    with pytest.raises(ValueError):
+        CaseInputs(policy_mode="oracle")
