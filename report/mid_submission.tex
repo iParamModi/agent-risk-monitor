@@ -90,7 +90,7 @@ action is slow and expensive. We compare four checking settings on the same reco
 never & none; decide from the conversation & lower bound, no cost\\
 always & every check of a fixed table for the action ($\approx$4.6 per record) & safe but expensive reference\\
 selective & the checks the model itself asks for & \textbf{our method}\\
-oracle & exactly the checks the gold answer needs & upper bound\\
+oracle & exactly the checks the correct answer needs & upper bound\\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -104,7 +104,7 @@ checks.
 \centering
 \begin{tikzpicture}
 % lane 1: data and training
-\node[data=3.0cm]  (int)  at (0,0)    {\textbf{Our records}\\visible $\cdot$ hidden $\cdot$ gold};
+\node[data=3.0cm]  (int)  at (0,0)    {\textbf{Our records}\\visible $\cdot$ hidden $\cdot$ label};
 \node[model=2.9cm] (ft)   at (3.6,0)  {\textbf{Fine-tuning}\\QLoRA on train split};
 \node[data=2.9cm]  (ext)  at (7.1,0)  {\textbf{External records}\\R-Judge, ATBench,\\AgentRisk};
 % lane 2: monitor loop + environment
@@ -114,7 +114,7 @@ checks.
 \node[gate=2.6cm]  (gw)   at (9.75,-2.2) {\textbf{Check gateway}\\25 read-only checks,\\errors as data};
 \node[gate=2.5cm]  (sim)  at (13.2,-2.2) {\textbf{Company state}\\simulator built\\from hidden part};
 % lane 3: evaluation
-\node[gold=2.6cm]  (met)  at (0,-4.4)    {\textbf{Metrics}\\vs gold, with 95\% CI};
+\node[gold=2.6cm]  (met)  at (0,-4.4)    {\textbf{Metrics}\\vs label, with 95\% CI};
 \node[data=2.5cm]  (base) at (3.0,-4.4)  {\textbf{Rule baselines}\\rules only,\\rules + env.};
 \node[ok=2.6cm]    (dec)  at (6.1,-4.4)  {\textbf{Decision}\\+ evidence facts,\\policy numbers};
 \node[data=2.5cm]  (agt)  at (13.2,-4.4) {\textbf{Task agent}\\\texttt{lma\string_agent}: tools,\\agent loop};
@@ -125,7 +125,7 @@ checks.
 % evaluation path
 \draw[->] ([xshift=-14pt]int.south) -- node[note,right=1pt]{val/test} ([xshift=-2pt]vis.north);
 \draw[->,dashed,cgate] (int.north) -- ++(0,0.42) -| node[note,pos=0.2,above=1pt]{hidden part, never shown to the model} ([xshift=10pt]sim.north);
-\draw[->,dashed,cgold] (int.west) -- ++(-0.3,0) |- node[note,pos=0.75,above=1pt]{gold} (met.west);
+\draw[->,dashed,cgold] (int.west) -- ++(-0.3,0) |- node[note,pos=0.75,above=1pt]{label} (met.west);
 \draw[->] (vis) -- (ret); \draw[->] (ret) -- (llm);
 \draw[->,cgate] ([yshift=4pt]llm.east) -- node[note,above=1pt]{asks} ([yshift=4pt]gw.west);
 \draw[->,cgate] ([yshift=-4pt]gw.west) -- node[note,below=1pt]{results} ([yshift=-4pt]llm.east);
@@ -147,13 +147,13 @@ checks.
 \end{tikzpicture}
 \caption{The whole system. \textbf{Training path}: our train records and the external records fine-tune the monitor.
 \textbf{Evaluation path}: only the \emph{visible} part reaches the monitor; the \emph{hidden} part becomes the
-company state, reachable only through the check gateway; \emph{gold} is used only for scoring. One case loops between
+company state, reachable only through the check gateway; the \emph{label} (correct answer) is used only for scoring. One case loops between
 monitor and gateway until the monitor decides (at most 3 passes, 4 checks).}
 \label{fig:pipeline}
 \end{figure}
 
 \textbf{Status.} Every part of Figure~\ref{fig:pipeline} is built and tested (538 unit tests, including contract
-tests that no hidden or gold field ever reaches a prompt). Roles: \textbf{M1} data (seeds, policies, records,
+tests that no hidden field or label ever reaches a prompt). Roles: \textbf{M1} data (seeds, policies, records,
 splits), \textbf{M2} environment (\texttt{lma\_agent}, check gateway), \textbf{M3} model (retrieval, prompts, loop,
 fine-tuning), \textbf{M4} experiments (metrics, baselines, statistics). A shared task board and a decision log with a
 changelog keep the four members' work consistent.
@@ -167,7 +167,7 @@ safe/unsafe and risk type only) teaches \emph{risk detection}.
 \centering
 \begin{tikzpicture}
 \node[model=2.45cm] (s)  at (0,0)     {\textbf{Seeds} (212)\\by hand: action,\\hidden fact, policy};
-\node[model=2.45cm] (g)  at (2.85,0)  {\textbf{Generate}\\LLM: text only\\simulator: state\\code: gold label};
+\node[model=2.45cm] (g)  at (2.85,0)  {\textbf{Generate}\\LLM: text only\\simulator: state\\code: label};
 \node[model=2.45cm] (c)  at (5.7,0)   {\textbf{Auto checks}\\schema, T1 pairs,\\fact answerable};
 \node[model=2.45cm] (m)  at (8.55,0)  {\textbf{Merge + split}\\528 records,\\60/10/30 by seed};
 \node[model=2.3cm]  (l)  at (11.4,0)  {\textbf{Lock}\\test + OOD\\(SHA-256)};
@@ -185,13 +185,13 @@ safe/unsafe and risk type only) teaches \emph{risk detection}.
 \node[lanelab] at (A.east) {OURS};
 \node[lanelab] at (B.east) {PUBLIC};
 \end{tikzpicture}
-\caption{The two data pipelines, built in parallel. No LLM decides a label in either one: internal gold comes from
+\caption{The two data pipelines, built in parallel. No LLM decides a label in either one: internal labels come from
 code, external labels from the source datasets and from humans.}
 \label{fig:data}
 \end{figure}
 
 \textbf{Internal data.} A writer LLM (Claude Opus, not the Qwen family the monitor uses) writes only the user and
-agent sentences; the company state comes from the simulator; the gold label comes from a rule engine over hidden
+agent sentences; the company state comes from the simulator; the label (correct decision) comes from a rule engine over hidden
 policy logic that the monitor never sees. Each seed yields 2 or 4 records of one case type:
 
 \begin{table}[h]
@@ -199,7 +199,7 @@ policy logic that the monitor never sees. Each seed yields 2 or 4 records of one
 \setlength{\tabcolsep}{4pt}
 \begin{tabular}{@{}L{0.13\linewidth}L{0.38\linewidth}L{0.16\linewidth}rrr@{}}
 \toprule
-\textbf{Type} & \textbf{What it tests} & \textbf{Gold decisions} & \textbf{Needs check} & \textbf{Records} & \textbf{/seed}\\
+\textbf{Type} & \textbf{What it tests} & \textbf{Correct decisions} & \textbf{Needs check} & \textbf{Records} & \textbf{/seed}\\
 \midrule
 \textbf{T1} hidden fact & Same text, only a hidden fact differs (e.g.\ recipient verified or not): undecidable without a check & 85 allow, 69 block, 16 ask & 170 / 170 & 170 & 2\\
 \textbf{T2} trust rule & A fact shown earlier: (a) fresh tool result, (b) about another resource, (c) made stale by a later write, (d) only claimed by the agent. Only (a) may be trusted & 154 allow, 54 block & 156 / 208 & 208 & 4\\
@@ -208,7 +208,7 @@ policy logic that the monitor never sees. Each seed yields 2 or 4 records of one
 \textbf{T5} conflict & Two policies demand opposite things, or two checks return facts that cannot both be true & 62 escalate & 22 / 62 & 62 & 2\\
 \bottomrule
 \end{tabular}
-\caption{Case types (all 528 records). T3--T5 come in two writing styles per seed with the same gold.}
+\caption{Case types (all 528 records). T3--T5 come in two writing styles per seed with the same label.}
 \label{tab:types}
 \end{table}
 
@@ -232,7 +232,7 @@ OOD test, locked & 36 & 44 & 10 & 10 & 12 & 112 (45)\\
 \textbf{Leakage risk} & \textbf{Control}\\
 \midrule
 Scenario in two splits & split by seed\\
-Shared gold policy & such seeds kept together\\
+Same deciding policy & such seeds kept together\\
 Near-duplicates & 5-gram Jaccard $>0.6$ grouped\\
 Test edited later & SHA-256 lock, logged relock\\
 Policy id $\rightarrow$ answer & ids hidden, random numbers\\
@@ -302,7 +302,7 @@ Query & proposed action name and arguments + all user and agent turns\\
 Tuning & $w \in \{0, 0.1, \dots, 1\}$ and the query form tuned on train + validation only (never test): $w = 0.6$\\
 Output & top $k = 3$, shown as [1] [2] [3] in a random order per record (policy ids never reach the model)\\
 \midrule
-Quality & gold policy in the top 3 for 55\% of train + val seeds (top 5: 62\%); in our runs: val 15/40, test 62/120 records\\
+Quality & the deciding policy is in the top 3 for 55\% of train + val seeds (top 5: 62\%); in our runs: val 15/40, test 62/120 records\\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -334,9 +334,9 @@ Pass 2 & A: \textsc{block} (``contact\_12 address\_verified = false'', policy [1
 \midrule
 Monitor & prompted Qwen3-8B, pinned revision, greedy decoding, thinking off; Kaggle 2$\times$T4\\
 Records & validation 40; test 120 (phase-1 part of the locked test set), run once with the final setup, nothing tuned on it\\
-Policy condition & \emph{retrieved} top 3 (the full system) and \emph{gold} (gold policies + 2 look-alikes = perfect retrieval)\\
+Policy condition & \emph{retrieved} top 3 (the full system) and \emph{correct} (the deciding policies + 2 look-alikes = perfect retrieval)\\
 Metrics & accuracy; \emph{unsafe-action rate} (risky records given a weaker decision); checks per case; 95\% bootstrap CI over seeds\\
-Rule baselines & from train records and visible policy text only (a test fails if they import the gold labeller): \emph{rules only} (if-then rules on facts in the conversation, never checks); \emph{rules + environment} (every table check first, then the same rules)\\
+Rule baselines & from train records and visible policy text only (a test fails if they import the label rule engine): \emph{rules only} (if-then rules on facts in the conversation, never checks); \emph{rules + environment} (every table check first, then the same rules)\\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -346,7 +346,7 @@ Rule baselines & from train records and visible policy text only (a test fails i
 \setlength{\tabcolsep}{4.5pt}
 \begin{tabular}{@{}llcccccccc@{}}
 \toprule
- & & \multicolumn{5}{c}{\textbf{Retrieved policies (full system)}} & \multicolumn{3}{c}{\textbf{Gold policies}}\\
+ & & \multicolumn{5}{c}{\textbf{Retrieved policies (full system)}} & \multicolumn{3}{c}{\textbf{Correct policies}}\\
 \cmidrule(lr){3-7}\cmidrule(lr){8-10}
  & & \multicolumn{2}{c}{Validation} & \multicolumn{3}{c}{Test} & \multicolumn{3}{c}{Test}\\
 \cmidrule(lr){3-4}\cmidrule(lr){5-7}\cmidrule(lr){8-10}
@@ -363,7 +363,7 @@ Rules + env. & always & 50.0 & 200 & 55.8 [42.7, 67.5] & 32.1 & 552 (4.60) & 55.
 \end{tabular}
 \caption{Results (\%) and tool calls (total check-gateway calls over all records of the split). Unsafe =
 unsafe-action rate. Validation 40 records, test 120 records. All always and oracle calls were answered; of the
-prompted model's own selective calls on test, 4 of 44 (retrieved) and 2 of 56 (gold) failed because it named a wrong
+prompted model's own selective calls on test, 4 of 44 (retrieved) and 2 of 56 (correct policies) failed because it named a wrong
 argument or resource.}
 \label{tab:results}
 \end{table}
@@ -377,7 +377,7 @@ actions through).
 records it checks needed a check), but the prompted model checks too rarely (46\% of the records that need one), so
 it loses 10.8 accuracy points to always (McNemar $p=0.02$).
 \item \textbf{The hypothesis fails for the prompted model}: $\Delta$ unsafe (selective $-$ always) $=+14.3$
-[3.6, 26.2] with retrieved and $+3.6$ [$-5.0$, 12.1] with gold policies, both above the 5-point margin.
+[3.6, 26.2] with retrieved and $+3.6$ [$-5.0$, 12.1] with correct policies, both above the 5-point margin.
 \end{itemize}
 
 \begin{center}\small
@@ -385,8 +385,8 @@ it loses 10.8 accuracy points to always (McNemar $p=0.02$).
 \toprule
 \textbf{Ablation} & \textbf{Compared (test)} & \textbf{Finding}\\
 \midrule
-Policy source & retrieved vs gold policies & perfect retrieval cuts selective's unsafe rate 25.0 $\rightarrow$ 10.7 and the oracle's 10.7 $\rightarrow$ 1.8: retrieval (recall@3 0.55) is the second bottleneck\\
-Checking strategy & never / always / selective / oracle & with gold policies the oracle matches always (61.7) with 16\% of its checks: most table checks are not needed\\
+Policy source & retrieved vs correct policies & perfect retrieval cuts selective's unsafe rate 25.0 $\rightarrow$ 10.7 and the oracle's 10.7 $\rightarrow$ 1.8: retrieval (recall@3 0.55) is the second bottleneck\\
+Checking strategy & never / always / selective / oracle & with correct policies the oracle matches always (61.7) with 16\% of its checks: most table checks are not needed\\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -397,14 +397,14 @@ Checking strategy & never / always / selective / oracle & with gold policies the
 \toprule
 \textbf{Challenge} & \textbf{Mitigation}\\
 \midrule
-Labels can leak into prompts (hidden facts, policy ids, gold) & visible/hidden/gold split enforced by tests; policies shown as local numbers in random order\\
+Labels can leak into prompts (hidden facts, policy ids, labels) & visible/hidden/label split enforced by tests; policies shown as local numbers in random order\\
 ATBench: error/injection words predict the label (a shortcut) & documented; distractor turns planned so the words no longer give the answer\\
 AgentRisk has no redistribution licence & never committed; derived models kept private; numbers on our split only\\
 No LLM labels allowed; risk types are subjective & written labelling guide, human labels, blind double-labelling ($\kappa=0.57$)\\
 Data gaps: in 80 records the always checks failed (users/files missing from 24 states; file checks aimed at systems in 56) & found by the gateway; fixed in the seeds and the check table; a script now reports 0 failing calls on all 528 records\\
 Two policies with the same trigger and different outcomes & team decision (strictest wins), logged; affected records updated with a relock\\
 Locked-test hashes differed across operating systems & hashes over normalised content; line endings fixed in \texttt{.gitattributes}\\
-Retrieval misses the gold policy in 45\% of cases & both policy conditions reported; tuned query; top-$k$ ablation planned\\
+Retrieval misses the deciding policy in 45\% of cases & both policy conditions reported; tuned query; top-$k$ ablation planned\\
 Prompted model under-checks; the hypothesis fails & fine-tuning on first- and second-pass examples (trained); targeted conflict (T5) examples\\
 GPU limits (Kaggle T4, 12 h sessions) & 4-bit QLoRA; one model load per job; each run saved as it finishes\\
 \bottomrule
