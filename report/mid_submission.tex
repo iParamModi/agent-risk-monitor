@@ -268,7 +268,7 @@ derived models kept private. ATBench is released as test-only, so our ATBench nu
 \label{tab:ext}
 \end{table}
 
-\section{Environment and monitor}
+\section{Environment, policy retrieval and monitor}
 \begin{center}\small
 \begin{tabular}{@{}L{0.17\linewidth}L{0.79\linewidth}@{}}
 \toprule
@@ -286,9 +286,29 @@ Next (after mid) & phase-2 tools: messaging, share links, events, payments, user
 \label{tab:env}
 \end{center}
 
+\textbf{Policy retrieval (RAG).} The company's policies are many (148 in-domain, 164 OOD) and the prompt shows only
+the three most relevant, retrieved by a hybrid of keyword and embedding search over the \emph{visible} policy text.
+
+\begin{center}\small
+\begin{tabular}{@{}L{0.2\linewidth}L{0.76\linewidth}@{}}
+\toprule
+\textbf{Retrieval setting} & \textbf{Value}\\
+\midrule
+Policy store & one sentence per policy, visible text only; hidden logic (actions, facts, outcomes) is never indexed; separate OOD store (164 reworded policies) for OOD records\\
+Keyword part & BM25 (Okapi); lower-case tokens, stop words removed, \texttt{snake\_case} split, plural \emph{-s} dropped\\
+Meaning part & \texttt{BAAI/bge-base-en-v1.5} (pinned revision), cosine similarity of L2-normalised vectors, bge query prefix\\
+Score & $s = w\cdot\mathrm{meaning} + (1-w)\cdot\mathrm{keywords}$, each part min-max scaled per query; ties keep store order\\
+Query & proposed action name and arguments + all user and agent turns\\
+Tuning & $w \in \{0, 0.1, \dots, 1\}$ and the query form tuned on train + validation only (never test): $w = 0.6$\\
+Output & top $k = 3$, shown as [1] [2] [3] in a random order per record (policy ids never reach the model)\\
+\midrule
+Quality & gold policy in the top 3 for 55\% of train + val seeds (top 5: 62\%); in our runs: val 15/40, test 62/120 records\\
+\bottomrule
+\end{tabular}
+\end{center}
+
 \textbf{Monitor loop.} Each pass sends one prompt: decision rules, a \emph{trust rule} (a fact counts only if a tool
-result states it and no later write touched that resource), the 3 retrieved policies (BM25 + \texttt{bge-base}; a
-gold policy is in the top 3 for 55\% of train+val seeds), the conversation, the proposed action, the check tools and
+result states it and no later write touched that resource), the 3 retrieved policies, the conversation, the proposed action, the check tools and
 any check results. The model answers one JSON object: a \textsc{decision} with evidence, or \textsc{need\_information}
 with the missing fact and 1--2 checks. A real validation example (base model, retrieved policies, T1 pair
 IND-CAL-T1-004):
