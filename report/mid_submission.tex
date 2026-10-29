@@ -344,22 +344,27 @@ Rule baselines & from train records and visible policy text only (a test fails i
 \begin{table}[h]
 \centering\small
 \setlength{\tabcolsep}{4.5pt}
-\begin{tabular}{llcccccc}
+\begin{tabular}{@{}llcccccccc@{}}
 \toprule
- & & \multicolumn{4}{c}{\textbf{Retrieved policies (full system)}} & \multicolumn{2}{c}{\textbf{Gold policies}}\\
-\cmidrule(lr){3-6}\cmidrule(lr){7-8}
-Method & Setting & Val acc. & Test acc. [95\% CI] & Unsafe $\downarrow$ & Checks/case & Test acc. & Unsafe $\downarrow$\\
+ & & \multicolumn{5}{c}{\textbf{Retrieved policies (full system)}} & \multicolumn{3}{c}{\textbf{Gold policies}}\\
+\cmidrule(lr){3-7}\cmidrule(lr){8-10}
+ & & \multicolumn{2}{c}{Validation} & \multicolumn{3}{c}{Test} & \multicolumn{3}{c}{Test}\\
+\cmidrule(lr){3-4}\cmidrule(lr){5-7}\cmidrule(lr){8-10}
+Method & Setting & Acc. & Calls & Acc. [95\% CI] & Unsafe $\downarrow$ & Calls (/case) & Acc. & Unsafe $\downarrow$ & Calls\\
 \midrule
-Rules only & never & 57.5 & 53.3 [44.0, 61.5] & 94.6 & 0.00 & 53.3 & 94.6\\
-Rules + environment & always & 50.0 & 55.8 [42.7, 67.5] & 32.1 & 4.60 & 55.0 & 23.2\\
+Rules only & never & 57.5 & 0 & 53.3 [44.0, 61.5] & 94.6 & 0 (0.00) & 53.3 & 94.6 & 0\\
+Rules + env. & always & 50.0 & 200 & 55.8 [42.7, 67.5] & 32.1 & 552 (4.60) & 55.0 & 23.2 & 552\\
 \midrule
-\multirow{4}{*}{Qwen3-8B (prompted)} & never & 52.5 & 40.0 [31.0, 49.2] & 30.4 & 0.00 & 40.0 & 16.1\\
- & always & 67.5 & \textbf{63.3} [52.5, 73.8] & \textbf{10.7} & 4.60 & 61.7 & 7.1\\
- & selective & 65.0 & 52.5 [42.9, 61.4] & 25.0 & \textbf{0.37} & 55.8 & 10.7\\
- & oracle & 70.0 & 58.3 [48.1, 68.5] & 10.7 & 0.74 & 61.7 & 1.8\\
+\multirow{4}{*}{\begin{tabular}[c]{@{}l@{}}Qwen3-8B\\(prompted)\end{tabular}} & never & 52.5 & 0 & 40.0 [31.0, 49.2] & 30.4 & 0 (0.00) & 40.0 & 16.1 & 0\\
+ & always & 67.5 & 200 & \textbf{63.3} [52.5, 73.8] & \textbf{10.7} & 552 (4.60) & 61.7 & 7.1 & 552\\
+ & selective & 65.0 & \textbf{16} & 52.5 [42.9, 61.4] & 25.0 & \textbf{44} (0.37) & 55.8 & 10.7 & \textbf{56}\\
+ & oracle & 70.0 & 30 & 58.3 [48.1, 68.5] & 10.7 & 89 (0.74) & 61.7 & 1.8 & 89\\
 \bottomrule
 \end{tabular}
-\caption{Results (\%). Unsafe = unsafe-action rate on test. Validation 40 records, test 120 records.}
+\caption{Results (\%) and tool calls (total check-gateway calls over all records of the split). Unsafe =
+unsafe-action rate. Validation 40 records, test 120 records. All always and oracle calls were answered; of the
+prompted model's own selective calls on test, 4 of 44 (retrieved) and 2 of 56 (gold) failed because it named a wrong
+argument or resource.}
 \label{tab:results}
 \end{table}
 
@@ -368,14 +373,11 @@ Rules + environment & always & 50.0 & 55.8 [42.7, 67.5] & 32.1 & 4.60 & 55.0 & 2
 \item \textbf{The LLM beats the rules once it may check:} always 63.3 vs 55.8 with the same checks, and a three times
 lower unsafe-action rate. Without checks both fail on the cases built to need a fact (the rules let 94.6\% of risky
 actions through).
-\item \textbf{Selective saves 92\% of the checks} (0.37 vs 4.60 per case) and its checks are well aimed (88\% of the
+\item \textbf{Selective saves 92\% of the tool calls}: 44 calls instead of 552 on the 120 test records (0.37 vs 4.60 per case), and its checks are well aimed (88\% of the
 records it checks needed a check), but the prompted model checks too rarely (46\% of the records that need one), so
 it loses 10.8 accuracy points to always (McNemar $p=0.02$).
 \item \textbf{The hypothesis fails for the prompted model}: $\Delta$ unsafe (selective $-$ always) $=+14.3$
 [3.6, 26.2] with retrieved and $+3.6$ [$-5.0$, 12.1] with gold policies, both above the 5-point margin.
-\item \textbf{Next step, already started:} teach the model \emph{when} to check. A QLoRA fine-tune (rank 16; our
-first- and second-pass training examples plus the external risk data) is trained; first validation numbers: selective
-85.0 vs 70.0 (gold policies) and 72.5 vs 65.0 (retrieved). Its full evaluation is part of the final submission.
 \end{itemize}
 
 \begin{center}\small
