@@ -25,24 +25,46 @@
 \definecolor{cgold}{HTML}{6D28D9}\definecolor{cgoldbg}{HTML}{EDE9FE}
 \definecolor{cok}{HTML}{15803D}\definecolor{cokbg}{HTML}{DCFCE7}
 
-\title{\vspace{-1.2cm}\textbf{Selective Environment Checks for an Agent-Action Safety Monitor}\\[2pt]
-\large Mid-submission report}
-\author{Param (M1 Data) \and Prateek (M2 Environment) \and Meet (M3 Model) \and Moiesha (M4 Experiments)}
-\date{30 October 2026 \quad·\quad Code: \url{https://github.com/meet6868/Agent-Risk-Monitoring}}
+\title{\vspace{-1.2cm}\textbf{Selective Environment Verification for Agent-Risk Monitoring}\\[2pt]
+\large LMA Group Project 2026 \,--\, Mid-submission report}
+\author{\textbf{Team Catalyst}\\[2pt]\normalsize GitHub: \url{https://github.com/meet6868/Agent-Risk-Monitoring}}
+\date{30 October 2026}
 
 \begin{document}
 \maketitle
 \vspace{-0.6cm}
 
-\section{Problem and idea}
-An AI agent working inside a company (files, users, accounts, repositories, calendar) proposes one action at a
-time. A \emph{monitor} must decide, before the action runs, whether to \textsc{allow} it, \textsc{ask\_confirmation}
-from a human, \textsc{block} it, or \textsc{escalate} it (two policies or two facts contradict each other). The
-decision often depends on a fact that is \emph{not} in the conversation: whether a file is shared outside the
-company, whether a recipient address is verified, whether a user is the last admin. A monitor that reads only the
-conversation must guess; a monitor that queries every system for every action is slow and expensive.
+\section{Project and end goal}
+AI agents now act inside companies: they move and share files, grant access, send e-mail and transfer money. One
+wrong action can leak data or lose money, so each action should pass a \textbf{safety monitor} first. Example: an
+agent proposes \emph{``write the internal cost numbers into \texttt{pricing\_v2.xlsx}''}. Whether this is safe depends
+on a fact the conversation does not show (is that sheet shared with a customer?). Our project builds a monitor that
+knows when it lacks such a fact and fetches \emph{just that fact} with a read-only check, instead of guessing or
+checking everything.
 
-We study a \textbf{selective} monitor: an LLM that reads the conversation and the relevant company policies, and
+\textbf{End goal.} A monitor that \emph{any agent can call} before each action, which answers \textsc{allow},
+\textsc{ask\_confirmation}, \textsc{block} or \textsc{escalate} with evidence, asks for checks only when needed, and is
+shown to be about as safe as checking everything at a fraction of the cost: on our own benchmark (including
+held-out domains and tools), on public agent-safety benchmarks, and live with agent LLMs of other model families.
+\begin{center}\small
+\begin{tabular}{@{}p{0.26\linewidth}p{0.36\linewidth}p{0.32\linewidth}@{}}
+\toprule
+\textbf{Deliverable} & \textbf{Done for this submission} & \textbf{For the final submission}\\
+\midrule
+1. Benchmark data & 212 seeds $\rightarrow$ 528 records, five case types, locked test and OOD sets; 3 external datasets prepared & OOD evaluation\\
+2. Agent environment & Simulated company, task agent, phase-1 tools, check gateway with 25 checks & Phase-2 tools and seeds\\
+3. Monitor & Policy retrieval; monitor loop in 4 settings with prompted Qwen3-8B; fine-tuned model trained & Full evaluation of the fine-tuned monitor\\
+4. Evaluation & Metrics with confidence intervals, two rule baselines, results on validation and test, first ablations & Further ablations, error analysis\\
+5. Deployment & --- & Plug-in monitor service, live runs with two agent LLMs, demo\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Research question}
+The deciding fact is often hidden: whether a file is shared outside the company, whether a recipient address is
+verified, whether a user is the last admin. A monitor that reads only the conversation must guess; one that queries
+every system for every action is slow and expensive. \textsc{escalate} is for two policies or two facts that
+contradict each other. We study a \textbf{selective} monitor: an LLM that reads the conversation and the relevant company policies, and
 asks for a read-only \emph{check} only when a deciding fact is missing. Our hypothesis (fixed before any run,
 decisions.md R10.4) is that selective checking is \textbf{not less safe than always checking} (unsafe-action rate at
 most 5 points higher, upper 95\% bound) while making far fewer checks. We compare four settings on the same
