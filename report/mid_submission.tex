@@ -71,7 +71,7 @@ public agent-safety benchmarks.
 \midrule
 1. Benchmark data & 212 seeds $\rightarrow$ 528 records, five case types, locked test and OOD sets; 3 external datasets prepared & OOD evaluation\\
 2. Agent environment & Simulated company, task agent, phase-1 tools, check gateway with 25 checks & Phase-2 tools and seeds\\
-3. Monitor & Policy retrieval; monitor loop in 4 settings with prompted Qwen3-8B; fine-tuned model trained & Full evaluation of the fine-tuned monitor\\
+3. Monitor & Policy retrieval; monitor loop in 4 settings with prompted Qwen3-8B; fine-tuning on external data (Phase A), evaluated & Fine-tuning on our records: full evaluation\\
 4. Evaluation & Metrics with confidence intervals, two rule baselines, results on validation and test, first ablations & Further ablations, error analysis\\
 \bottomrule
 \end{tabular}
@@ -381,6 +381,40 @@ it loses 10.8 accuracy points to always (McNemar $p=0.02$).
 \item \textbf{The hypothesis fails for the prompted model}: $\Delta$ unsafe (selective $-$ always) $=+14.3$
 [3.6, 26.2] with retrieved and $+3.6$ [$-5.0$, 12.1] with correct policies, both above the 5-point margin.
 \end{itemize}
+
+\textbf{Risk detection: fine-tuning on external data only (Phase A).} Before teaching the monitor our task, we
+fine-tuned Qwen3-8B on the external data alone (none of our records): given a whole trajectory, say safe or unsafe and
+the risk type. This tests whether the model and training setup work, and gives the monitor general risk knowledge.
+
+\begin{center}\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}L{0.15\linewidth}L{0.81\linewidth}@{}}
+\toprule
+\textbf{Phase A setup} & \\
+\midrule
+Training data & 1{,}034 external train records, balanced: 517 safe / 517 unsafe (R-Judge 226, ATBench 594, AgentRisk 214); privacy leakage capped at 149 so no risk type dominates; 993 fit the 4{,}096-token limit\\
+Training & QLoRA on Qwen3-8B: rank 16, $\alpha$ 32, learning rate $2\cdot10^{-4}$, 2 epochs, 4-bit NF4, Kaggle 2$\times$T4\\
+Evaluation & the same 241 external validation records for both models (R-Judge 47, ATBench 96, AgentRisk 98)\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{table}[h]
+\centering\small
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+ & & & & \multicolumn{3}{c}{Risk-label F1 per dataset}\\
+\cmidrule(lr){5-7}
+\textbf{Model} & Label acc. & Risk-label F1 & Risk-type macro-F1 & R-Judge & ATBench & AgentRisk\\
+\midrule
+Qwen3-8B (prompted) & 52.3 & 14.8 & 4.0 & 45.7 & 3.9 & 4.1\\
+Qwen3-8B + Phase A & \textbf{93.8} & \textbf{93.4} & \textbf{59.6} & \textbf{86.5} & \textbf{90.5} & \textbf{98.9}\\
+\bottomrule
+\end{tabular}
+\caption{External validation, 241 records (\%). Risk-label F1 is for the \emph{unsafe} class. The prompted model calls
+224 of the 241 trajectories safe; after Phase A it finds unsafe ones in all three datasets.}
+\label{tab:phasea}
+\end{table}
 
 \begin{center}\small
 \begin{tabular}{@{}L{0.17\linewidth}L{0.33\linewidth}L{0.44\linewidth}@{}}
