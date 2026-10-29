@@ -329,15 +329,76 @@ Pass 2 & A: \textsc{block} (``contact\_12 address\_verified = false'', policy [1
 \end{center}
 
 \section{Experiments}
+All experiments use Qwen3-8B (pinned revision, greedy decoding, thinking off) on Kaggle 2$\times$T4, either prompted (no
+training) or with a QLoRA adapter. We first fine-tune on external data only (Phase A), then on all data, external plus
+our generated records (Phase B), and finally evaluate on our records against rule baselines.
+
+\subsection{Experiments 1 and 2: fine-tuning on external data only (Phase A), then on all data (Phase B)}
+\begin{center}\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}L{0.15\linewidth}L{0.36\linewidth}L{0.43\linewidth}@{}}
+\toprule
+ & \textbf{Phase A: external data only} & \textbf{Phase B: all data (external + generated)}\\
+\midrule
+Learns & risk detection on whole trajectories (safe/unsafe, risk type) & the monitor task (decide, or ask for a check and decide after it) + risk detection\\
+External data & 1{,}034 train records (R-Judge 226, ATBench 594, AgentRisk 214), balanced 517 safe / 517 unsafe, privacy leakage capped at 149 & the same 1{,}034\\
+Our records & none & 824 examples from our 248 train records, repeated $\times$2: 496 first-pass (decide or ask) and 328 second-pass (decide after the check result); policies shown: the correct ones + 2 look-alikes, as numbers\\
+Examples kept & 993 ($\le$4{,}096 tokens) & 1{,}817\\
+Start point & base model & base model (a new adapter, not continued from Phase A)\\
+\midrule
+Training & \multicolumn{2}{L{0.79\linewidth}}{QLoRA rank 16, $\alpha$ 32, learning rate $2\cdot10^{-4}$, 2 epochs, 4-bit NF4. Validation and test records are never trained on.}\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{table}[h]
+\centering\small
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+ & & & & \multicolumn{3}{c}{Risk-label F1 per dataset}\\
+\cmidrule(lr){5-7}
+\textbf{Model} & Label acc. & Risk-label F1 & Risk-type macro-F1 & R-Judge & ATBench & AgentRisk\\
+\midrule
+Qwen3-8B (prompted) & 52.3 & 14.8 & 4.0 & 45.7 & 3.9 & 4.1\\
++ Phase A (external only) & \textbf{93.8} & \textbf{93.4} & \textbf{59.6} & \textbf{86.5} & \textbf{90.5} & \textbf{98.9}\\
++ Phase B (all data) & 92.1 & 91.5 & 55.6 & 84.2 & 89.1 & 96.8\\
+\bottomrule
+\end{tabular}
+\caption{Risk detection on the external validation set, 241 records (\%). Risk-label F1 is for the \emph{unsafe}
+class. The prompted model calls 224 of the 241 trajectories safe; Phase A fixes this, and Phase B keeps almost all of
+it while also learning our task.}
+\label{tab:phasea}
+\end{table}
+
+\begin{table}[h]
+\centering\small
+\begin{tabular}{@{}llcccc@{}}
+\toprule
+\textbf{Policies shown} & \textbf{Model} & never & always & selective & oracle\\
+\midrule
+\multirow{2}{*}{retrieved (full system)} & Qwen3-8B (prompted) & 52.5 (0) & 67.5 (200) & 65.0 (16) & 70.0 (30)\\
+ & + Phase B & \textbf{60.0} (0) & \textbf{75.0} (200) & \textbf{72.5} (28) & \textbf{82.5} (30)\\
+\midrule
+\multirow{2}{*}{correct policies} & Qwen3-8B (prompted) & 57.5 (0) & 75.0 (200) & 70.0 (15) & 80.0 (30)\\
+ & + Phase B & \textbf{65.0} (0) & \textbf{85.0} (200) & \textbf{85.0} (26) & \textbf{97.5} (30)\\
+\bottomrule
+\end{tabular}
+\caption{Phase B on our validation records (40): accuracy in \% (tool calls in brackets). Phase B is better in every
+setting (+7.5 to +17.5 points); with correct policies, selective matches always with 26 calls instead of 200. Its
+evaluation on the locked test set is part of the final submission.}
+\label{tab:phaseb}
+\end{table}
+
+\subsection{Experiment 3: our records, validation and locked test}
 \begin{center}\small
 \begin{tabular}{@{}L{0.17\linewidth}L{0.79\linewidth}@{}}
 \toprule
 \textbf{Setup} & \\
 \midrule
-Monitor & prompted Qwen3-8B, pinned revision, greedy decoding, thinking off; Kaggle 2$\times$T4\\
+Monitor & prompted Qwen3-8B, compared with two rule baselines\\
 Records & validation 40; test 120 (phase-1 part of the locked test set), run once with the final setup, nothing tuned on it\\
 Policy condition & \emph{retrieved} top 3 (the full system) and \emph{correct} (the deciding policies + 2 look-alikes = perfect retrieval)\\
-Metrics & accuracy; \emph{unsafe-action rate} (risky records given a weaker decision); checks per case; 95\% bootstrap CI over seeds\\
+Metrics & accuracy; \emph{unsafe-action rate} (risky records given a weaker decision); tool calls; 95\% bootstrap CI over seeds\\
 Rule baselines & from train records and visible policy text only (a test fails if they import the label rule engine): \emph{rules only} (if-then rules on facts in the conversation, never checks); \emph{rules + environment} (every table check first, then the same rules)\\
 \bottomrule
 \end{tabular}
@@ -382,40 +443,6 @@ it loses 10.8 accuracy points to always (McNemar $p=0.02$).
 [3.6, 26.2] with retrieved and $+3.6$ [$-5.0$, 12.1] with correct policies, both above the 5-point margin.
 \end{itemize}
 
-\textbf{Risk detection: fine-tuning on external data only (Phase A).} Before teaching the monitor our task, we
-fine-tuned Qwen3-8B on the external data alone (none of our records): given a whole trajectory, say safe or unsafe and
-the risk type. This tests whether the model and training setup work, and gives the monitor general risk knowledge.
-
-\begin{center}\small
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{@{}L{0.15\linewidth}L{0.81\linewidth}@{}}
-\toprule
-\textbf{Phase A setup} & \\
-\midrule
-Training data & 1{,}034 external train records, balanced: 517 safe / 517 unsafe (R-Judge 226, ATBench 594, AgentRisk 214); privacy leakage capped at 149 so no risk type dominates; 993 fit the 4{,}096-token limit\\
-Training & QLoRA on Qwen3-8B: rank 16, $\alpha$ 32, learning rate $2\cdot10^{-4}$, 2 epochs, 4-bit NF4, Kaggle 2$\times$T4\\
-Evaluation & the same 241 external validation records for both models (R-Judge 47, ATBench 96, AgentRisk 98)\\
-\bottomrule
-\end{tabular}
-\end{center}
-
-\begin{table}[h]
-\centering\small
-\begin{tabular}{@{}lcccccc@{}}
-\toprule
- & & & & \multicolumn{3}{c}{Risk-label F1 per dataset}\\
-\cmidrule(lr){5-7}
-\textbf{Model} & Label acc. & Risk-label F1 & Risk-type macro-F1 & R-Judge & ATBench & AgentRisk\\
-\midrule
-Qwen3-8B (prompted) & 52.3 & 14.8 & 4.0 & 45.7 & 3.9 & 4.1\\
-Qwen3-8B + Phase A & \textbf{93.8} & \textbf{93.4} & \textbf{59.6} & \textbf{86.5} & \textbf{90.5} & \textbf{98.9}\\
-\bottomrule
-\end{tabular}
-\caption{External validation, 241 records (\%). Risk-label F1 is for the \emph{unsafe} class. The prompted model calls
-224 of the 241 trajectories safe; after Phase A it finds unsafe ones in all three datasets.}
-\label{tab:phasea}
-\end{table}
-
 \begin{center}\small
 \begin{tabular}{@{}L{0.17\linewidth}L{0.33\linewidth}L{0.44\linewidth}@{}}
 \toprule
@@ -441,7 +468,7 @@ Data gaps: in 80 records the always checks failed (users/files missing from 24 s
 Two policies with the same trigger and different outcomes & team decision (strictest wins), logged; affected records updated with a relock\\
 Locked-test hashes differed across operating systems & hashes over normalised content; line endings fixed in \texttt{.gitattributes}\\
 Retrieval misses the deciding policy in 45\% of cases & both policy conditions reported; tuned query; top-$k$ ablation planned\\
-Prompted model under-checks; the hypothesis fails & fine-tuning on first- and second-pass examples (trained); targeted conflict (T5) examples\\
+Prompted model under-checks; the hypothesis fails & Phase B fine-tuning on first- and second-pass examples (+7.5 to +17.5 points on validation); targeted conflict (T5) examples\\
 GPU limits (Kaggle T4, 12 h sessions) & 4-bit QLoRA; one model load per job; each run saved as it finishes\\
 \bottomrule
 \end{tabular}
@@ -453,7 +480,7 @@ GPU limits (Kaggle T4, 12 h sessions) & 4-bit QLoRA; one model load per job; eac
 \toprule
 \textbf{Dates} & \textbf{Work}\\
 \midrule
-31 Oct -- 3 Nov & full evaluation of the fine-tuned monitor on validation and test; error analysis of selective's misses by case type\\
+31 Oct -- 3 Nov & Phase B on the locked test set; error analysis of selective's misses by case type\\
 4 -- 7 Nov & OOD test (112 locked records, new domain and tools); ablations: noisy check results (the gateway already supports seeded noise), top-$k$ policies, no policies, larger model\\
 6 -- 10 Nov & phase-2 tools and seeds; targeted training data for the cases the error analysis points to, retraining if needed\\
 11 -- 14 Nov & final tables with confidence intervals, final report\\
