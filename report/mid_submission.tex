@@ -42,10 +42,10 @@ on a fact the conversation does not show (is that sheet shared with a customer?)
 knows when it lacks such a fact and fetches \emph{just that fact} with a read-only check, instead of guessing or
 checking everything.
 
-\textbf{End goal.} A monitor that \emph{any agent can call} before each action, which answers \textsc{allow},
-\textsc{ask\_confirmation}, \textsc{block} or \textsc{escalate} with evidence, asks for checks only when needed, and is
-shown to be about as safe as checking everything at a fraction of the cost: on our own benchmark (including
-held-out domains and tools), on public agent-safety benchmarks, and live with agent LLMs of other model families.
+\textbf{End goal.} A monitor that, before each agent action, answers \textsc{allow}, \textsc{ask\_confirmation},
+\textsc{block} or \textsc{escalate} with evidence, asks for checks only when needed, and is shown to be about as safe
+as checking everything at a fraction of the cost, on our own benchmark (including held-out domains and tools) and on
+public agent-safety benchmarks.
 \begin{center}\small
 \begin{tabular}{@{}p{0.26\linewidth}p{0.36\linewidth}p{0.32\linewidth}@{}}
 \toprule
@@ -55,7 +55,6 @@ held-out domains and tools), on public agent-safety benchmarks, and live with ag
 2. Agent environment & Simulated company, task agent, phase-1 tools, check gateway with 25 checks & Phase-2 tools and seeds\\
 3. Monitor & Policy retrieval; monitor loop in 4 settings with prompted Qwen3-8B; fine-tuned model trained & Full evaluation of the fine-tuned monitor\\
 4. Evaluation & Metrics with confidence intervals, two rule baselines, results on validation and test, first ablations & Further ablations, error analysis\\
-5. Deployment & --- & Plug-in monitor service, live runs with two agent LLMs, demo\\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -135,7 +134,7 @@ monitor decides (at most 3 passes).}
 \textbf{Status.} The data pipeline, the check gateway, the monitor loop in all four settings, retrieval, metrics,
 the rule baselines and the evaluation on validation and the locked test set are done and tested (538 unit tests;
 every module has a contract test, e.g.\ that no hidden or gold field ever reaches a prompt). Work is split by role:
-\textbf{M1} seeds, policies, records, splits; \textbf{M2} the demo company \texttt{lma\_agent} and the check gateway;
+\textbf{M1} seeds, policies, records, splits; \textbf{M2} the simulated company \texttt{lma\_agent} and the check gateway;
 \textbf{M3} retrieval, prompts, monitor loop, fine-tuning; \textbf{M4} metrics, baselines, statistics. Team rules
 (task board in \texttt{PROGRESS.md}, every decision and change logged in \texttt{docs/decisions.md}) keep four
 people's work consistent.
@@ -300,9 +299,10 @@ GPU limits (Kaggle T4, 12 h sessions). & QLoRA in 4-bit; one model load per job;
 selective's misses by case type.
 \item \textbf{4 -- 7 Nov:} OOD test (112 locked records, new domain and tools); ablations: noisy check results
 (the gateway already supports seeded noise), top-$k$ policies, no policies, larger model.
-\item \textbf{6 -- 10 Nov:} phase-2 tools and seeds; the monitor running inside \texttt{lma\_agent} on live agent
-tasks (demo cases); targeted training data for the cases the error analysis points to, retraining if needed.
-\item \textbf{11 -- 14 Nov:} final tables with confidence intervals, final report and demo.
+\item \textbf{6 -- 10 Nov:} phase-2 tools and seeds; targeted training data for the cases the error analysis points
+to, retraining if needed.
+\item \textbf{11 -- 14 Nov:} final tables with confidence intervals, final report.
 \end{itemize}
+If time allows, we will also run the monitor inside \texttt{lma\_agent} on live agent tasks.
 
 \end{document}
