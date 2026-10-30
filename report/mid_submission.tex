@@ -69,9 +69,9 @@ public agent-safety benchmarks.
 \toprule
 \textbf{Deliverable} & \textbf{Done for this submission} & \textbf{For the final submission}\\
 \midrule
-1. Benchmark data & 212 seeds $\rightarrow$ 528 records, five case types, locked test and OOD sets; 3 external datasets prepared & OOD evaluation\\
+1. Benchmark data & 212 seeds $\rightarrow$ 528 records, five case types, locked test and OOD sets; 3 collected public datasets prepared & OOD evaluation\\
 2. Agent environment & Simulated company, task agent, phase-1 tools, check gateway with 25 checks & Phase-2 tools and seeds\\
-3. Monitor & Policy retrieval; monitor loop in 4 settings with prompted Qwen3-8B; fine-tuning on external data (Phase A), evaluated & Fine-tuning on our records: full evaluation\\
+3. Monitor & Policy retrieval; monitor loop in 4 settings with prompted Qwen3-8B; fine-tuning on collected data (Phase A), evaluated & Fine-tuning on our records: full evaluation\\
 4. Evaluation & Metrics with confidence intervals, two rule baselines, results on validation and test, first ablations & Further ablations, error analysis\\
 \bottomrule
 \end{tabular}
@@ -104,9 +104,9 @@ checks.
 \centering
 \begin{tikzpicture}
 % lane 1: data and training
-\node[data=3.0cm]  (int)  at (0,0)    {\textbf{Our records}\\visible $\cdot$ hidden $\cdot$ label};
+\node[data=3.0cm]  (int)  at (0,0)    {\textbf{Generated records}\\visible $\cdot$ hidden $\cdot$ label};
 \node[model=2.9cm] (ft)   at (3.6,0)  {\textbf{Fine-tuning}\\QLoRA on train split};
-\node[data=2.9cm]  (ext)  at (7.1,0)  {\textbf{External records}\\R-Judge, ATBench,\\AgentRisk};
+\node[data=2.9cm]  (ext)  at (7.1,0)  {\textbf{Collected records}\\R-Judge, ATBench,\\AgentRisk};
 % lane 2: monitor loop + environment
 \node[data=2.4cm]  (vis)  at (0,-2.2)    {\textbf{Visible part}\\conversation +\\proposed action};
 \node[data=2.5cm]  (ret)  at (3.0,-2.2)  {\textbf{Retriever}\\148 policies $\rightarrow$\\top 3 as [1][2][3]};
@@ -145,7 +145,7 @@ checks.
 \node[lanelab] at (L2.east) {MONITOR};
 \node[lanelab] at (L3.east) {SCORING};
 \end{tikzpicture}
-\caption{The whole system. \textbf{Training path}: our train records and the external records fine-tune the monitor.
+\caption{The whole system. \textbf{Training path}: our generated train records and the collected records fine-tune the monitor.
 \textbf{Evaluation path}: only the \emph{visible} part reaches the monitor; the \emph{hidden} part becomes the
 company state, reachable only through the check gateway; the \emph{label} (correct answer) is used only for scoring. One case loops between
 monitor and gateway until the monitor decides (at most 3 passes, 4 checks).}
@@ -159,8 +159,9 @@ fine-tuning), \textbf{M4} experiments (metrics, baselines, statistics). A shared
 changelog keep the four members' work consistent.
 
 \section{Datasets}
-We build two datasets in parallel (Figure~\ref{fig:data}): the \textbf{internal} benchmark tests \emph{deciding and
-checking} on one proposed action with a hidden company state; the \textbf{external} data (whole trajectories,
+We build two datasets in parallel (Figure~\ref{fig:data}): the \textbf{generated} data, our own benchmark, tests
+\emph{deciding and checking} on one proposed action with a hidden company state; the \textbf{collected} data, three public
+benchmarks (whole trajectories,
 safe/unsafe and risk type only) teaches \emph{risk detection}.
 
 \begin{figure}[h]
@@ -172,25 +173,25 @@ safe/unsafe and risk type only) teaches \emph{risk detection}.
 \node[model=2.45cm] (m)  at (8.55,0)  {\textbf{Merge + split}\\528 records,\\60/10/30 by seed};
 \node[model=2.3cm]  (l)  at (11.4,0)  {\textbf{Lock}\\test + OOD\\(SHA-256)};
 \node[ok=2.2cm]     (u1) at (14.1,0)  {\textbf{Use}\\fine-tuning +\\evaluation};
-\node[gate=2.45cm]  (r)  at (0,-1.7)     {\textbf{Raw data}\\R-Judge 571\\ATBench 1{,}000\\AgentRisk 617};
-\node[gate=2.45cm]  (n)  at (2.85,-1.7)  {\textbf{Convert}\\to our record format\\(whole trajectory)};
-\node[gate=2.45cm]  (f)  at (5.7,-1.7)   {\textbf{Filter}\\41 physical-world\\records removed};
-\node[gate=2.45cm]  (t)  at (8.55,-1.7)  {\textbf{Label}\\safe/unsafe from\\source; type by\\map + hand};
-\node[gate=2.3cm]   (sp) at (11.4,-1.7)  {\textbf{Split}\\train / val / test\\per dataset};
-\node[ok=2.2cm]     (u2) at (14.1,-1.7)  {\textbf{Use}\\fine-tuning:\\risk detection};
+\node[gate=2.45cm]  (r)  at (0,-2.15)     {\textbf{Raw data}\\R-Judge 571\\ATBench 1{,}000\\AgentRisk 617};
+\node[gate=2.45cm]  (n)  at (2.85,-2.15)  {\textbf{Convert}\\to our record format\\(whole trajectory)};
+\node[gate=2.45cm]  (f)  at (5.7,-2.15)   {\textbf{Filter}\\41 physical-world\\records removed};
+\node[gate=2.45cm]  (t)  at (8.55,-2.15)  {\textbf{Label}\\safe/unsafe from\\source; type by\\map + hand};
+\node[gate=2.3cm]   (sp) at (11.4,-2.15)  {\textbf{Split}\\train / val / test\\per dataset};
+\node[ok=2.2cm]     (u2) at (14.1,-2.15)  {\textbf{Use}\\fine-tuning:\\risk detection};
 \foreach \a/\b in {s/g,g/c,c/m,m/l,l/u1,r/n,n/f,f/t,t/sp,sp/u2} \draw[->] (\a) -- (\b);
 \begin{scope}[on background layer]
 \node[lane, fit=(s)(u1)] (A) {}; \node[lane, fit=(r)(u2)] (B) {};
 \end{scope}
-\node[lanelab] at (A.east) {OURS};
-\node[lanelab] at (B.east) {PUBLIC};
+\node[font=\scriptsize\bfseries, text=black!55, anchor=south west, inner sep=1pt] at (A.north west) {GENERATED DATA (our benchmark)};
+\node[font=\scriptsize\bfseries, text=black!55, anchor=south west, inner sep=1pt] at (B.north west) {COLLECTED DATA (public benchmarks)};
 \end{tikzpicture}
-\caption{The two data pipelines, built in parallel. No LLM decides a label in either one: internal labels come from
-code, external labels from the source datasets and from humans.}
+\caption{The two data pipelines, built in parallel. No LLM decides a label in either one: generated-data labels come
+from code, collected-data labels from the source datasets and from humans.}
 \label{fig:data}
 \end{figure}
 
-\textbf{Internal data.} A writer LLM (Claude Opus, not the Qwen family the monitor uses) writes only the user and
+\textbf{Generated data.} A writer LLM (Claude Opus, not the Qwen family the monitor uses) writes only the user and
 agent sentences; the company state comes from the simulator; the label (correct decision) comes from a rule engine over hidden
 policy logic that the monitor never sees. Each seed yields 2 or 4 records of one case type:
 
@@ -239,12 +240,12 @@ Policy id $\rightarrow$ answer & ids hidden, random numbers\\
 \bottomrule
 \end{tabular}
 \end{minipage}
-\caption{Left: internal splits (OOD = a new domain, customers, and new tools). Right: how leakage between training
+\caption{Left: splits of the generated data (OOD = a new domain, customers, and new tools). Right: how leakage between training
 and testing is prevented (no near-duplicates were found).}
 \label{tab:data}
 \end{table}
 
-\textbf{External data.} Safe/unsafe always comes from the source; the risk type of each unsafe record is one of six
+\textbf{Collected data.} Safe/unsafe always comes from the source; the risk type of each unsafe record is one of six
 classes (Table~\ref{tab:ext}), made as shown in its last column. Using an LLM to label is not allowed in this project.
 
 \begin{table}[h]
@@ -265,7 +266,7 @@ AgentRisk & 617 & 329 & 288 & 394 & 98 & 125 & 195 & 39 & 0 & 28 & 10/16 & risk 
 Total & 2{,}147 & 1{,}097 & 1{,}050 & 1{,}462 & 245 & 440 & 482 & 242 & 72 & 92 & 26/136 & 41 physical-world records removed\\
 \bottomrule
 \end{tabular}
-\caption{External data after conversion and filtering. AgentRisk has no redistribution licence: never committed,
+\caption{Collected data after conversion and filtering. AgentRisk has no redistribution licence: never committed,
 derived models kept private. ATBench is released as test-only, so our ATBench numbers use our own split.}
 \label{tab:ext}
 \end{table}
@@ -330,20 +331,20 @@ Pass 2 & A: \textsc{block} (``contact\_12 address\_verified = false'', policy [1
 
 \section{Experiments}
 All runs use Qwen3-8B (pinned revision, greedy decoding, thinking off) on Kaggle 2$\times$T4. \textbf{Experiment 1}
-checks risk detection on the external data, before and after fine-tuning on it. \textbf{Experiment 2} is our main
+checks risk detection on the collected data, before and after fine-tuning on it. \textbf{Experiment 2} is our main
 study: the four checking settings on our own records, against two rule baselines.
 
-\subsection{Experiment 1: risk detection on external data}
+\subsection{Experiment 1: risk detection on collected data}
 \begin{center}\small
 \begin{tabular}{@{}L{0.17\linewidth}L{0.79\linewidth}@{}}
 \toprule
 \textbf{Setup} & \\
 \midrule
 Task & read a whole agent trajectory, answer safe or unsafe and the risk type\\
-Models & \textbf{base}: Qwen3-8B prompted, no training; \textbf{trained}: Qwen3-8B + QLoRA adapter fine-tuned on external data only (Phase A, none of our records)\\
-Training data & 1{,}034 external train records (R-Judge 226, ATBench 594, AgentRisk 214), balanced 517 safe / 517 unsafe, privacy leakage capped at 149 so no risk type dominates; 993 fit the 4{,}096-token limit\\
+Models & \textbf{base}: Qwen3-8B prompted, no training; \textbf{trained}: Qwen3-8B + QLoRA adapter fine-tuned on collected data only (Phase A, none of our generated records)\\
+Training data & 1{,}034 collected train records (R-Judge 226, ATBench 594, AgentRisk 214), balanced 517 safe / 517 unsafe, privacy leakage capped at 149 so no risk type dominates; 993 fit the 4{,}096-token limit\\
 Training & QLoRA rank 16, $\alpha$ 32, learning rate $2\cdot10^{-4}$, 2 epochs, 4-bit NF4\\
-Evaluation & the same 241 external validation records for both models (R-Judge 47, ATBench 96, AgentRisk 98)\\
+Evaluation & the same 241 collected validation records for both models (R-Judge 47, ATBench 96, AgentRisk 98)\\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -358,10 +359,10 @@ Evaluation & the same 241 external validation records for both models (R-Judge 4
 \textbf{Model} & Safe/unsafe accuracy & F1 for unsafe & Risk-type macro-F1 & R-Judge & ATBench & AgentRisk\\
 \midrule
 Base (prompted) & 52.3 & 14.8 & 4.0 & 45.7 & 3.9 & 4.1\\
-Trained on external data & \textbf{93.8} & \textbf{93.4} & \textbf{59.6} & \textbf{86.5} & \textbf{90.5} & \textbf{98.9}\\
+Trained on collected data & \textbf{93.8} & \textbf{93.4} & \textbf{59.6} & \textbf{86.5} & \textbf{90.5} & \textbf{98.9}\\
 \bottomrule
 \end{tabular}
-\caption{Experiment 1, external validation set (\%). The base model calls 224 of the 241 trajectories safe, so it
+\caption{Experiment 1, collected validation set (\%). The base model calls 224 of the 241 trajectories safe, so it
 misses almost every unsafe one; after fine-tuning it finds them in all three datasets.}
 \label{tab:exp1}
 \end{table}
@@ -470,7 +471,7 @@ GPU limits (Kaggle T4, 12 h sessions) & 4-bit QLoRA; one model load per job; eac
 \textbf{Dates} & \textbf{Work}\\
 \midrule
 31 Oct -- 3 Nov & fine-tuning on our records (Phase B): evaluation on validation and test; error analysis of selective's misses by case type\\
-4 -- 7 Nov & OOD test (112 locked records, new domain and tools); ablations: noisy check results (the gateway already supports seeded noise), top-$k$ policies, no policies, larger model\\
+4 -- 7 Nov & OOD test (112 locked records, new domain and tools); ablations: noisy check results (the gateway already supports seeded noise), top-$k$ policies, no policies, larger model; better policy retrieval: our hybrid retriever (BM25 + embeddings) finds the deciding policy in the top 3 for only 55\% of records, so we will tune the BM25/embedding weight per action, filter policies by the proposed action, add a re-ranker, and test top-$k$\\
 6 -- 10 Nov & phase-2 tools and seeds; targeted training data for the cases the error analysis points to, retraining if needed\\
 11 -- 14 Nov & final tables with confidence intervals, final report\\
 \bottomrule
