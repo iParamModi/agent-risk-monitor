@@ -1,8 +1,10 @@
-"""The 30 Oct results report: for val and test and both policy conditions, the rule baselines next to base Qwen3-8B
-and the Phase B adapter in the 4 settings, with the main metrics (decisions.md R10), 95% intervals and the
-selective-vs-always tests per model. Built from the run folders of the final Kaggle jobs and src.baselines.run.
+"""The results report: per split and policy condition, the rule baselines next to base Qwen3-8B and the Phase B
+adapter in the 4 settings, with the main metrics (decisions.md R10), 95% intervals and the selective-vs-always tests
+per model. Built from the run folders of the final Kaggle jobs and src.baselines.run. OOD also gets a table per
+kind of shift (meta.ood_shift, PLAN Step 20) and the comparison with the in-domain test set.
 
-    python scripts/final_results.py      # -> docs/reports/final_results_30oct.md + .json
+    python scripts/final_results.py                                     # -> docs/reports/final_results_30oct.md + .json
+    python scripts/final_results.py --split ood --out docs/reports/ood_results      # -> ood_results.md + .json
 
 A model or baseline whose runs are missing is left out (and named at the top), so it can be run before every job
 has finished. All metrics come from src.eval (src.eval.tables.build_report); nothing is computed differently here.
@@ -14,11 +16,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from src.common.io import read_jsonl, write_json  # noqa: E402
-from src.eval.tables import build_report, num, p_value, pct, with_ci  # noqa: E402
+from src.eval import metrics as m  # noqa: E402
+from src.eval.tables import build_report, num, p_value, pct, table, with_ci  # noqa: E402
 
 SETTINGS = ("never", "always", "selective", "oracle")
-MODELS = {"base": ("Base Qwen3-8B", "outputs/kaggle/final_base/results/runs"),
-          "phase_b": ("Phase B (QLoRA)", "outputs/kaggle/final_phase_b/results/runs")}
+MODELS = {"base": "Base Qwen3-8B", "phase_b": "Phase B (QLoRA)"}
+JOBS = {"val": "final", "test": "final", "ood": "ood"}     # outputs/kaggle/<job>_<model>/
 BASELINES = {"never": "rules_only", "always": "rules_env"}
 CONDITIONS = {"retrieval": "retrieved top 3 policies (the full system)",
               "gold": "gold policies + 2 look-alikes (retrieval assumed perfect)"}
@@ -29,7 +32,8 @@ def load(path: Path) -> list[dict] | None:
 
 
 def model_runs(model: str, cond: str, split: str) -> dict[str, list[dict]] | None:
-    runs = {s: load(ROOT / MODELS[model][1] / f"ours_{model}_{cond}_{s}_{split}") for s in SETTINGS}
+    folder = ROOT / "outputs" / "kaggle" / f"{JOBS[split]}_{model}" / "results" / "runs"
+    runs = {s: load(folder / f"ours_{model}_{cond}_{s}_{split}") for s in SETTINGS}
     return runs if all(v is not None for v in runs.values()) else None
 
 
@@ -57,7 +61,7 @@ def section(split: str, cond: str, reports: dict, n_resamples: int) -> list[str]
         for s, name in BASELINES.items():
             label = "Rules only" if s == "never" else "Rules + environment"
             rows.append(row(label, s, r["settings"][s], r.get("saving", {}).get(s)))
-    for model, (label, _) in MODELS.items():
+    for model, label in MODELS.items():
         r = reports.get(model)
         if not r:
             continue
@@ -80,18 +84,46 @@ def section(split: str, cond: str, reports: dict, n_resamples: int) -> list[str]
     return lines
 
 
+def ood_tables(cond: str) -> list[str]:
+    """OOD by kind of shift (new tools, or only new wording, style and values) and next to the in-domain test set."""
+    new_tools = {r["record_id"]: "new_tools" in r["meta"]["ood_shift"]
+                 for r in read_jsonl(ROOT / "data" / "records" / "ood_test.jsonl")}
+    shift_rows, compare_rows = [], []
+    for model, label in MODELS.items():
+        ood, test = model_runs(model, cond, "ood"), model_runs(model, cond, "test")
+        if not ood:
+            continue
+        for s in ("never", "always", "selective"):
+            for tools, kind in ((True, "new tools + new wording, style, values"), (False, "new wording, style, values")):
+                part = [c for c in ood[s] if new_tools[c["record_id"]] == tools]
+                shift_rows.append([label, s, kind, str(len(part)), pct(m.accuracy(part)),
+                                   pct(m.unsafe_action_rate(part)), num(m.checks_per_case(part))])
+        for s in SETTINGS:
+            compare_rows.append([label, s, pct(m.accuracy(test[s])) if test else "–", pct(m.accuracy(ood[s])),
+                                 pct(m.unsafe_action_rate(test[s])) if test else "–", pct(m.unsafe_action_rate(ood[s]))])
+    if not shift_rows:
+        return []
+    return [f"### OOD next to in-domain test, {CONDITIONS[cond]}", "",
+            *table(["Model", "Setting", "Test accuracy", "OOD accuracy", "Test unsafe", "OOD unsafe"], compare_rows), "",
+            f"### OOD by kind of shift, {CONDITIONS[cond]}", "",
+            *table(["Model", "Setting", "Shift", "Records", "Accuracy", "Unsafe action", "Checks / case"], shift_rows), ""]
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--out", default=str(ROOT / "docs" / "reports" / "final_results_30oct"))
+    ap.add_argument("--split", nargs="+", choices=tuple(JOBS), default=["val", "test"])
     ap.add_argument("--resamples", type=int, default=2000)
     args = ap.parse_args(argv)
-    md = ["# Results for the 30 Oct submission: our val and test records", "",
+    title = {("val", "test"): "Results for the 30 Oct submission: our val and test records"}.get(
+        tuple(args.split), "Results: " + ", ".join(args.split))
+    md = [f"# {title}", "",
           "Monitor: Qwen3-8B, base and with the Phase B QLoRA adapter, in 4 settings (never / always / selective / "
           "oracle), next to two rule baselines (rules only = never check, rules + environment = always check). "
-          "Test is the locked in-domain test set (phase 1 records), run once with the final setup; nothing was tuned "
-          "on it. Definitions: docs/evaluation_metrics.md; runs: kaggle/our_eval_final_*, src/baselines/run.py.", ""]
+          "Test is the locked in-domain test set (phase 1 records), OOD the locked out-of-domain test set; nothing "
+          "was tuned on them. Definitions: docs/evaluation_metrics.md; runs: kaggle/our_eval_final_*, src/baselines/run.py.", ""]
     missing, out = [], {}
-    for split in ("val", "test"):
+    for split in args.split:
         md += [f"## {split.capitalize()}", ""]
         for cond in CONDITIONS:
             reports = {}
@@ -109,6 +141,8 @@ def main(argv=None) -> int:
             if reports:
                 md += section(split, cond, reports, args.resamples)
                 out[f"{split}_{cond}"] = reports
+            if split == "ood":
+                md += ood_tables(cond)
     if missing:
         md[2:2] = [f"**Not in this version (runs missing):** {', '.join(missing)}.", ""]
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
