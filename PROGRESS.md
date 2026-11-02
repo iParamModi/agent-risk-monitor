@@ -32,6 +32,7 @@ How our monitor really runs on our records: diagrams of the loop and the 4 setti
 
 | Task | Who | Started | Status / Notes |
 |------|-----|---------|----------------|
+| **Shortcut check of the collected gains** (ATBench error/injection markers, AgentRisk surface cues), for the final report | Meet | 2026-11-02 | Started |
 
 ## Next Up
 
