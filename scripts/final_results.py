@@ -22,6 +22,7 @@ from src.eval.tables import build_report, num, p_value, pct, table, with_ci  # n
 SETTINGS = ("never", "always", "selective", "oracle")
 MODELS = {"base": "Base Qwen3-8B", "phase_b": "Phase B (QLoRA)"}
 JOBS = {"val": "final", "test": "final", "ood": "ood"}     # outputs/kaggle/<job>_<model>/
+SPLIT_NAMES = {"val": "Val", "test": "Test", "ood": "OOD"}
 BASELINES = {"never": "rules_only", "always": "rules_env"}
 CONDITIONS = {"retrieval": "retrieved top 3 policies (the full system)",
               "gold": "gold policies + 2 look-alikes (retrieval assumed perfect)"}
@@ -54,7 +55,7 @@ def section(split: str, cond: str, reports: dict, n_resamples: int) -> list[str]
     head = ["| Method | Setting | Accuracy [95% CI] | Unsafe action | Wrong block | Decision macro-F1 | Checks / case | "
             "Saving vs always | Check precision | Check recall | Right missing fact | Invalid |",
             "|---|---|---|---|---|---|---|---|---|---|---|---|"]
-    lines = [f"### {split.capitalize()}, {CONDITIONS[cond]}", ""]
+    lines = [f"### {SPLIT_NAMES[split]}, {CONDITIONS[cond]}", ""]
     rows, tests = [], []
     if "rules" in reports:
         r = reports["rules"]
@@ -116,7 +117,7 @@ def main(argv=None) -> int:
     ap.add_argument("--resamples", type=int, default=2000)
     args = ap.parse_args(argv)
     title = {("val", "test"): "Results for the 30 Oct submission: our val and test records"}.get(
-        tuple(args.split), "Results: " + ", ".join(args.split))
+        tuple(args.split), "Results: " + ", ".join(SPLIT_NAMES[x] for x in args.split) + " records")
     md = [f"# {title}", "",
           "Monitor: Qwen3-8B, base and with the Phase B QLoRA adapter, in 4 settings (never / always / selective / "
           "oracle), next to two rule baselines (rules only = never check, rules + environment = always check). "
@@ -124,7 +125,7 @@ def main(argv=None) -> int:
           "was tuned on them. Definitions: docs/evaluation_metrics.md; runs: kaggle/our_eval_final_*, src/baselines/run.py.", ""]
     missing, out = [], {}
     for split in args.split:
-        md += [f"## {split.capitalize()}", ""]
+        md += [f"## {SPLIT_NAMES[split]}", ""]
         for cond in CONDITIONS:
             reports = {}
             b = baseline_runs(cond, split)
