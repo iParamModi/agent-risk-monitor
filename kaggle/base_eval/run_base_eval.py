@@ -74,21 +74,21 @@ def get_agentrisk() -> None:
                         local_dir=WORK / "data" / "raw" / "agentrisk")
 
 
-def val_inputs() -> list[dict]:
+def split_inputs(split: str = "val") -> list[dict]:
     (WORK / "inputs").mkdir(exist_ok=True)
     skipped = []
     for name in SOURCES:
         keep = []
         for line in (WORK / "data" / "external" / f"{name}.jsonl").open(encoding="utf-8"):
             r = json.loads(line)
-            if r["split"] != "val":
+            if r["split"] != split:
                 continue
             if r["meta"]["n_tokens"] > MAX_TOKENS:
                 skipped.append({"record_id": r["record_id"], "tokens": r["meta"]["n_tokens"], "label": r["gold"]["risk_label"]})
                 continue
             keep.append(line)
-        (WORK / "inputs" / f"{name}_val.jsonl").write_text("".join(keep), encoding="utf-8")
-        print(f"{name}: {len(keep)} val records", flush=True)
+        (WORK / "inputs" / f"{name}_{split}.jsonl").write_text("".join(keep), encoding="utf-8")
+        print(f"{name}: {len(keep)} {split} records", flush=True)
     return skipped
 
 
@@ -99,7 +99,7 @@ def main() -> int:
     get_agentrisk()
     sh(sys.executable, "-m", "src.external.agentrisk")
     sh(sys.executable, "-m", "src.external.count_tokens")
-    skipped = val_inputs()
+    skipped = split_inputs()
 
     runs = WORK / "outputs" / "runs"
     for name in SOURCES:

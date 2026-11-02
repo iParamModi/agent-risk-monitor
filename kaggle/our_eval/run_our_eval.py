@@ -2,9 +2,10 @@
 Phase B adapter, each with two policy conditions (decisions.md 2026-10-28):
   gold       the gold policies + 2 retrieved look-alikes, as in training: checking and deciding alone
   retrieval  the top 3 retrieved policies: the full system
-Splits: val and the locked in-domain test (R15.2: the 30 Oct submission reports validation and test). Phase 1
-records only, as in training (configs/tool_phases.yaml): the 4 phase-2 create_event test records are left out.
-Nothing here trains or tunes: the test records are only run and scored. OOD is not run (after 30 Oct).
+Splits: val, the locked in-domain test (R15.2: the 30 Oct submission reports validation and test) and the locked
+OOD test (PLAN Step 20; kaggle/ood_*/). In-domain: phase 1 records only, as in training (configs/tool_phases.yaml):
+the 4 phase-2 create_event test records are left out. OOD: all 112, with the OOD policy store and check tools (set by
+record["set"] in src/monitor/case_inputs.py). Nothing here trains or tunes: the test records are only run and scored.
 
 Each model is loaded once for its runs (src.monitor.run.run_records). Per run: predictions.jsonl, traces.jsonl
 (every pass and gateway call, read with scripts/show_traces.py), invalid_outputs.jsonl; per model, condition and
@@ -26,7 +27,7 @@ from pathlib import Path
 WORK = Path("/tmp/repo")
 SETTINGS = ("never", "always", "selective", "oracle")
 POLICY_MODES = ("gold", "retrieval")
-RECORD_FILES = {"val": "data/records/val.jsonl", "test": "data/records/test.jsonl"}
+RECORD_FILES = {"val": "data/records/val.jsonl", "test": "data/records/test.jsonl", "ood": "data/records/ood_test.jsonl"}
 
 
 def load_module(name: str, path: Path):
@@ -56,9 +57,14 @@ def find_adapter(base) -> str:
 
 
 def load_records(base, split: str) -> list[dict]:
-    """The split's phase 1 decide_action records, the same filter as the training file (build_sft.phase1)."""
+    """The split's phase 1 decide_action records, the same filter as the training file (build_sft.phase1).
+    OOD: every record (its new tools are in no phase, so that filter does not apply)."""
     from src.common.io import read_jsonl
     from src.training.build_sft import phase1
+    if split == "ood":
+        kept = list(read_jsonl(WORK / RECORD_FILES[split]))
+        base.log(f"ood: {len(kept)} records")
+        return kept
     records = [r for r in read_jsonl(WORK / RECORD_FILES[split]) if r["split"] == split]
     kept = phase1(records, split)
     base.log(f"{split}: {len(kept)} phase 1 records ({len(records) - len(kept)} phase 2 left out)")

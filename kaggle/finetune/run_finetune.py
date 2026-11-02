@@ -88,7 +88,7 @@ def log_sft_stats(base) -> None:
 def evaluate(base, adapter: Path) -> None:
     """The base model + adapter on the same val records as kaggle/base_eval, scored; results to base.OUT."""
     sh = base.sh
-    skipped = base.val_inputs()
+    skipped = base.split_inputs()
     runs, tables = WORK / "outputs" / "runs", WORK / "outputs" / "tables"
     for name in base.SOURCES:
         sh(sys.executable, "-m", "src.monitor.run", "--records", f"inputs/{name}_val.jsonl", "--split", "val",

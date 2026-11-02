@@ -21,7 +21,7 @@ One job per model (they can run at the same time), each: val (40) + locked in-do
 phase-2 `create_event` records are left out, as in training) x 2 policy conditions x 4 settings, then one
 `src.eval.tables` report per condition and split (`ours_<model>_<policies>_<split>`). Run ids:
 `ours_<model>_<policies>_<setting>_<split>`. Every finished run is copied to `/kaggle/working/results` at once.
-Nothing trains or tunes on test. OOD is not run (after 30 Oct).
+Nothing trains or tunes on test.
 
 ```bash
 bash scripts/kaggle_push_code.sh "final run"            # code dataset = the commit on GitHub
@@ -29,6 +29,25 @@ kaggle kernels push -p kaggle/our_eval_final_base --accelerator NvidiaTeslaT4
 kaggle kernels push -p kaggle/our_eval_final_phase_b --accelerator NvidiaTeslaT4
 kaggle kernels output meet6868/agent-risk-final-base -p outputs/kaggle/final_base
 kaggle kernels output meet6868/agent-risk-final-phase-b -p outputs/kaggle/final_phase_b
+```
+
+## Locked OOD test and collected test sets (`kaggle/ood_*/`, `kaggle/collected_test/`)
+
+Scoring only: nothing trains or tunes on these records. Run once, with the final code of the run.
+
+- `kaggle/ood_base/`, `kaggle/ood_phase_b/`: all 112 OOD records, OOD policy store and check tools, 4 settings x 2 policy
+  conditions, run ids `ours_<model>_<policies>_<setting>_ood` (about 2 h base, 3 h Phase B).
+- `kaggle/collected_test/`: the test parts of R-Judge, ATBench and AgentRisk for base, Phase A and Phase B (about 2 h),
+  run ids `collected_<model>_<source>_test`, merged `collected_<model>_test`; records over 7,300 tokens are left out, as on val.
+
+```bash
+bash scripts/kaggle_push_code.sh "ood and collected test"
+kaggle kernels push -p kaggle/ood_base --accelerator NvidiaTeslaT4
+kaggle kernels push -p kaggle/ood_phase_b --accelerator NvidiaTeslaT4
+kaggle kernels push -p kaggle/collected_test --accelerator NvidiaTeslaT4
+kaggle kernels output meet6868/agent-risk-ood-base -p outputs/kaggle/ood_base
+kaggle kernels output meet6868/agent-risk-ood-phase-b -p outputs/kaggle/ood_phase_b
+kaggle kernels output meet6868/agent-risk-collected-test -p outputs/kaggle/collected_test
 ```
 
 ## Our records in 4 settings (`kaggle/our_eval/`) and talking to the model
