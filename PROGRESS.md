@@ -1,7 +1,7 @@
 # Project Progress
 
 > Check this file before starting any work. Update it and push to GitHub after every change.
-> Last updated: 2026-11-02 by Meet
+> Last updated: 2026-11-03 by Meet
 
 ## 📄 Everyone: read `docs/reports/our_eval_walkthrough.pdf` (Meet, 2026-10-28)
 
@@ -16,7 +16,8 @@ How our monitor really runs on our records: diagrams of the loop and the 4 setti
 | **Param** | T5 "facts disagree" train seeds; check IND-ACC-T1-001; distractor turns in train; phase-2 tools + seeds (cut first if late); κ study with Moiesha | `docs/messages/2026-11-02_to_Param_final_data.md` | 5, 5, 6, 8, 11 Nov |
 | **Moiesha** | Better policy retrieval (biggest problem: 9 of 11 val errors); ablation code (no policies, noise, top-k); decide on Qwen3-235B; ablation tables; κ labels; related work | `docs/messages/2026-11-02_to_Moiesha_retrieval_ablations.md` | 7, 8, 5, 12, 11, 12 Nov |
 | **Prateek** | Deployment: demo (AcmePay, pricing sheet); service; live runs with 2 agent LLMs (cut from the bottom if late) | `docs/messages/2026-11-02_to_Prateek_deployment.md` | 8, 10, 12 Nov |
-| **Meet** | Collected test + OOD runs; error analysis; retrain; final runs with the final adapter; final tables | this file, In Progress | 3, 3, 8-9, 9-11, 12 Nov |
+| **Meet** | Retrain; final runs with the final adapter (+ Moiesha's ablation jobs); rerun error analysis + shortcut check; final tables | this file | 8-9, 9-11, 12 Nov |
+| **To choose (humans only, no LLM)** | 50 evidence hand-checks on `docs/reports/evidence_check_sheet.csv` (Meet makes the sheet after the retrain) | | 11 Nov |
 | **Everyone** | Final report (PLAN Step 25) | | 11-14 Nov |
 
 ## Team
@@ -108,6 +109,7 @@ How our monitor really runs on our records: diagrams of the loop and the 4 setti
 
 ## Activity Log (newest first)
 
+- 2026-11-03, Meet: updated the final-submission table: finished runs removed from Meet's row, 50 evidence hand-checks added (who is still to choose)
 - 2026-11-02, Meet: shortcut check of the collected gains: most of the jump from base to Phase A can be reached by a word model with no LLM; findings in `docs/reports/shortcut_check.md`
 - 2026-11-02, Meet: OOD (base + Phase B, 4 settings x 2 policy conditions, rule baselines) and collected test (base, Phase A, Phase B) done and scored; reports in `docs/reports/`. OOD and test reports are for the final report only: do not change anything from them
 - 2026-11-02, Meet: assigned the remaining final-submission work: Param (data), Moiesha (retrieval, ablations), Prateek (deployment); removed finished rows from In Progress and Next Up. Error analysis code + val and test reports: **retrieval misses are 9 of 11 val errors and 23 of 31 test errors** of the full system. OOD jobs running on Kaggle
