@@ -110,6 +110,7 @@ How our monitor really runs on our records: diagrams of the loop and the 4 setti
 
 ## Activity Log (newest first)
 
+- 2026-11-06, Param: checked val record IND-ACC-T1-001 (label ALLOW vs Phase B BLOCK). **Label is correct, no seed change**: P_ACC_01 turns on `authorized_financial` (check_user_clearance); A=true→ALLOW, B=false→BLOCK are both right. The BLOCK is a Phase B mistake (it called check_user_authorization and blocked on `access_level=none`, the normal pre-grant state). Training/prompt fix for Meet, not a label fix. Note to Meet: `docs/messages/2026-11-06_to_Meet_IND-ACC-T1-001_label.md`
 - 2026-11-06, Param: added 21 T5 facts_disagree seeds (42 records): 8 train (account_type, no relock) + 13 test (REPO/FIN/PRIV/ACC/FILE, `split --relock`, test 124→150). No new policies/tools; `make records` 0 problems; original 120 phase-1 test + 112 OOD byte-identical. CAL can't host facts_disagree (reallocated to FILE). See `docs/messages/2026-11-06_to_Meet_t5_facts_disagree_seeds.md`. **Meet: locked test set grew by 26.**
 - 2026-11-03, Meet: updated the final-submission table: finished runs removed from Meet's row, 50 evidence hand-checks added (who is still to choose)
 - 2026-11-02, Meet: shortcut check of the collected gains: most of the jump from base to Phase A can be reached by a word model with no LLM; findings in `docs/reports/shortcut_check.md`
