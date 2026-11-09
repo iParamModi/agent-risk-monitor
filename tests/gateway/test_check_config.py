@@ -19,7 +19,9 @@ PHASES = _load("configs/tool_phases.yaml")
 PHASE1 = {t for group in ("phase1_in_domain", "ood_test_only") for kind in ("read", "write")
           for t in PHASES[group][kind]}
 PHASE1_READ = {t for group in ("phase1_in_domain", "ood_test_only") for t in PHASES[group]["read"]}
-LATER = set(PHASES["phase2"]["read"]) | set(PHASES["phase2"]["write"]) | set(PHASES["dropped"])
+PHASE2 = set(PHASES["phase2"]["read"]) | set(PHASES["phase2"]["write"])   # phase 2 started (Task 4)
+PHASE2_READ = set(PHASES["phase2"]["read"])
+DROPPED = set(PHASES["dropped"])
 ENTRIES = [(action, e) for action, row in TABLE.items() for e in (row or [])]
 
 
@@ -31,11 +33,12 @@ def test_table_checks_exist():
 def test_every_phase1_tool_has_a_row():
     assert not sorted(PHASE1 - set(TABLE)), "phase 1 tools without a check_table row"
     assert all(TABLE[t] == [] for t in PHASE1_READ), "read tools must have []"
+    assert all(TABLE.get(t) == [] for t in PHASE2_READ), "phase 2 read tools must have []"
 
 
-def test_no_later_phase_rows():
-    assert not sorted(LATER & set(TABLE)), "phase 2 / dropped tools must not have rows yet"
-    assert not sorted(set(TABLE) - PHASE1), "rows for tools outside phase 1"
+def test_no_dropped_phase_rows():
+    assert not sorted(DROPPED & set(TABLE)), "dropped tools must not have rows"
+    assert not sorted(set(TABLE) - PHASE1 - PHASE2), "rows for tools outside phase 1/2"
 
 
 @pytest.mark.parametrize("action,entry", ENTRIES, ids=[f"{a}-{e['check']}" for a, e in ENTRIES])

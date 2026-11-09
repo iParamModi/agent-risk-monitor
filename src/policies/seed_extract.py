@@ -35,11 +35,18 @@ CANON = {
 }
 
 
+# A T5 facts_disagree note writes the visible text with the gold logic appended, e.g.
+# "... agree on exposure; exposure == external -> BLOCK". That trailing clause is machine logic, not
+# human policy text, so it is stripped here (the logic still comes from the seed, into policy_logic.yaml).
+_LOGIC_SUFFIX = re.compile(r"\s*;\s*[^;]*->\s*(?:ALLOW|BLOCK|ASK_CONFIRMATION)\s*\.?\s*$")
+
+
 def normalize_text(text: str) -> str:
     """One uniform style for every policy text: collapsed spaces, capital first letter, final stop.
     Fixes the lowercase / no-stop texts at a single point and applies the SAME treatment to every
     policy, so casing or punctuation can never signal anything. Cosmetic only."""
     text = " ".join(text.split()).strip().strip('"').strip()
+    text = _LOGIC_SUFFIX.sub("", text)
     text = " ".join(text.split())
     if not text:
         return text

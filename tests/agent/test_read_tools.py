@@ -19,6 +19,9 @@ SAMPLE_ARGS = {
     "get_repo": {"repo": "AcmePay"},
     "read_inbox": {"n": 5},
     "get_customer_record": {"customer_id": "C-1002"},
+    "search_files": {"query": "report"},
+    "list_repos": {},
+    "list_transactions": {"account": "ACC-OPS"},
 }
 
 
@@ -69,6 +72,11 @@ def test_read_values():
     assert run("get_repo", repo="AcmePay")["visibility"] == "private"
     assert len(run("read_inbox")["emails"]) == 5 and len(run("read_inbox", n=2)["emails"]) == 2
     assert run("get_customer_record", customer_id="C-1002")["status"] == "active"
+    paths = [f["path"] for f in run("search_files", query="report")["files"]]
+    assert "/project/report_7.pdf" in paths and all("report" in p for p in paths)
+    names = {r["name"] for r in run("list_repos")["repos"]}
+    assert "AcmePay" in names and "old-prototype" in names
+    assert run("list_transactions", account="ACC-OPS") == {"account": "ACC-OPS", "transactions": []}
 
 
 @pytest.mark.parametrize("name,args", [

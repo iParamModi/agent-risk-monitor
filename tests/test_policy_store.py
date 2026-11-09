@@ -42,8 +42,8 @@ def _seed_policy_ids(which):
 
 def test_stores_load_without_error():
     # store.py raises on empty text or a duplicate id
-    assert len(load_policies(POL / "policies.jsonl")) == 148         # + 5 train-only seeds (P_ACC_32/33, P_CAL_12, P_REPO_19/20) + group C pairs (P_ACC_34/35, P_FILE_39/40; 2026-10-28)
-    assert len(load_policies(POL / "policies_ood.jsonl")) == 164     # same 9 mirrored into the OOD store
+    assert len(load_policies(POL / "policies.jsonl")) == 154         # 148 + 6 phase-2 tool rules (Task 4: P_ACC_36/37, P_FILE_41, P_PRIV_36/37/38)
+    assert len(load_policies(POL / "policies_ood.jsonl")) == 170     # same 6 mirrored into the OOD store
 
 
 def test_no_duplicate_or_empty_text():

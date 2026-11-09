@@ -4,9 +4,10 @@ Each tool is (state, **args) -> (new_state, dict) and changes the state it is gi
 so always call it through apply_action. Problems raise WriteError or NotFound.
 """
 import re
+from datetime import date
 
 from lma_agent.sim import readers
-from lma_agent.sim.models import CompanyState, Email, Event, ToolCall
+from lma_agent.sim.models import CompanyState, Email, File, Event, ToolCall
 from lma_agent.sim.readers import Ambiguous, NotFound
 
 
@@ -140,6 +141,8 @@ def transfer_money(state: CompanyState, from_account: str, to_account: str,
         raise WriteError("insufficient_funds", f"{from_account} balance is {src.balance_inr}")
     src.balance_inr -= amount_inr
     dst.balance_inr += amount_inr
+    state.transactions.append({"kind": "transfer", "from_account": from_account, "to_account": to_account,
+                               "amount_inr": amount_inr})
     return state, {"status": "transferred", "amount_inr": amount_inr, "from_account": from_account,
                    "to_account": to_account}
 
@@ -177,10 +180,124 @@ def export_customer_data(state: CompanyState, customer_id: str, destination: str
     return state, {"status": "exported", "customer_id": customer_id, "destination": destination}
 
 
+# ---------- phase 2 write tools ----------
+
+def cancel_event(state: CompanyState, event_id: str) -> tuple[CompanyState, dict]:
+    """Remove a calendar event by its id (reverse of create_event)."""
+    for i, e in enumerate(state.events):
+        if e.event_id == event_id:
+            del state.events[i]
+            return state, {"status": "cancelled", "event_id": event_id}
+    raise NotFound(f"event not found: {event_id}")
+
+
+def forward_email(state: CompanyState, email_id: str, to: str) -> tuple[CompanyState, dict]:
+    """Forward an inbox email to a recipient, keeping its attachments."""
+    orig = next((e for e in state.inbox if e.email_id == email_id), None)
+    if orig is None:
+        raise NotFound(f"email not found: {email_id}")
+    address, _ = readers._recipient(state, to)
+    new_id = f"sent_{len(state.sent) + 1}"
+    sender = readers._get_user(state, state.current_user).email
+    state.sent.append(Email(email_id=new_id, sender=sender, to=[address], subject=f"Fwd: {orig.subject}",
+                            body=orig.body, attachments=list(orig.attachments)))
+    return state, {"status": "forwarded", "email_id": new_id, "to": address}
+
+
+def delete_folder(state: CompanyState, folder: str) -> tuple[CompanyState, dict]:
+    """Delete a folder and every file inside it."""
+    path = folder.rstrip("/") or "/"
+    if not readers._folder_exists(state, path):
+        raise NotFound(f"folder not found: {folder}")
+    prefix = "/" if path == "/" else path + "/"
+    removed = [p for p in state.files if p.startswith(prefix)]
+    for p in removed:
+        del state.files[p]
+        state.permissions.pop(p, None)
+    for fp in [p for p in state.folders if p == path or p.startswith(prefix)]:   # the folder and its sub-folders
+        state.folders.pop(fp, None)
+        state.permissions.pop(fp, None)
+    state.permissions.pop(path, None)
+    return state, {"status": "deleted", "folder": path, "files_removed": len(removed)}
+
+
+def upload_file(state: CompanyState, file: str, content: str = "") -> tuple[CompanyState, dict]:
+    """Create a new file at `file`; it inherits its folder's sharing and is classified internal."""
+    path = file if file.startswith("/") else "/" + file
+    if path in state.files:
+        raise WriteError("already_exists", f"{path} already exists")
+    folder = path.rsplit("/", 1)[0] or "/"
+    if not readers._folder_exists(state, folder):
+        raise NotFound(f"folder not found: {folder}")
+    state.files[path] = File(path=path, owner=state.current_user, sharing=None, classification="internal",
+                             modified=date.today(), content=content)
+    return state, {"status": "uploaded", "file": path}
+
+
+def unshare_file(state: CompanyState, file: str, with_: str | None = None) -> tuple[CompanyState, dict]:
+    """Stop sharing a file with one target, or with everyone; reset to the folder's sharing if nothing is left."""
+    f = readers._get_file(state, file)
+    if with_ is None:
+        f.shared_with = []
+    else:
+        address, _ = readers._recipient(state, with_)
+        f.shared_with = [a for a in f.shared_with if a != address]
+    if not f.shared_with:
+        f.sharing = None
+    return state, {"status": "unshared", "file": f.path, "with": with_}
+
+
+def create_share_link(state: CompanyState, file: str) -> tuple[CompanyState, dict]:
+    """Make a link anyone can use (the file becomes public), like sharing with external_link."""
+    f = readers._get_file(state, file)
+    address, scope = readers._recipient(state, "external_link")
+    if address not in f.shared_with:
+        f.shared_with.append(address)
+    if scope != "internal" and readers._effective_sharing(state, f) != "public":
+        f.sharing = scope
+    return state, {"status": "link_created", "file": f.path}
+
+
+def delete_user(state: CompanyState, user: str) -> tuple[CompanyState, dict]:
+    """Deactivate a user account (soft delete: status becomes terminated)."""
+    u = readers._get_user(state, user)
+    u.status = "terminated"
+    return state, {"status": "terminated", "user": user}
+
+
+def reset_password(state: CompanyState, user: str) -> tuple[CompanyState, dict]:
+    """Reset a user's password (recorded as a flag; there is no password field)."""
+    u = readers._get_user(state, user)
+    u.attrs["password_reset"] = True
+    return state, {"status": "reset", "user": user}
+
+
+def pay_bill(state: CompanyState, account: str, payee: str, amount_inr: int) -> tuple[CompanyState, dict]:
+    """Pay a bill from an account to a payee; fails if the account has too little."""
+    src = readers._get_account(state, account)
+    amount_inr = int(amount_inr)
+    if src.balance_inr < amount_inr:
+        raise WriteError("insufficient_funds", f"{account} balance is {src.balance_inr}")
+    src.balance_inr -= amount_inr
+    state.transactions.append({"kind": "bill", "account": account, "payee": payee, "amount_inr": amount_inr})
+    return state, {"status": "paid", "account": account, "payee": payee, "amount_inr": amount_inr}
+
+
+def send_message(state: CompanyState, to: str, body: str) -> tuple[CompanyState, dict]:
+    """Send a chat message to a user or contact (like send_email, without subject or attachment)."""
+    address, _ = readers._recipient(state, to)
+    msg_id = f"msg_{len(state.messages) + 1}"
+    sender = readers._get_user(state, state.current_user).email
+    state.messages.append({"message_id": msg_id, "sender": sender, "to": address, "body": body})
+    return state, {"status": "sent", "message_id": msg_id}
+
+
 WRITE_FUNCS = {f.__name__: f for f in [
     delete_file, edit_file, move_file, write_cells, share_file, send_email, create_event,
     grant_permission, revoke_permission, transfer_money, delete_repository, archive_repository,
     archive_record, export_customer_data,
+    cancel_event, forward_email, delete_folder, upload_file, unshare_file, create_share_link,
+    delete_user, reset_password, pay_bill, send_message,
 ]}
 
 

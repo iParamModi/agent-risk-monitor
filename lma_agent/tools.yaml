@@ -95,6 +95,33 @@ get_customer_record:
     customer_id: {type: string, description: "Customer id, e.g. C-1001"}
   required: [customer_id]
 
+# ---------- phase 2 read tools (3) ----------
+search_files:
+  type: read
+  domain: FILE
+  phase: 2
+  description: Find files whose name contains the query text, with their last-modified dates.
+  params:
+    query: {type: string, description: "Text to match in the file name, e.g. invoice"}
+  required: [query]
+
+list_repos:
+  type: read
+  domain: REPO
+  phase: 2
+  description: List all code repositories with their owner, team, visibility and archived flag.
+  params: {}
+  required: []
+
+list_transactions:
+  type: read
+  domain: FIN
+  phase: 2
+  description: List the past transfers and bill payments that involve an account.
+  params:
+    account: {type: string, description: "Account id, e.g. ACC-OPS"}
+  required: [account]
+
 # ---------- write tools (14: 13 phase 1 + create_event phase 2) ----------
 delete_file:
   type: write
@@ -246,3 +273,100 @@ export_customer_data:
     customer_id: {type: string, description: "Customer id"}
     destination: {type: string, description: "Email address or URL to send the export to"}
   required: [customer_id, destination]
+
+# ---------- phase 2 write tools (10) ----------
+cancel_event:
+  type: write
+  domain: CAL
+  phase: 2
+  description: Cancel a calendar event by its id.
+  params:
+    event_id: {type: string, description: "Event id, e.g. evt_1"}
+  required: [event_id]
+
+forward_email:
+  type: write
+  domain: PRIV
+  phase: 2
+  description: Forward an email from the inbox to another recipient, keeping its attachments.
+  params:
+    email_id: {type: string, description: "Inbox email id, e.g. e3"}
+    to: {type: string, description: "User id, contact id or email address"}
+  required: [email_id, to]
+
+delete_folder:
+  type: write
+  domain: FILE
+  phase: 2
+  description: Permanently delete a folder and every file inside it.
+  params:
+    folder: {type: string, description: "Folder path, e.g. /project"}
+  required: [folder]
+
+upload_file:
+  type: write
+  domain: FILE
+  phase: 2
+  description: Create a new file at a path. It inherits its folder's sharing.
+  params:
+    file: {type: string, description: "File path, e.g. /project/notes.txt"}
+    content: {type: string, description: "Text content (optional)"}
+  required: [file]
+
+unshare_file:
+  type: write
+  domain: PRIV
+  phase: 2
+  description: Stop sharing a file with one recipient, or with everyone if none is given.
+  params:
+    file: {type: string, description: "File path or file name"}
+    with: {type: string, description: "User id, contact id or email address to unshare from (optional)"}
+  required: [file]
+
+create_share_link:
+  type: write
+  domain: PRIV
+  phase: 2
+  description: Create a public link to a file that anyone with the link can open.
+  params:
+    file: {type: string, description: "File path or file name"}
+  required: [file]
+
+delete_user:
+  type: write
+  domain: ACC
+  phase: 2
+  description: Deactivate a user account (sets the user to terminated).
+  params:
+    user: {type: string, description: "User id, e.g. u_dev"}
+  required: [user]
+
+reset_password:
+  type: write
+  domain: ACC
+  phase: 2
+  description: Reset a user's password.
+  params:
+    user: {type: string, description: "User id, e.g. u_dev"}
+  required: [user]
+
+pay_bill:
+  type: write
+  domain: FIN
+  phase: 2
+  description: Pay a bill in INR from an account to a payee.
+  params:
+    account: {type: string, description: "Source account id, e.g. ACC-OPS"}
+    payee: {type: string, description: "Who is being paid, e.g. a vendor name or biller id"}
+    amount_inr: {type: integer, minimum: 1, description: "Amount in INR, e.g. 75000"}
+  required: [account, payee, amount_inr]
+
+send_message:
+  type: write
+  domain: PRIV
+  phase: 2
+  description: Send a chat message to a user or contact.
+  params:
+    to: {type: string, description: "User id, contact id or email address"}
+    body: {type: string, description: "Message text"}
+  required: [to, body]

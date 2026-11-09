@@ -149,8 +149,96 @@ def test_ood_tools():
     ("transfer_money", {"from_account": "X", "to_account": "ACC-OPS", "amount_inr": 1}),
     ("move_file", {"file": "/x", "to": "/project"}), ("archive_repository", {"repo": "x"}),
     ("archive_record", {"customer_id": "C-9"}),
+    ("cancel_event", {"event_id": "evt_9"}), ("forward_email", {"email_id": "e9", "to": "u_meera"}),
+    ("delete_folder", {"folder": "/nowhere"}), ("unshare_file", {"file": "/x"}),
+    ("create_share_link", {"file": "/x"}), ("delete_user", {"user": "u_x"}),
+    ("reset_password", {"user": "u_x"}), ("pay_bill", {"account": "X", "payee": "p", "amount_inr": 1}),
 ])
 def test_missing_gives_not_found_and_same_state(name, args):
     s, h = fresh()
     new, out = act(s, name, **args)
     assert out["error"] == "not_found" and state_hash(new) == h
+
+
+# ---------- phase 2 write tools ----------
+
+def test_cancel_event():
+    s, h = fresh()
+    made, _ = act(s, "create_event", title="Review", attendees=["u_kabir"])
+    new, out = act(made, "cancel_event", event_id="evt_1")
+    assert out == {"status": "cancelled", "event_id": "evt_1"} and new.events == []
+    assert state_hash(s) == h
+
+
+def test_forward_email():
+    s, h = fresh()
+    new, out = act(s, "forward_email", email_id="e3", to="c_globex")
+    assert out["status"] == "forwarded" and out["to"] == "partner@globex.io"
+    e = new.sent[0]
+    assert e.subject == "Fwd: Invoice INV-2207" and e.attachments == ["INV-2207.pdf"]
+    assert changed_only(s, new, "sent")
+
+
+def test_delete_folder():
+    s, h = fresh()
+    new, out = act(s, "delete_folder", folder="/project")
+    assert out["status"] == "deleted" and out["files_removed"] >= 1
+    assert not any(p.startswith("/project/") for p in new.files) and "/project" not in new.folders
+    assert state_hash(s) == h
+
+
+def test_upload_file():
+    s, h = fresh()
+    new, out = act(s, "upload_file", file="/project/notes.txt", content="hello")
+    assert out == {"status": "uploaded", "file": "/project/notes.txt"}
+    f = new.files["/project/notes.txt"]
+    assert f.owner == "u_riya" and f.classification == "internal" and f.content == "hello"
+    assert readers._effective_sharing(new, f) == "internal"  # inherits the folder
+    assert act(s, "upload_file", file="/project/report_7.pdf")[1]["error"] == "already_exists"
+    assert act(s, "upload_file", file="/nowhere/a.txt")[1]["error"] == "not_found"
+    assert state_hash(s) == h
+
+
+def test_unshare_and_share_link():
+    s, h = fresh()
+    shared, _ = act(s, "share_file", file="/project/report_7.pdf", **{"with": "c_globex"})
+    new, out = act(shared, "unshare_file", file="/project/report_7.pdf", **{"with": "c_globex"})
+    f = new.files["/project/report_7.pdf"]
+    assert out["status"] == "unshared" and f.shared_with == [] and f.sharing is None
+    linked, out = act(s, "create_share_link", file="/project/report_7.pdf")
+    assert out["status"] == "link_created" and linked.files["/project/report_7.pdf"].sharing == "public"
+    assert state_hash(s) == h
+
+
+def test_delete_user_and_reset_password():
+    s, h = fresh()
+    new, out = act(s, "delete_user", user="u_dev")
+    assert out == {"status": "terminated", "user": "u_dev"} and new.users["u_dev"].status == "terminated"
+    new, out = act(s, "reset_password", user="u_dev")
+    assert out == {"status": "reset", "user": "u_dev"} and new.users["u_dev"].attrs["password_reset"] is True
+    assert changed_only(s, new, "users") and state_hash(s) == h
+
+
+def test_pay_bill_and_list_in_ledger():
+    s, h = fresh()
+    new, out = act(s, "pay_bill", account="ACC-OPS", payee="Globex Supplies", amount_inr=75000)
+    assert out["status"] == "paid" and new.accounts["ACC-OPS"].balance_inr == 2425000
+    assert new.transactions == [{"kind": "bill", "account": "ACC-OPS", "payee": "Globex Supplies", "amount_inr": 75000}]
+    assert act(s, "pay_bill", account="ACC-VENDOR-1", payee="p", amount_inr=1)[1]["error"] == "insufficient_funds"
+    assert state_hash(s) == h
+
+
+def test_send_message():
+    s, h = fresh()
+    new, out = act(s, "send_message", to="u_meera", body="Standup at 10?")
+    assert out == {"status": "sent", "message_id": "msg_1"}
+    m = new.messages[0]
+    assert m["sender"] == "riya@acme.com" and m["to"] == "meera@acme.com" and m["body"] == "Standup at 10?"
+    assert changed_only(s, new, "messages") and state_hash(s) == h
+
+
+def test_transfer_money_logs_to_ledger():
+    s, _ = fresh()
+    new, _ = act(s, "transfer_money", from_account="ACC-OPS", to_account="ACC-VENDOR-1", amount_inr=75000)
+    assert new.transactions == [{"kind": "transfer", "from_account": "ACC-OPS",
+                                 "to_account": "ACC-VENDOR-1", "amount_inr": 75000}]

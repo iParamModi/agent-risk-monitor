@@ -31,6 +31,7 @@ SIM_ARGS = {
     "check_user_clearance": {"user": "u_dev"},
     "check_owner_approval": {"user": "u_dev", "resource": "AcmePay"},
     "check_admin_count": {"user": "u_arjun", "resource": "infra-config"},
+    "check_sole_admin": {"user": "u_arjun"},
     "check_recipient_type": {"recipient": "c_globex"},
     "check_recipient_nda": {"recipient": "c_globex"},
     "check_recipient_verification": {"recipient": "c_globex"},

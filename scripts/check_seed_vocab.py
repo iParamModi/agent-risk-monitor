@@ -27,6 +27,17 @@ ACTIONS = {
     "create_event": ({"title", "attendees"}, set()),
     "archive_record": ({"customer_id"}, set()),
     "export_customer_data": ({"customer_id", "destination"}, set()),
+    # phase 2 write tools
+    "cancel_event": ({"event_id"}, set()),
+    "forward_email": ({"email_id", "to"}, set()),
+    "delete_folder": ({"folder"}, set()),
+    "upload_file": ({"file"}, {"content"}),
+    "unshare_file": ({"file"}, {"with"}),
+    "create_share_link": ({"file"}, set()),
+    "delete_user": ({"user"}, set()),
+    "reset_password": ({"user"}, set()),
+    "pay_bill": ({"account", "payee", "amount_inr"}, set()),
+    "send_message": ({"to", "body"}, set()),
 }
 READS = {
     "list_files": {"folder"},
@@ -39,6 +50,10 @@ READS = {
     "get_repo": {"repo"},
     "read_inbox": set(),
     "get_customer_record": {"customer_id"},
+    # phase 2 read tools
+    "search_files": {"query"},
+    "list_repos": set(),
+    "list_transactions": {"account"},
 }
 
 

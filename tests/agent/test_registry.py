@@ -7,16 +7,19 @@ from lma_agent.tools.registry import READ_TOOLS, SPECS, WRITE_TOOLS, get_agent_t
 
 
 def test_counts():
-    assert len(SPECS) == 24
-    assert len(READ_TOOLS) == 10 and len(WRITE_TOOLS) == 14
+    assert len(SPECS) == 37
+    assert len(READ_TOOLS) == 13 and len(WRITE_TOOLS) == 24
     assert {n for n, s in SPECS.items() if s.get("ood")} == {
         "get_customer_record", "archive_record", "export_customer_data"}
-    assert {n for n, s in SPECS.items() if s["phase"] == 2} == {"create_event"}
+    assert {n for n, s in SPECS.items() if s["phase"] == 2} == {
+        "create_event", "search_files", "list_repos", "list_transactions", "cancel_event",
+        "forward_email", "delete_folder", "upload_file", "unshare_file", "create_share_link",
+        "delete_user", "reset_password", "pay_bill", "send_message"}
 
 
 def test_schemas_are_openai_format_and_valid_json_schema():
     schemas = get_agent_tool_schemas(phase=2, include_ood=True)
-    assert len(schemas) == 24
+    assert len(schemas) == 37
     for s in schemas:
         assert s["type"] == "function"
         fn = s["function"]
@@ -28,7 +31,7 @@ def test_schemas_are_openai_format_and_valid_json_schema():
 def test_ood_filter():
     names = {s["function"]["name"] for s in get_agent_tool_schemas()}
     assert len(names) == 20 and "archive_record" not in names and "create_event" not in names
-    assert len(get_agent_tool_schemas(phase=2)) == 21
+    assert len(get_agent_tool_schemas(phase=2)) == 34
     assert get_agent_tool_schemas(phase=0) == []
 
 

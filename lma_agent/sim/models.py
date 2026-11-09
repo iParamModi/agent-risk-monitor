@@ -160,6 +160,8 @@ class CompanyState(BaseModel):
     customers: dict[str, Customer] = {}
     exports: list[dict] = []
     events: list[Event] = []
+    transactions: list[dict] = []  # money moves logged by transfer_money / pay_bill, read by list_transactions
+    messages: list[dict] = []  # chat messages logged by send_message
     # resource -> user -> owner approved this user's access (hidden). A missing entry counts as approved.
     owner_approvals: dict[str, dict[str, bool]] = {}
 

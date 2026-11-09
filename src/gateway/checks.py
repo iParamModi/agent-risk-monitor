@@ -63,7 +63,10 @@ def check_file_sharing(state: CompanyState, path: str) -> dict:
     except NotFound:
         folder = path.rstrip("/") or "/"
         if not readers._folder_exists(state, folder):
-            raise
+            parent = folder.rsplit("/", 1)[0] or "/"   # a not-yet-created file takes its parent folder's sharing
+            if not readers._folder_exists(state, parent):
+                raise
+            folder = parent
         entity = state.folders.get(folder)
         sharing, ref = _pick(entity, tool, "sharing", readers._folder_sharing(state, folder)), folder
     return {"path": ref, "sharing": sharing, "shared_external": sharing != "internal"}
@@ -172,6 +175,15 @@ def check_admin_count(state: CompanyState, user: str, resource: str) -> dict:
         last, count = stated_last, 1 if stated_last else max(count, 2)
     return {"user": u.user_id, "resource": resource, "admin_count": _pick(u, tool, "admin_count", count),
             "is_last_admin": last}
+
+
+def check_sole_admin(state: CompanyState, user: str) -> dict:
+    """Is this user the only admin of any system, so removing them would leave it with no admin?"""
+    tool = "check_sole_admin"
+    u = readers._get_user(state, user)
+    sole = any(sorted(x for x, lvl in members.items() if lvl == "admin") == [user]
+               for members in state.permissions.values())
+    return {"user": u.user_id, "is_sole_admin": _pick(u, tool, "is_sole_admin", sole)}
 
 
 # ---------- PRIV / CAL / FIN ----------

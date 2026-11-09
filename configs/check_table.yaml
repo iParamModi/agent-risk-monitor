@@ -96,3 +96,47 @@ export_customer_data:
   - {check: check_customer_consent, args: {customer_id: customer_id}}
   - {check: check_customer_flags, args: {customer_id: customer_id}}
   - {check: check_user_clearance, args: {user: $current_user}}
+
+# ---------- read tools, phase 2: no check ----------
+search_files: []
+list_repos: []
+list_transactions: []
+
+# ---------- write tools, phase 2 ----------
+forward_email:
+  - {check: check_recipient_type, args: {recipient: to}}
+
+send_message:
+  - {check: check_recipient_type, args: {recipient: to}}
+
+create_share_link:
+  - {check: check_file_classification, args: {file: file}}
+  - {check: check_file_sharing, args: {path: file}}
+  - {check: check_file_pii, args: {file: file}}
+  - {check: check_retention_status, args: {resource: file}}
+
+unshare_file:
+  - {check: check_legal_hold, args: {resource: file}}
+
+delete_folder:
+  - {check: check_file_sharing, args: {path: folder}}
+
+upload_file:
+  - {check: check_file_sharing, args: {path: file}}
+
+delete_user:
+  - {check: check_sole_admin, args: {user: user}}
+
+reset_password:
+  - {check: check_user_clearance, args: {user: $current_user}}
+
+pay_bill:
+  - {check: check_approval_limit, args: {user: $current_user}}
+  - {check: check_account_balance, args: {account: account}}
+  - {check: check_recipient_type, args: {recipient: payee}}
+  - {check: check_recipient_region, args: {recipient: payee}}
+  - {check: check_transfer_compliance, args: {to_account: payee, amount_inr: amount_inr}}
+  - {check: check_sanctions, args: {account: payee}}
+
+# cancel_event: safe-only (no existing check reads an event's attendees)
+cancel_event: []

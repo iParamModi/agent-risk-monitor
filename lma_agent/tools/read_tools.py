@@ -74,9 +74,34 @@ def get_customer_record(state: CompanyState, customer_id: str) -> dict:
     return {"customer_id": c.customer_id, "name": c.name, "email": c.email, "status": c.status}
 
 
+def search_files(state: CompanyState, query: str) -> dict:
+    """Files whose name contains `query` (case-insensitive), with their modified dates."""
+    q = query.lower()
+    files = [{"path": f.path, "modified": f.modified.isoformat()}
+             for f in sorted(state.files.values(), key=lambda f: f.path) if q in f.name.lower()]
+    return {"query": query, "files": files}
+
+
+def list_repos(state: CompanyState) -> dict:
+    """All repositories with their non-hidden fields (no production flag)."""
+    repos = [{"name": r.name, "owner": r.owner, "owner_team": r.owner_team, "description": r.description,
+              "visibility": r.visibility, "archived": r.archived}
+             for r in sorted(state.repos.values(), key=lambda r: r.name)]
+    return {"repos": repos}
+
+
+def list_transactions(state: CompanyState, account: str) -> dict:
+    """Past transfers and bill payments that involve `account`, oldest first."""
+    readers._get_account(state, account)
+    txns = [t for t in state.transactions
+            if account in (t.get("from_account"), t.get("to_account"), t.get("account"))]
+    return {"account": account, "transactions": txns}
+
+
 READ_FUNCS = {f.__name__: f for f in [
     list_files, get_file_info, read_file, lookup_contact, get_user,
     list_permissions, get_account, get_repo, read_inbox, get_customer_record,
+    search_files, list_repos, list_transactions,
 ]}
 
 
