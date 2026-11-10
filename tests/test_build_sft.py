@@ -130,6 +130,16 @@ def test_phase1_keeps_only_phase1_records_of_the_split():
         phase1([our_record(split="test")], "train")
 
 
+def test_phase2_train_keeps_phase2_records_whose_checks_are_known():
+    from src.training.build_sft import phase2_train
+    known = our_record("IND-FIN-T1-901-A")
+    known["visible"]["proposed_action"] = {"name": "pay_bill", "args": {}}
+    unknown = our_record("IND-CAL-T1-901-A")
+    unknown["visible"]["proposed_action"] = {"name": "create_event", "args": {}}
+    unknown["gold"]["required_checks"] = None
+    assert [r["record_id"] for r in phase2_train([our_record(), known, unknown])] == ["IND-FIN-T1-901-A"]
+
+
 class FakeTokenizer:
     def apply_chat_template(self, messages, tokenize, add_generation_prompt, enable_thinking):
         assert add_generation_prompt and not enable_thinking and not tokenize

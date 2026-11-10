@@ -19,7 +19,8 @@ from pathlib import Path
 
 WORK = Path("/tmp/repo")
 ADAPTER = Path("/kaggle/working/adapter")
-# "a": external risk examples only (kind c). "b": + our phase 1 train records, first and second pass (kinds a, b),
+# "a": external risk examples only (kind c). "b": + our train records (phase 1, and phase 2 whose checks are
+# known), first and second pass (kinds a, b),
 # which need the check gateway, the retriever and data/records/ (src/training/build_sft.py)
 PHASE = "b"
 RUN_TAG = f"lora_phase_{PHASE}_qwen3_8b"

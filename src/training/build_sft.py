@@ -11,7 +11,8 @@ Phase A has only kind (c), risk examples from the external records:
 - target: built by code from the gold fields (never by an LLM), in the parser's RISK format
 
 Phase B adds kinds (a) and (b) from our own records, then the same (c):
-- records: data/records/train.jsonl (val: val.jsonl), phase 1 tools only (configs/tool_phases.yaml); test and
+- records: data/records/train.jsonl (val: val.jsonl), phase 1 tools (configs/tool_phases.yaml), plus on train the
+  phase 2 records whose checks are known (phase2_train); val, test and OOD are scored on phase 1 only. Test and
   OOD records are never read
 - (a) first pass: the selective first-pass prompt (check tools listed, NEED_INFORMATION allowed) -> DECISION
   when no check is needed, else NEED_INFORMATION with the gold missing_fact and required_checks and a fixed
@@ -149,16 +150,23 @@ def check_example(ex: dict) -> None:
         raise ValueError(f"{ex['record_id']}: a policy id reaches the prompt or the target")
 
 
-def phase1(records: list[dict], split: str) -> list[dict]:
-    """The records of one split whose tools are all phase 1 (scripts/split_by_phase.py buckets)."""
+def phase1(records: list[dict], split: str, buckets: tuple[str, ...] = ("phase1",)) -> list[dict]:
+    """The records of one split whose tools are all phase 1, or in the given scripts/split_by_phase.py buckets."""
     spec = importlib.util.spec_from_file_location("split_by_phase", REPO_ROOT / "scripts" / "split_by_phase.py")
     sbp = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(sbp)
-    keep = sbp.split_records(records, sbp.load_phases(REPO_ROOT / "configs" / "tool_phases.yaml"))["phase1"]
+    out = sbp.split_records(records, sbp.load_phases(REPO_ROOT / "configs" / "tool_phases.yaml"))
+    keep = [r for b in buckets for r in out[b]]
     bad = [r["record_id"] for r in keep if r["set"] != "in_domain" or r["split"] != split]
     if bad:
         raise ValueError(f"not in_domain {split} records: {bad[:5]}")
     return keep
+
+
+def phase2_train(records: list[dict]) -> list[dict]:
+    """The phase 2 train records Phase B can use. No check tool answers some phase 2 facts yet (create_event's
+    contract_active, seed_to_record.md D4), so a check-needed record without gold.required_checks is left out."""
+    return [r for r in phase1(records, "train", ("phase2",)) if not r["gold"]["check_needed"] or r["gold"]["required_checks"]]
 
 
 def readiness(records: list[dict], check_names: set[str], gateway_for) -> list[str]:
@@ -221,7 +229,10 @@ def main(argv=None) -> int:
     else:
         from src.policies.retriever import Retriever
         from src.policies.store import IN_DOMAIN, load_policies
-        train_records = phase1(list(read_jsonl(RECORDS / "train.jsonl")), "train")
+        train_rows = list(read_jsonl(RECORDS / "train.jsonl"))
+        extra = phase2_train(train_rows)
+        train_records = phase1(train_rows, "train") + extra
+        print(f"train: {len(train_records)} records, {len(extra)} of them phase 2")
         val_records = phase1(list(read_jsonl(RECORDS / "val.jsonl")), "val")
         check_tools = load_check_tools()
         gateway_for = default_gateway_factory()
