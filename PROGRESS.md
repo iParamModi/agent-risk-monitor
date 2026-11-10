@@ -1,7 +1,7 @@
 # Project Progress
 
 > Check this file before starting any work. Update it and push to GitHub after every change.
-> Last updated: 2026-11-03 by Meet
+> Last updated: 2026-11-10 by Meet
 
 ## 📄 Everyone: read `docs/reports/our_eval_walkthrough.pdf` (Meet, 2026-10-28)
 
@@ -33,6 +33,7 @@ How our monitor really runs on our records: diagrams of the loop and the 4 setti
 
 | Task | Who | Started | Status / Notes |
 |------|-----|---------|----------------|
+| **Phase B retrain on the final training data** (+ Param's 28 phase-2 train records; eval stays phase 1) | Meet | 2026-11-10 | Kaggle; then final runs (base + Phase B on val, test 150, OOD) once retrieval is frozen |
 
 ## Next Up
 
