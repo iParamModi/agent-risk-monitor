@@ -1,5 +1,6 @@
-"""Kaggle job: the final 30 Oct run for base Qwen3-8B on our val + locked test records, 4 settings x 2 policy
-conditions (kaggle/our_eval/run_our_eval.py, from the code dataset). Results in /kaggle/working/results."""
+"""Kaggle job: the final run for base Qwen3-8B on our val + locked test + OOD records, 4 settings x 2 policy
+conditions (kaggle/our_eval/run_our_eval.py, from the code dataset). Results in /kaggle/working/results.
+OOD was a separate job (kaggle/ood_base/) until 10 Nov; one job now, so it uses one GPU session."""
 import glob
 import importlib.util
 import sys
@@ -14,4 +15,4 @@ if not found:                                   # the code dataset was not unpac
 spec = importlib.util.spec_from_file_location("run_our_eval", Path(found[0]))
 job = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(job)
-sys.exit(job.main(tags=("base",), splits=("val", "test")))
+sys.exit(job.main(tags=("base",), splits=("val", "test", "ood")))
