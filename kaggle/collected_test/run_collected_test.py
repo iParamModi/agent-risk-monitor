@@ -6,8 +6,8 @@ here trains or tunes: the test records are only run and scored.
 One monitor run per model and source, then one src.eval.tables report per source and one merged per model. Every
 finished model is copied to /kaggle/working/results at once. Predictions hold ids, gold labels and model JSON, no
 record text. AgentRisk is downloaded and converted here (never re-uploaded: no licence).
-Inputs: the private code dataset and the private adapter datasets meet6868/agent-risk-adapter (Phase A) and
-meet6868/agent-risk-adapter-phase-b.
+Inputs: the private code dataset and the private adapter datasets of the models in TAGS: meet6868/agent-risk-adapter
+(Phase A), meet6868/agent-risk-adapter-phase-b (Phase B, 30 Oct), meet6868/agent-risk-adapter-final (final Phase B).
 """
 import glob
 import importlib.util
@@ -19,8 +19,10 @@ import tarfile
 from pathlib import Path
 
 WORK = Path("/tmp/repo")
-TAGS = ("base", "phase_a", "phase_b")
-TRAIN_LOSS = {"phase_a": 0.03732, "phase_b": 0.03356}      # from each adapter's train_stats.json: stops a swapped adapter
+# 11 Nov: only the final adapter; base, Phase A and the 30 Oct Phase B ran on 2 Nov (the risk prompt has not changed)
+TAGS = ("phase_b_final",)
+TRAIN_LOSS = {"phase_a": 0.03732, "phase_b": 0.03356,      # from each adapter's train_stats.json: stops a swapped adapter
+              "phase_b_final": 0.03079}
 
 
 def get_code() -> None:
@@ -44,8 +46,8 @@ def find_adapters(base) -> dict[str, Path]:
         if tag is None or tag in found:
             raise SystemExit(f"unexpected adapter {path}: train loss {stats['train_loss']}")
         found[tag] = Path(path).parent
-    if set(found) != set(TRAIN_LOSS):
-        raise SystemExit(f"expected the Phase A and Phase B adapters, found {found}")
+    if set(found) != set(TAGS) - {"base"}:
+        raise SystemExit(f"expected the adapters of {TAGS}, found {found}")
     base.log(f"adapters: {found}")
     return found
 
