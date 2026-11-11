@@ -111,7 +111,7 @@ Same records for all three models (test: the original 120); the 30 Oct adapter a
 
 ### 5.4 Errors (Phase B, selective)
 
-- Retrieved policies: **retrieval misses cause 48 of 56 test errors, 26 of 37 OOD errors, 10 of 13 val errors.**
+- Retrieved policies: **a retrieval miss is the first cause of 48 of 56 test errors, 26 of 37 OOD errors, 10 of 13 val errors.** Given the correct policies, only 12 of the 48 test ones become right (OOD 17 of 26, val 6 of 10): the retrieval ceiling is +7.6 points on test, +11.6 on OOD, +15 on val.
 - Correct policies: 45 test errors, **22 of them two-check T5 records where only one check was made**; 10 wrong fact checked, 8 right fact but wrong decision, 5 no check.
 - OOD records with new tools: selective 59.5 (retrieved) vs 71.4 on records with only new wording.
 

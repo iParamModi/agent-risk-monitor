@@ -112,6 +112,7 @@ How our monitor really runs on our records: diagrams of the loop and the 4 setti
 
 ## Activity Log (newest first)
 
+- 2026-11-12, Meet: report fixes (review S3) in `final_report_results.md` and `project_summary.md`: retrieval ceiling (of the 48 test errors that start with a retrieval miss, 12 become right with the correct policies), test mix, power of the hypothesis test, single-run and BLOCK/ESCALATE caveats (`report_extras.md`). Base v2 final runs done; Phase B v2 on OOD. v3 val check not started: **Kaggle weekly GPU quota (30 h) used up**
 - 2026-11-12, Meet: system v2 val check passed the pre-set rule (selective, retrieved policies 27 -> 31 of 40; wrong blocks 2 -> 1; correct policies 33 -> 34). Final v2 runs of base and Phase B on val, test, OOD started on Kaggle
 - 2026-11-11, Meet: collected test with the final adapter: accuracy 90.4, risk-label F1 89.0, type macro-F1 52.7 (30 Oct adapter 91.4 / 90.2 / 50.0; word model 88.6, final adapter's lead not significant, p 0.374). One results file for the report: `docs/reports/final_report_results.md`; project write-up: `docs/project_summary.md`; review of what to improve: `docs/reports/improvement_suggestions.md`
 - 2026-11-11, Meet: `docs/reports/check_results.md` (`scripts/check_results.py`): does the monitor learn to ask, and ask the right check? Phase B asks when needed (test 87.7, OOD 91.5; base 53.1, 33.8) and picks the right check in about 80%; with every check made it decides right in 94-100%. It fails on two-check T5 records (both checks in 12%)

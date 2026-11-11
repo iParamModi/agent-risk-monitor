@@ -1,6 +1,6 @@
 # Final results: one place for everything
 
-Meet, 11 Nov 2026. For the team and the final report (14 Nov). Every number below comes from a generated report in `docs/reports/` (listed at the end); nothing here is computed differently. Test and OOD were only run and scored: nothing was trained or tuned on them.
+Meet, 11 Nov 2026 (S3 report fixes 12 Nov). For the team and the final report (14 Nov). Every number below comes from a generated report in `docs/reports/` (listed at the end); nothing here is computed differently. Test and OOD were only run and scored: nothing was trained or tuned on them.
 
 ## 1. Setup in short
 
@@ -16,7 +16,7 @@ Meet, 11 Nov 2026. For the team and the final report (14 Nov). Every number belo
 2. **Selective saves about 85% of the checks** (0.7 per record vs 4.5-4.8 for always; p < 0.001 everywhere).
 3. **But selective is not as safe as always on in-domain test.** The hypothesis fails clearly: Δ unsafe +29.3 points [16.7, 42.2] with the correct policies. On OOD it is inconclusive (−3.9 [−17.0, 8.9]).
 4. **The model learns when to ask and what to ask for** (asks in 88-92% of records that need a check, right check in about 80%; with every check made it decides right in 94-100%). **It fails when two checks are needed**: on the two-check T5 records it makes both in only 12%.
-5. **Retrieval is the biggest source of errors in the full system**: 48 of 56 wrong test answers (retrieved policies, selective) start with the deciding policy missing from the 3 shown.
+5. **Retrieval costs 7.6 points on test** (selective: 61.6 with retrieved policies vs 69.2 with the correct ones; 11.6 on OOD, 15 on val). 48 of 56 wrong test answers with retrieved policies have the deciding policy missing from the 3 shown, but that is the *first* cause only: given the correct policies, 12 of those 48 become right and 36 stay wrong for other reasons (OOD: 17 of 26 become right, val 6 of 10). So the first-cause count overstates what better retrieval can win; the ceiling is the gap to the correct-policies row.
 
 ## 3. Main results
 
@@ -69,7 +69,9 @@ On OOD, selective beats always: always over-reacts to facts that do not decide t
 | Val | Correct | 0.0 [−21.1, 21.1] | inconclusive | +5.3 [−23.8, 36.9] | fails |
 | Val | Retrieved | +10.5 [−18.2, 41.2] | inconclusive | −5.3 [−31.9, 21.1] | fails |
 
-The cost side holds everywhere: selective makes about 85% fewer checks than always (Wilcoxon p < 0.001). Base "passes" on OOD only because it blocks most records (section 3). On the 30 Oct test set (120 records, old adapter) the main test also failed (+16.1 [3.8, 28.1]); the 26 two-check records added since then make it clearer.
+The cost side holds everywhere: selective makes about 85% fewer checks than always (Wilcoxon p < 0.001).
+
+**What the test could show** (`report_extras.md` section 4). The interval half-width is 10-13 points on test and about 13 on OOD (82 and 51 risky records). With a 5-point margin the rule can only pass if the observed Δ is at most −5.3 (test, retrieved) or −7.8 (test, correct), i.e. if selective is clearly **safer** than always. The rule stays as fixed before the results; this is the power it had. **Always is not safe either:** 34.1% unsafe on test with retrieved policies (12.2% with the correct ones), because it inherits retrieval misses and sometimes decides on a fact that does not decide the case. Base "passes" on OOD only because it blocks most records (section 3). On the 30 Oct test set (120 records, old adapter) the main test also failed (+16.1 [3.8, 28.1]); the 26 two-check records added since then make it clearer.
 
 ## 5. Does the model learn to ask for information, and for the right information?
 
@@ -103,7 +105,7 @@ Phase B, selective; each wrong answer gets its first cause. From `error_analysis
 
 (Counted from the per-case-type tables; "other" = wrong tool or arguments, extra check, invalid JSON.)
 
-- With retrieved policies, **retrieval misses** are most errors (86% on test, 70% on OOD). Improving retrieval was planned (Moiesha, due 7 Nov) but nothing was delivered by the 11 Nov cutoff, so the final runs use the 30 Oct retriever.
+- With retrieved policies, **retrieval misses** are the most common *first* cause (86% on test, 70% on OOD). The ceiling for better retrieval is smaller: given the correct policies, 12 of the 48 test misses become right (OOD 17 of 26, val 6 of 10), and selective accuracy rises by 7.6 points on test, 11.6 on OOD and 15 on val. The v1 final runs use the 30 Oct retriever; system v2 (12 Nov, below) adds tag-filtered retrieval.
 - With correct policies, the biggest group on test is **two-check T5 records with one check made** (22 of 45).
 - IND-ACC-T1-001 (val): Param checked the label; it is correct, and Phase B's BLOCK is a model error (it checked `access_level`, the normal state before a grant, instead of the user's clearance).
 
@@ -155,14 +157,18 @@ Safe/unsafe and risk type, one pass, no checks. Test, our own splits of these da
 - **Small sets.** 40 val, 146 test, 112 OOD records; intervals are wide (for example ±10 points on test accuracy), and OOD has only 51 risky records.
 - **The test set grew after the 30 Oct run** (26 two-check T5 records, 6 Nov). Every final number uses the 146-record set; 30 Oct numbers are not comparable.
 - **Generated records.** Our records and their gold labels come from our own seeds and policy rules; the check tools answer from a simulated company state.
-- **Retrieval was not improved** after 30 Oct (recall@3 0.55).
+- **Retrieval:** v1 uses the 30 Oct retriever (recall@3 0.55); v2 filters by the action's tool and shows 8 (all gold policies shown, val 0.33 -> 0.80).
+- **Test mix.** Test is 28% T5 against 19% over all in-domain records (the 6 Nov addition). Reweighted to the in-domain mix, Phase B selective is 66.3 (retrieved) and 74.3 (correct) instead of 61.6 and 69.2 (`report_extras.md` section 3). The raw test number stays the main result.
+- **Power.** The hypothesis rule could only pass if selective were clearly safer than always (section 4).
+- **One training run per adapter.** Run-to-run variance is unknown; changes of a few points between adapters (section 8) may be noise.
+- **Accuracy counts BLOCK for ESCALATE as wrong.** Counting that swap as acceptable (both stop the action), always rises from 75.3 to 89.0 on test with correct policies, but selective only from 69.2 to 72.6: most of selective's errors let the risky action through (`report_extras.md` section 1).
 - **Collected datasets** have shortcuts (section 9) and our own splits.
 
 ## 11. Not done (as of 11 Nov)
 
 | Item | Owner | Status |
 |---|---|---|
-| Better policy retrieval | Moiesha | not delivered by the cutoff; final runs use the current retriever |
+| Better policy retrieval | Meet (was Moiesha) | done as system v2 (tag filter, 8 shown), 12 Nov; v1 final runs keep the 30 Oct retriever |
 | Ablations (no policies, check noise, top-k) | Moiesha | code not delivered |
 | Qwen3-235B comparison | Moiesha | dropped (no decision by 5 Nov) |
 | 50 evidence hand-checks (humans only, no LLM) | to choose | sheet to make from the final runs |
@@ -179,6 +185,7 @@ Safe/unsafe and risk type, one pass, no checks. Test, our own splits of these da
 | `docs/reports/error_analysis_{val,test,ood}.md` | first cause of each wrong answer |
 | `docs/reports/collected_test_results.md` | collected datasets, per source |
 | `docs/reports/shortcut_check.md` | word models, named cues and near-copies on the collected datasets |
+| `docs/reports/report_extras.md` | cost-safety table, acceptable-decision rate, accuracy by case type, test reweighted, power of the hypothesis test |
 | `docs/decisions.md` R10.4 | the hypothesis rule, fixed before any result |
 
 Rebuild: `python scripts/final_results.py --split val test ood --out docs/reports/final_results`, `python scripts/check_results.py`, `python -m src.eval.error_analysis --split val test ood`, `python scripts/collected_results.py`, `python -m src.eval.shortcuts`.
