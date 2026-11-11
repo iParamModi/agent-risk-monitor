@@ -16,11 +16,12 @@ from src.eval import metrics as m  # noqa: E402
 from src.eval.tables import pct, table  # noqa: E402
 
 KAGGLE = ROOT / "outputs" / "kaggle"
-MODELS = {"base": "Base", "phase_a": "Phase A", "phase_b": "Phase B"}
+MODELS = {"base": "Base", "phase_a": "Phase A", "phase_b": "Phase B, 30 Oct", "phase_b_final": "Phase B, final"}
 SOURCES = {"r_judge": "R-Judge", "atbench": "ATBench", "agentrisk": "AgentRisk"}
 VAL_RUNS = {"base": "base_eval/results/runs/base_qwen3_8b_fp16_{}",
             "phase_a": "lora_eval/results/runs/lora_phase_a_qwen3_8b_{}",
-            "phase_b": "finetune_phase_b/results/runs/lora_phase_b_qwen3_8b_{}"}
+            "phase_b": "finetune_phase_b/results/runs/lora_phase_b_qwen3_8b_{}",
+            "phase_b_final": "finetune_final/results/runs/lora_phase_b_qwen3_8b_{}"}
 
 
 def load(split: str, model: str, source: str) -> list[dict]:

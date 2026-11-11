@@ -24,10 +24,11 @@ from src.eval.tables import pct, table
 KAGGLE = REPO_ROOT / "outputs" / "kaggle"
 EXTERNAL = REPO_ROOT / "data" / "external"
 SOURCES = {"r_judge": "R-Judge", "atbench": "ATBench", "agentrisk": "AgentRisk"}
-MODELS = {"base": "Base", "phase_a": "Phase A", "phase_b": "Phase B"}
+MODELS = {"base": "Base", "phase_a": "Phase A", "phase_b": "Phase B, 30 Oct", "phase_b_final": "Phase B, final"}
 VAL_RUNS = {"base": "base_eval/results/runs/base_qwen3_8b_fp16_{}",
             "phase_a": "lora_eval/results/runs/lora_phase_a_qwen3_8b_{}",
-            "phase_b": "finetune_phase_b/results/runs/lora_phase_b_qwen3_8b_{}"}
+            "phase_b": "finetune_phase_b/results/runs/lora_phase_b_qwen3_8b_{}",
+            "phase_b_final": "finetune_final/results/runs/lora_phase_b_qwen3_8b_{}"}
 MAX_TOKENS = 7300               # kaggle/base_eval/run_base_eval.py
 NEAR_COPY = 0.7
 CUE_ODDS = 3                    # a cue is reported if one label has it at least this many times as often on train
@@ -156,7 +157,7 @@ def report_split(split: str, data: dict, show_words: bool) -> list[str]:
             pooled[key] += [x == g for x, g in zip(said[key], gold)]
         for m in MODELS:
             pooled[m] += [preds[m][r["record_id"]] == r["gold"]["risk_label"] for r in ev]
-        for m in ("phase_a", "phase_b"):
+        for m in ("phase_a", "phase_b", "phase_b_final"):
             only_m, only_word, p_value = mcnemar([preds[m][r["record_id"]] == r["gold"]["risk_label"] for r in ev],
                                                  [x == g for x, g in zip(said["judged step"], gold)])
             tests.append([name, MODELS[m], str(only_m), str(only_word), f"{p_value:.3f}"])
@@ -174,7 +175,7 @@ def report_split(split: str, data: dict, show_words: bool) -> list[str]:
                          share([rule(r) == is_unsafe(r) for r in ev]), *(right(preds[m], against) for m in MODELS)])
     score.append(["**All**", str(len(pooled["gold"])), *(share(pooled[m]) for m in MODELS),
                   share(pooled["whole record"]), share(pooled["judged step"]), share(pooled["gold"])])
-    for m in ("phase_a", "phase_b"):
+    for m in ("phase_a", "phase_b", "phase_b_final"):
         only_m, only_word, p_value = mcnemar(pooled[m], pooled["judged step"])
         tests.append(["**All**", MODELS[m], str(only_m), str(only_word), f"{p_value:.3f}"])
     no_reply = [r for r in data["agentrisk"] if in_eval(r, split) and not CUES["step is a reply to the user"](r)]
