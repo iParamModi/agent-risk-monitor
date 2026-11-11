@@ -18,6 +18,7 @@ How our monitor really runs on our records: diagrams of the loop and the 4 setti
 | **Prateek** | Deployment: demo (AcmePay, pricing sheet); service; live runs with 2 agent LLMs (cut from the bottom if late) | `docs/messages/2026-11-02_to_Prateek_deployment.md` | 8, 10, 12 Nov |
 | **Meet** | Retrain; final runs with the final adapter (+ Moiesha's ablation jobs); rerun error analysis + shortcut check; final tables | this file | 8-9, 9-11, 12 Nov |
 | **To choose (humans only, no LLM)** | 50 evidence hand-checks on `docs/reports/evidence_check_sheet.csv` (Meet makes the sheet after the retrain) | | 11 Nov |
+| **Param** | Confirm the policy tags of system v2 by hand (`data/policies/policy_tags_review.csv`, ~2 h) | `docs/messages/2026-11-12_to_Param_policy_tags.md` | 13 Nov |
 | **Everyone** | Final report (PLAN Step 25) | | 11-14 Nov |
 
 ## Team
