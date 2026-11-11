@@ -174,3 +174,29 @@ def test_evaluate_runs_on_tiny_seeds():
     assert set(rep["by_w"]) == {str(w) for w in ev.W_VALUES}
     assert rep["at_chosen_w"]["overall"]["recall@3"] == 1.0 and rep["at_chosen_w"]["misses"] == []
     assert re.search(r"\| 0\.\d", ev.to_markdown({"policies": 4, "seeds": 2, **rep}))
+
+
+def test_tags_rank_only_the_tools_policies_and_fall_back_without_tags():
+    tags = {"P_FIN_01": {"transfer_money"}, "P_FIN_09": {"transfer_money"}, "P_FILE_01": {"delete_file"}}
+    ret = r.Retriever(POLICIES, embedder=WordEmbedder([p["text"] for p in POLICIES]), w=0.5, tags=tags)
+    shown = [p["policy_id"] for p in ret.search("delete the restricted file", k=3, tool="transfer_money")]
+    assert sorted(shown) == ["P_FIN_01", "P_FIN_09"]                     # k is cut to the tagged policies
+    assert [p["policy_id"] for p in ret.search("delete the file", k=1, tool="delete_file")] == ["P_FILE_01"]
+    assert len(ret.search("anything", k=3, tool="create_event")) == 3    # no policy tagged: whole store
+    assert len(ret.search("anything", k=3)) == 3                         # no tool: whole store
+
+
+def test_policy_tags_file_is_up_to_date_and_covers_every_gold_policy():
+    from src.common.io import REPO_ROOT, read_jsonl
+    from src.policies.store import load_policy_tags
+    spec = importlib.util.spec_from_file_location("gen_policy_tags", REPO_ROOT / "scripts" / "gen_policy_tags.py")
+    gen = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gen)
+    assert gen.OUT.read_text(encoding="utf-8") == gen.build(), "run python scripts/gen_policy_tags.py"
+    tags = load_policy_tags()
+    for p in load_policies() + load_policies(REPO_ROOT / "data" / "policies" / "policies_ood.jsonl"):
+        assert tags.get(p["policy_id"]), p["policy_id"]
+    for split in ("train", "val"):
+        for rec in read_jsonl(REPO_ROOT / "data" / "records" / f"{split}.jsonl"):
+            for pid in rec["gold"]["policy_ids"]:
+                assert rec["visible"]["proposed_action"]["name"] in tags[pid], (rec["record_id"], pid)

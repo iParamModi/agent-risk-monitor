@@ -13,7 +13,10 @@ split one src.eval.tables report over the 4 settings. Every finished run is copi
 once, so a job that hits the time limit keeps what it finished.
 
 One job per model (kaggle/our_eval_final_base/, kaggle/our_eval_final_phase_b/) call main(tags=...); running this
-file alone does both models on val (the first val-only run).
+file alone does both models on val (the first val-only run). plan= picks the system version, policy condition and
+settings per entry (src/monitor/case_inputs.py VERSIONS; kaggle/v2_*/); v1 run ids keep their names, other versions
+get the version after the model tag (ours_<model>_<version>_<policies>_<setting>_<split>). Split "train_two_check" =
+the train records that need two checks: a check of the loop's mechanics on records the model was trained on.
 Inputs: the private code dataset and the private Phase B adapter dataset (meet6868/agent-risk-adapter-phase-b).
 """
 import gc
@@ -27,7 +30,13 @@ from pathlib import Path
 WORK = Path("/tmp/repo")
 SETTINGS = ("never", "always", "selective", "oracle")
 POLICY_MODES = ("gold", "retrieval")
-RECORD_FILES = {"val": "data/records/val.jsonl", "test": "data/records/test.jsonl", "ood": "data/records/ood_test.jsonl"}
+RECORD_FILES = {"val": "data/records/val.jsonl", "test": "data/records/test.jsonl", "ood": "data/records/ood_test.jsonl",
+                "train_two_check": "data/records/train.jsonl"}
+DEFAULT_PLAN = tuple({"version": "v1", "mode": m, "settings": SETTINGS} for m in POLICY_MODES)
+
+
+def run_name(tag: str, version: str, mode: str, setting: str, split: str) -> str:
+    return f"ours_{tag}_{mode}_{setting}_{split}" if version == "v1" else f"ours_{tag}_{version}_{mode}_{setting}_{split}"
 
 
 def load_module(name: str, path: Path):
@@ -65,6 +74,11 @@ def load_records(base, split: str) -> list[dict]:
         kept = list(read_jsonl(WORK / RECORD_FILES[split]))
         base.log(f"ood: {len(kept)} records")
         return kept
+    if split == "train_two_check":
+        kept = [r for r in phase1(list(read_jsonl(WORK / RECORD_FILES[split])), "train")
+                if len(r["gold"]["required_checks"] or []) >= 2]
+        base.log(f"train_two_check: {len(kept)} records")
+        return kept
     records = [r for r in read_jsonl(WORK / RECORD_FILES[split]) if r["split"] == split]
     kept = phase1(records, split)
     base.log(f"{split}: {len(kept)} phase 1 records ({len(records) - len(kept)} phase 2 left out)")
@@ -78,8 +92,9 @@ def save(base, sub: str) -> None:
         shutil.copytree(src, base.OUT / sub, dirs_exist_ok=True)
 
 
-def evaluate_model(base, tag: str, adapter: str | None, splits: tuple[str, ...]) -> None:
-    """2 policy conditions x 4 settings per split with one model load, then one report per condition and split."""
+def evaluate_model(base, tag: str, adapter: str | None, splits: tuple[str, ...], plan=DEFAULT_PLAN) -> None:
+    """The plan's runs per split with one model load (default: v1, 2 policy conditions x 4 settings), then one report
+    per version, condition and split that has all 4 settings."""
     import torch
     from src.monitor.case_inputs import CaseInputs
     from src.monitor.models import TransformersModel
@@ -91,16 +106,18 @@ def evaluate_model(base, tag: str, adapter: str | None, splits: tuple[str, ...])
     embedder = None
     for split in splits:
         records = load_records(base, split)
-        for mode in POLICY_MODES:
-            inputs = CaseInputs(embedder=embedder, policy_mode=mode)
-            for setting in SETTINGS:
-                run_id = f"ours_{tag}_{mode}_{setting}_{split}"
+        for entry in (plan[split] if isinstance(plan, dict) else plan):     # one plan, or {split: plan}
+            version, mode = entry["version"], entry["mode"]
+            inputs = CaseInputs(embedder=embedder, policy_mode=mode, version=version)
+            for setting in entry["settings"]:
+                run_id = run_name(tag, version, mode, setting, split)
                 base.log(f"start: {run_id} ({len(records)} records)")
                 t0 = time.perf_counter()
                 rows = run_records(records, setting, model, inputs, run_id, RUNS_DIR / run_id, config={
                     "run_id": run_id, "setting": setting, "model": model.name, "backend": "transformers",
                     "revision": base.MODEL_REVISION, "adapter": adapter, "split": split,
-                    "records": [RECORD_FILES[split]], "prompts": template_names(), "policies": mode})
+                    "records": [RECORD_FILES[split]], "prompts": template_names(), "policies": mode,
+                    "version": version})
                 right = sum(bool(r["output"]) and r["output"]["decision"] == r["gold"]["decision"] for r in rows)
                 errors = sum(c["error"] is not None for r in rows for c in r["calls"])
                 base.log(f"done: {run_id} | decision right {right}/{len(rows)} | invalid "
@@ -108,17 +125,19 @@ def evaluate_model(base, tag: str, adapter: str | None, splits: tuple[str, ...])
                          f"({errors} errors) | {(time.perf_counter() - t0) / 60:.1f} min")
                 save(base, "runs")
                 embedder = inputs.embedder                  # load the embedding model once
-            runs = [f"--run={s}={RUNS_DIR / f'ours_{tag}_{mode}_{s}_{split}'}" for s in SETTINGS]
+            if tuple(entry["settings"]) != SETTINGS:
+                continue
+            runs = [f"--run={s}={RUNS_DIR / run_name(tag, version, mode, s, split)}" for s in SETTINGS]
+            name = run_name(tag, version, mode, "x", split).replace("_x_", "_")
             base.sh(sys.executable, "-m", "src.eval.tables", *runs, "--out", str(WORK / "outputs" / "tables"),
-                    "--name", f"ours_{tag}_{mode}_{split}",
-                    "--title", f"Our {split} records, {tag}, policies: {mode}")
+                    "--name", name, "--title", f"Our {split} records, {tag}, {version}, policies: {mode}")
             save(base, "tables")
     del model
     gc.collect()
     torch.cuda.empty_cache()
 
 
-def main(tags: tuple[str, ...] = ("base", "phase_b"), splits: tuple[str, ...] = ("val",)) -> int:
+def main(tags: tuple[str, ...] = ("base", "phase_b"), splits: tuple[str, ...] = ("val",), plan=DEFAULT_PLAN) -> int:
     import subprocess
     subprocess.run(["nvidia-smi"], check=False)
     here = Path(__file__).resolve().parents[1] / "finetune" / "run_finetune.py"     # loaded from the code dataset
@@ -133,9 +152,9 @@ def main(tags: tuple[str, ...] = ("base", "phase_b"), splits: tuple[str, ...] = 
         base.sh(sys.executable, "-m", "pip", "install", "-q", *base.PIP, *finetune.PIP_PHASE_B)
         base.sh(sys.executable, "-m", "pip", "uninstall", "-y", "-q", "torchao")
         log_environment(base)
-        base.log(f"models {tags}, splits {splits}")
+        base.log(f"models {tags}, splits {splits}, plan {plan}")
         for tag in tags:
-            evaluate_model(base, tag, find_adapter(base) if tag == "phase_b" else None, splits)
+            evaluate_model(base, tag, find_adapter(base) if tag == "phase_b" else None, splits, plan)
         base.log("all runs finished")
     except Exception:
         import traceback

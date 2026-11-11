@@ -130,3 +130,47 @@ def test_external_records_one_risk_pass(setting):
     row, model, gw = run(setting, [RISK], task="judge_trajectory")
     assert row["output"]["type"] == "RISK" and row["passes"] == 1 and row["calls"] == [] and gw.seen == []
     assert is_valid_output(row["output"], "judge_trajectory")
+
+
+SIBLINGS = {"account_type": [("check_user_authorization", "user"), ("check_recipient_type", "recipient")]}
+TABLE_CHECKS = [{"tool": "check_user_authorization", "args": {"user": "u1", "resource": "db"}},
+                {"tool": "check_recipient_type", "args": {"recipient": "u1"}},
+                {"tool": "check_recipient_type", "args": {"recipient": "u2"}}]
+
+
+def test_second_source_adds_the_other_tool_on_the_same_resource_only():
+    from src.monitor.loop import second_source_calls
+    ask = {"missing_fact": "account_type of u1", "checks": [{"tool": "check_user_authorization",
+                                                             "args": {"user": "u1", "resource": "db"}}]}
+    assert second_source_calls(ask, TABLE_CHECKS, SIBLINGS) == [{"tool": "check_recipient_type",
+                                                                  "args": {"recipient": "u1"}}]
+    both = dict(ask, checks=ask["checks"] + [{"tool": "check_recipient_type", "args": {"recipient": "u1"}}])
+    assert second_source_calls(both, TABLE_CHECKS, SIBLINGS) == []                 # already asked
+    assert second_source_calls(dict(ask, missing_fact="access_level of u1"), TABLE_CHECKS, SIBLINGS) == []
+
+
+def test_selective_v2_runs_the_second_source_and_marks_it():
+    rec = record()
+    rec["visible"]["proposed_action"] = {"name": "grant_permission", "args": {"user": "u1", "resource": "db"}}
+    ask = json.dumps({"type": "NEED_INFORMATION", "reason": "Account type unknown.", "missing_fact": "account_type of u1",
+                      "checks": [{"tool": "check_user_authorization", "args": {"user": "u1", "resource": "db"}}]})
+    gw = Gateway()
+    row = run_monitor(rec, "selective", FakeModel([ask, DECIDE]), gateway=gw, table_checks=TABLE_CHECKS,
+                      siblings=SIBLINGS, hints=True)
+    assert [c["tool"] for c in row["calls"]] == ["check_user_authorization", "check_recipient_type"]
+    assert "added_by" not in row["calls"][0] and row["calls"][1]["added_by"] == "second_source"
+    # v1 (no siblings): only the model's own call
+    row = run_monitor(rec, "selective", FakeModel([ask, DECIDE]), gateway=Gateway(), table_checks=TABLE_CHECKS)
+    assert [c["tool"] for c in row["calls"]] == ["check_user_authorization"]
+
+
+def test_hints_only_in_v2_and_retry_hint_only_after_an_error():
+    from src.monitor.prompt_builder import HINT_RETRY, HINT_TWO_SOURCES, build_decide_prompt
+    vis = record()["visible"]
+    v1 = build_decide_prompt(vis, [], [], may_check=True)
+    assert HINT_TWO_SOURCES not in v1 and HINT_RETRY not in v1
+    assert HINT_TWO_SOURCES in build_decide_prompt(vis, [], [], may_check=True, hints=True)
+    failed = [{"tool": "check_x", "args": {}, "result": {"error": "not_found"}}]
+    assert HINT_RETRY in build_decide_prompt(vis, [], [], may_check=True, results=failed, hints=True)
+    assert HINT_RETRY not in build_decide_prompt(vis, [], [], may_check=True, results=failed)
+    assert HINT_TWO_SOURCES not in build_decide_prompt(vis, [], [], may_check=False, hints=True)

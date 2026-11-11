@@ -7,6 +7,9 @@ w = 0 is BM25 only, w = 1 embeddings only. w is tuned on validation only (never 
 Only the visible policy text is indexed (R8.1); hidden logic (actions, facts, decisions) is never read.
 
 Query (PLAN 6.2): the proposed action's name and arguments + the last user request.
+
+With tags (v2, decisions.md 2026-11-11): only the policies that apply to the proposed action's tool are ranked
+(data/policies/policy_tags.yaml); a tool no policy is tagged with falls back to the whole store.
 """
 import re
 
@@ -85,10 +88,11 @@ class BgeEmbedder:
 
 
 class Retriever:
-    def __init__(self, policies: list[dict], embedder=None, w: float = DEFAULT_W):
+    def __init__(self, policies: list[dict], embedder=None, w: float = DEFAULT_W, tags: dict[str, set] | None = None):
         from rank_bm25 import BM25Okapi
         self.policies = policies
         self.w = w
+        self.tags = tags
         self.bm25 = BM25Okapi([tokenize(p["text"]) for p in policies])
         self.embedder = embedder if embedder is not None else BgeEmbedder()
         self.vectors = self.embedder.encode([p["text"] for p in policies])
@@ -100,14 +104,28 @@ class Retriever:
         meaning = [sum(a * b for a, b in zip(q, v)) for v in self.vectors]
         return keyword, meaning
 
-    def rank(self, query: str, k: int = TOP_K, w: float | None = None) -> list[int]:
-        keyword, meaning = self.raw_scores(query)
-        return top_indices(combine(keyword, meaning, self.w if w is None else w), k)
+    def for_tool(self, tool: str | None) -> list[int] | None:
+        """Indices of the policies tagged with this tool; None = no filter (no tags, no tool, or none tagged)."""
+        if not self.tags or not tool:
+            return None
+        keep = [i for i, p in enumerate(self.policies) if tool in self.tags.get(p["policy_id"], ())]
+        return keep or None
 
-    def search(self, query: str, k: int = TOP_K, w: float | None = None) -> list[dict]:
-        """Top k as [{"policy_id", "text"}]: the input src.monitor.loop.run_monitor expects."""
+    def rank(self, query: str, k: int = TOP_K, w: float | None = None, tool: str | None = None) -> list[int]:
+        keyword, meaning = self.raw_scores(query)
+        scores = combine(keyword, meaning, self.w if w is None else w)
+        keep = self.for_tool(tool)
+        if keep is not None:
+            allowed = set(keep)
+            scores = [s if i in allowed else float("-inf") for i, s in enumerate(scores)]
+            k = min(k, len(keep))
+        return top_indices(scores, k)
+
+    def search(self, query: str, k: int = TOP_K, w: float | None = None, tool: str | None = None) -> list[dict]:
+        """Top k as [{"policy_id", "text"}]: the input src.monitor.loop.run_monitor expects. With tool and tags,
+        only that tool's policies are ranked."""
         return [{"policy_id": self.policies[i]["policy_id"], "text": self.policies[i]["text"]}
-                for i in self.rank(query, k, w)]
+                for i in self.rank(query, k, w, tool)]
 
     def for_action(self, action: dict, user_request: str | None = None, k: int = TOP_K) -> list[dict]:
         return self.search(build_query(action, user_request), k)

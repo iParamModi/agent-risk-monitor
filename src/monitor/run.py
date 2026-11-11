@@ -161,13 +161,14 @@ def main(argv=None):
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--policies", choices=["retrieval", "gold"], default="retrieval",
                     help="our records: real top-3 retrieval, or the gold policies + 2 retrieved look-alikes (as in training)")
+    ap.add_argument("--version", default="v1", help="system version (src/monitor/case_inputs.py VERSIONS)")
     args = ap.parse_args(argv)
 
     records = load_records(args.records, args.split, args.limit)
     inputs = None
     if any(r["task"] == "decide_action" for r in records):
         from src.monitor.case_inputs import CaseInputs
-        inputs = CaseInputs(policy_mode=args.policies)
+        inputs = CaseInputs(policy_mode=args.policies, version=args.version)
 
     if args.dry_run:
         model = FakeModel([DRY_RISK] * len(records))
@@ -187,7 +188,8 @@ def main(argv=None):
         "run_id": args.run_id, "setting": args.setting, "model": model.name, "base_url": args.base_url,
         "thinking_off": args.thinking_off, "backend": args.backend,
         "revision": args.revision, "adapter": args.adapter, "split": args.split, "records": args.records,
-        "prompts": template_names(), "dry_run": args.dry_run, "policies": args.policies})
+        "prompts": template_names(), "dry_run": args.dry_run, "policies": args.policies,
+        "version": args.version})
     invalid = sum(r["output"] is None for r in rows)
     print(json.dumps({"written": str(out_dir / "predictions.jsonl"), "n": len(rows), "invalid": invalid}))
 

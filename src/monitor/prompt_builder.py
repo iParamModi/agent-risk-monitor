@@ -30,6 +30,13 @@ EXAMPLE_NEED_INFO = ('{"type": "NEED_INFORMATION", "reason": "The folder was sha
                      '"checks": [{"tool": "check_file_sharing", "args": {"path": "garden_plan.doc"}}]}')
 
 
+# v2 hints (decisions.md 2026-11-11), off in v1 so the v1 prompt stays byte for byte the same
+HINT_TWO_SOURCES = ("If a policy depends on two facts, or two check tools report the same fact about the resource, "
+                    "ask for both checks. If two check results disagree, ESCALATE.")
+HINT_RETRY = ("A check above failed (not_found or invalid_args): the tool name or an argument is wrong, or the tool "
+              "does not cover this resource. Do not repeat the same call: choose another tool or argument, or decide.")
+
+
 def load_template(name: str) -> str:
     return (PROMPTS_DIR / name).read_text(encoding="utf-8")
 
@@ -107,13 +114,15 @@ def render_results(results: list[dict]) -> str:
 
 
 def build_decide_prompt(visible: dict, policies: list[dict], check_tools: list[dict], *,
-                        may_check: bool, results: list[dict] | None = None, no_checks: bool = False) -> str:
+                        may_check: bool, results: list[dict] | None = None, no_checks: bool = False,
+                        hints: bool = False) -> str:
     """Prompt for one pass on our records (task = decide_action).
 
     policies:  numbered policies from number_policies (the prompt shows the numbers, never the ids).
     may_check: the model may answer NEED_INFORMATION (selective first pass, or the one retry after a tool error).
     results:   check results so far (selective later passes, always, oracle).
     no_checks: the never setting; the prompt says no checks are available.
+    hints:     v2: add HINT_TWO_SOURCES when checks may be asked, and HINT_RETRY after a failed check.
     """
     parts = []
     if results:
@@ -123,7 +132,10 @@ def build_decide_prompt(visible: dict, policies: list[dict], check_tools: list[d
     elif may_check:
         parts.append("## Check tools (read-only)\n" + render_tools(check_tools) + "\n"
                      "If the decision depends on a fact that is not known (trust rule), ask for 1 or 2 checks "
-                     "with NEED_INFORMATION instead of deciding. Otherwise decide.")
+                     "with NEED_INFORMATION instead of deciding. Otherwise decide."
+                     + (" " + HINT_TWO_SOURCES if hints else "")
+                     + ("\n" + HINT_RETRY if hints and any(isinstance(r["result"], dict) and "error" in r["result"]
+                                                            for r in results or []) else ""))
     else:
         parts.append("## Checks\nNo more checks. Decide now.")
     if may_check and not no_checks:
