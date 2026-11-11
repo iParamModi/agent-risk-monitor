@@ -33,7 +33,7 @@ How our monitor really runs on our records: diagrams of the loop and the 4 setti
 
 | Task | Who | Started | Status / Notes |
 |------|-----|---------|----------------|
-| **Phase B retrain on the final training data** (+ Param's 28 phase-2 train records; eval stays phase 1) | Meet | 2026-11-10 | Kaggle; then final runs (base + Phase B on val, test 150, OOD) once retrieval is frozen |
+| **System v2: improve retrieval and checking** (review suggestions S1, S2, S5: policy action tags + 8 policies shown, second-source checks, retry hint; inference only, no retrain) | Meet | 2026-11-11 | val check first, then final rerun of base + Phase B on val, test, OOD; v1 numbers stay in the report |
 
 ## Next Up
 
