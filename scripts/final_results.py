@@ -6,6 +6,11 @@ kind of shift (meta.ood_shift, PLAN Step 20) and the comparison with the in-doma
     python scripts/final_results.py                                     # -> docs/reports/final_results_30oct.md + .json
     python scripts/final_results.py --split ood --out docs/reports/ood_results      # -> ood_results.md + .json
 
+    python scripts/final_results.py --version v2 --split val test ood --out docs/reports/final_results_v2
+
+--version v2 (decisions.md 2026-11-11) reads outputs/kaggle/v2_<model>/ for the runs v2 changes (every setting with
+retrieved policies, selective with correct policies) and the v1 folders for the rest (never / always / oracle with
+correct policies: v2 does not change them); rule baselines: rules_*_v2_retrieval_<split>, and v1 with correct policies.
 A model or baseline whose runs are missing is left out (and named at the top), so it can be run before every job
 has finished. All metrics come from src.eval (src.eval.tables.build_report); nothing is computed differently here.
 """
@@ -24,6 +29,7 @@ MODELS = {"base": "Base Qwen3-8B", "phase_b": "Phase B (QLoRA)"}
 JOBS = {"val": "final", "test": "final", "ood": "ood"}     # outputs/kaggle/<job>_<model>/
 SPLIT_NAMES = {"val": "Val", "test": "Test", "ood": "OOD"}
 BASELINES = {"never": "rules_only", "always": "rules_env"}
+VERSION = "v1"                                             # set by --version
 CONDITIONS = {"retrieval": "retrieved top 3 policies (the full system)",
               "gold": "gold policies + 2 look-alikes (retrieval assumed perfect)"}
 
@@ -32,14 +38,23 @@ def load(path: Path) -> list[dict] | None:
     return list(read_jsonl(path / "predictions.jsonl")) if (path / "predictions.jsonl").exists() else None
 
 
+def changed_in_v2(cond: str, setting: str) -> bool:
+    return cond == "retrieval" or setting == "selective"
+
+
 def model_runs(model: str, cond: str, split: str) -> dict[str, list[dict]] | None:
     folder = ROOT / "outputs" / "kaggle" / f"{JOBS[split]}_{model}" / "results" / "runs"
     runs = {s: load(folder / f"ours_{model}_{cond}_{s}_{split}") for s in SETTINGS}
+    if VERSION != "v1":
+        v2 = ROOT / "outputs" / "kaggle" / f"{VERSION}_{model}" / "results" / "runs"
+        runs.update({s: load(v2 / f"ours_{model}_{VERSION}_{cond}_{s}_{split}") for s in SETTINGS
+                     if changed_in_v2(cond, s)})
     return runs if all(v is not None for v in runs.values()) else None
 
 
 def baseline_runs(cond: str, split: str) -> dict[str, list[dict]] | None:
-    runs = {s: load(ROOT / "outputs" / "runs" / f"{name}_{cond}_{split}") for s, name in BASELINES.items()}
+    tag = f"{VERSION}_" if VERSION != "v1" and cond == "retrieval" else ""
+    runs = {s: load(ROOT / "outputs" / "runs" / f"{name}_{tag}{cond}_{split}") for s, name in BASELINES.items()}
     return runs if all(v is not None for v in runs.values()) else None
 
 
@@ -115,7 +130,10 @@ def main(argv=None) -> int:
     ap.add_argument("--out", default=str(ROOT / "docs" / "reports" / "final_results_30oct"))
     ap.add_argument("--split", nargs="+", choices=tuple(JOBS), default=["val", "test"])
     ap.add_argument("--resamples", type=int, default=2000)
+    ap.add_argument("--version", default="v1", choices=("v1", "v2"))
     args = ap.parse_args(argv)
+    global VERSION
+    VERSION = args.version
     title = {("val", "test"): "Results for the 30 Oct submission: our val and test records"}.get(
         tuple(args.split), "Results: " + ", ".join(SPLIT_NAMES[x] for x in args.split) + " records")
     md = [f"# {title}", "",
@@ -123,6 +141,11 @@ def main(argv=None) -> int:
           "oracle), next to two rule baselines (rules only = never check, rules + environment = always check). "
           "Test is the locked in-domain test set (phase 1 records), OOD the locked out-of-domain test set; nothing "
           "was tuned on them. Definitions: docs/evaluation_metrics.md; runs: kaggle/our_eval_final_*, src/baselines/run.py.", ""]
+    if VERSION != "v1":
+        md[0] += f" (system {VERSION})"
+        md += [f"**System {VERSION}** (decisions.md 2026-11-11): retrieval looks only at the policies tagged with the "
+               "proposed action's tool and shows 8; selective adds the second-source check and two prompt hints. Same "
+               "adapter, no retraining. With correct policies only selective changes; the other settings are the v1 runs.", ""]
     missing, out = [], {}
     for split in args.split:
         md += [f"## {SPLIT_NAMES[split]}", ""]

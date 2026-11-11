@@ -37,6 +37,7 @@ def row(record: dict, output: dict, calls: list[dict], seconds: float) -> dict:
 
 
 def run_split(split: str, mode: str, inputs: CaseInputs) -> dict[str, list[dict]]:
+    """v1 run ids rules_only_<policies>_<split>; other versions put the version after the baseline name."""
     records = records_for(split)
     shown = {r["record_id"]: inputs.policies(r) for r in records}
     out = {}
@@ -46,10 +47,10 @@ def run_split(split: str, mode: str, inputs: CaseInputs) -> dict[str, list[dict]
             start = time.perf_counter()
             output, calls = baseline(r, shown[r["record_id"]])
             rows.append(row(r, output, calls, time.perf_counter() - start))
-        run_id = f"{name}_{mode}_{split}"
+        run_id = f"{name}_{mode}_{split}" if inputs.version == "v1" else f"{name}_{inputs.version}_{mode}_{split}"
         write_jsonl(RUNS_DIR / run_id / "predictions.jsonl", rows)
         write_json(RUNS_DIR / run_id / "run_config.json", {
-            "run_id": run_id, "baseline": name, "split": split, "policies": mode, "n": len(rows),
+            "run_id": run_id, "baseline": name, "split": split, "policies": mode, "version": inputs.version, "n": len(rows),
             "started": datetime.now(timezone.utc).isoformat(timespec="seconds")})
         right = sum(x["output"]["decision"] == x["gold"]["decision"] for x in rows)
         print(f"{run_id}: decision right {right}/{len(rows)}, gateway calls {sum(len(x['calls']) for x in rows)}")
@@ -61,10 +62,11 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--split", nargs="+", choices=("train", "val", "test", "ood"), default=["val"])
     ap.add_argument("--policies", nargs="+", choices=("retrieval", "gold"), default=["retrieval", "gold"])
+    ap.add_argument("--version", default="v1", help="system version (src/monitor/case_inputs.py VERSIONS)")
     args = ap.parse_args(argv)
     embedder = None
     for mode in args.policies:
-        inputs = CaseInputs(embedder=embedder, policy_mode=mode)
+        inputs = CaseInputs(embedder=embedder, policy_mode=mode, version=args.version)
         for split in args.split:
             run_split(split, mode, inputs)
         embedder = inputs.embedder
