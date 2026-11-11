@@ -31,6 +31,11 @@ VERSIONS = {
     "v1": {"tags": False, "shown": N_SHOWN, "second_source": False, "hints": False},
     "v2": {"tags": True, "shown": 8, "second_source": True, "hints": True},
     "v2_retrieval": {"tags": True, "shown": 8, "second_source": False, "hints": False},   # val check only
+    # v3 candidates (decisions.md 2026-11-12): v2 + the check tools of the action's always table only (S4),
+    # and + one more ask for checks after the first results (S9)
+    "v3": {"tags": True, "shown": 8, "second_source": True, "hints": True, "action_tools": True},
+    "v3_ask": {"tags": True, "shown": 8, "second_source": True, "hints": True, "action_tools": True,
+               "second_ask": True},
 }
 
 
@@ -91,7 +96,12 @@ class CaseInputs:
         current_user = _requested_by(record["seed_id"], record["set"])    # the acting user, never gold
         if ood not in self._siblings:
             self._siblings[ood] = sibling_map(include_ood=ood)
-        v2 = {"siblings": self._siblings[ood] if self.config["second_source"] else None, "hints": self.config["hints"]}
-        return {**v2, "policies": self.policies(record), "check_tools": self._tools[ood],
-                "gateway": for_record(record, setting=setting, run_id=run_id),
-                "table_checks": [{"tool": t, "args": a} for t, a in table_calls(action, current_user)]}
+        table = [{"tool": t, "args": a} for t, a in table_calls(action, current_user)]
+        tools = self._tools[ood]
+        if self.config.get("action_tools"):          # S4: only the tools of this action's always table
+            names = {c["tool"] for c in table}
+            tools = [t for t in tools if t["name"] in names] or tools
+        v2 = {"siblings": self._siblings[ood] if self.config["second_source"] else None, "hints": self.config["hints"],
+              "second_ask": bool(self.config.get("second_ask"))}
+        return {**v2, "policies": self.policies(record), "check_tools": tools,
+                "gateway": for_record(record, setting=setting, run_id=run_id), "table_checks": table}

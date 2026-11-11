@@ -174,3 +174,14 @@ def test_hints_only_in_v2_and_retry_hint_only_after_an_error():
     assert HINT_RETRY in build_decide_prompt(vis, [], [], may_check=True, results=failed, hints=True)
     assert HINT_RETRY not in build_decide_prompt(vis, [], [], may_check=True, results=failed)
     assert HINT_TWO_SOURCES not in build_decide_prompt(vis, [], [], may_check=False, hints=True)
+
+
+def test_second_ask_allows_one_more_request_without_an_error():
+    rec = record()
+    asks = [need("check_file_sharing"), need("check_file_classification"), DECIDE]
+    row = run_monitor(rec, "selective", FakeModel(asks), gateway=Gateway(), check_table=TABLE, second_ask=True)
+    assert [c["tool"] for c in row["calls"]] == ["check_file_sharing", "check_file_classification"]
+    assert row["passes"] == 3 and is_valid_output(row["output"])
+    # without it, the second pass may only decide: a second NEED_INFORMATION is invalid
+    row = run_monitor(rec, "selective", FakeModel(asks), gateway=Gateway(), check_table=TABLE)
+    assert row["output"] is None and len(row["calls"]) == 1

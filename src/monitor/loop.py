@@ -78,7 +78,7 @@ def second_source_calls(request: dict, table_checks: list[dict], siblings: dict)
 
 
 def _selective(case: _Case, visible, policies, check_tools, table_checks=(), siblings=None,
-               hints: bool = False) -> dict | None:
+               hints: bool = False, second_ask: bool = False) -> dict | None:
     may_check, retry_used = True, False
     while case.passes < MAX_PASSES:
         prompt = build_decide_prompt(visible, policies, check_tools, may_check=may_check, results=case.results,
@@ -94,8 +94,9 @@ def _selective(case: _Case, visible, policies, check_tools, table_checks=(), sib
             if extra and budget > 0:
                 failed = case.check(extra[:budget], added_by="second_source") or failed
         # One retry after a tool error (R9.4): the next pass may ask again, then the last pass must decide.
+        # second_ask (v3 candidate): the same one extra ask also without an error, while passes and calls remain.
         room = case.passes + 2 <= MAX_PASSES and len(case.calls) < MAX_GATEWAY_CALLS
-        may_check = failed and not retry_used and room
+        may_check = (failed or second_ask) and not retry_used and room
         retry_used = retry_used or may_check
     return None
 
@@ -114,7 +115,7 @@ def _never(case: _Case, visible, policies, check_tools) -> dict | None:
 def run_monitor(record: dict, setting: str, model, gateway=None, policies: list[dict] = (),
                 check_tools: list[dict] = (), check_table: dict | None = None,
                 table_checks: list[dict] | None = None, siblings: dict | None = None,
-                hints: bool = False) -> dict:
+                hints: bool = False, second_ask: bool = False) -> dict:
     """One record, one setting.
 
     model:       has generate(messages) -> Generation (src/monitor/models.py)
@@ -126,6 +127,7 @@ def run_monitor(record: dict, setting: str, model, gateway=None, policies: list[
                  src.gateway.gateway.table_calls, which also fills $current_user); used instead of check_table
     siblings:    v2, selective only: the second-source map (second_source_calls); None = off (v1)
     hints:       v2, selective only: the two-sources line and the retry hint in the prompt; False = v1 prompt
+    second_ask:  v3 candidate, selective only: one more NEED_INFORMATION after the first results, error or not
     """
     if setting not in SETTINGS:
         raise ValueError(f"unknown setting {setting!r}, expected one of {SETTINGS}")
@@ -138,7 +140,7 @@ def run_monitor(record: dict, setting: str, model, gateway=None, policies: list[
         # External records: one pass, RISK format, no checks, in every setting (Step 14.3).
         output, _ = case.ask(as_messages(build_risk_prompt(visible)), ("RISK",))
     elif setting == "selective":
-        output = _selective(case, visible, policies, check_tools, table_checks, siblings, hints)
+        output = _selective(case, visible, policies, check_tools, table_checks, siblings, hints, second_ask)
     elif setting == "never":
         output = _never(case, visible, policies, check_tools)
     else:   # always, oracle: fixed checks first, then one pass
