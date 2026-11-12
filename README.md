@@ -16,6 +16,18 @@ needed almost as safe as always checking, with far fewer checks?
 - `docs/STRUCTURE.md` — where every file lives
 - `docs/DATASET.md` — data sources, cleaning, labels
 
+## Models and data
+
+Private Hugging Face repo **`meet5568/Agent-Risk`** (one root, with a model card and a data card):
+
+- `phaseA/` — LoRA adapter for Qwen3-8B, collected data only (risk label + type)
+- `phaseB_v1/` — adapter of the mid report (28 Oct, our first 248 train records)
+- `phaseB_v2/` — **final adapter** (11 Nov, used by system v1 and system v2 in the final report)
+- `data/` — our 594 records, seeds, policies, check tools, prompts, collected split lists (IDs only)
+- `results/` — result tables and the predictions + traces of the final runs
+
+The adapters are trained partly on AgentRisk (no licence): keep the repo private.
+
 ## Setup
 
 ```bash
