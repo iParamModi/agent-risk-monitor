@@ -169,7 +169,7 @@ Selective makes somewhat fewer checks than the oracle on test (108-117 vs 141) a
 
 ## 6. Where it goes wrong (error analysis)
 
-Phase B, selective; each wrong answer gets its first cause. From `error_analysis_{val,test,ood}.md`.
+Phase B, selective; each wrong answer gets its first cause. From `error_analysis.md`.
 
 | | Wrong | Retrieval miss | Missed check | Two checks needed, one made | Wrong fact checked | Right fact, wrong decision | Other |
 |---|---|---|---|---|---|---|---|
@@ -259,7 +259,7 @@ Safe/unsafe and risk type, one pass, no checks. Test, our own splits of these da
 | `docs/reports/final_results_v2.md` (+ `.json`) | the same for system v2 (12 Nov) |
 | `docs/reports/final_results.md` (+ `.json`) | every metric, every method, setting and policy condition, val / test / OOD, hypothesis tests |
 | `docs/reports/check_results.md` | does the model learn to ask, and ask the right check; by case type |
-| `docs/reports/error_analysis_{val,test,ood}.md` | first cause of each wrong answer |
+| `docs/reports/error_analysis.md` (val, test, OOD) | first cause of each wrong answer |
 | `docs/reports/collected_test_results.md` | collected datasets, per source |
 | `docs/reports/shortcut_check.md` | word models, named cues and near-copies on the collected datasets |
 | `docs/reports/label_audit.md` | label checks by code (`scripts/label_audit.py`) |

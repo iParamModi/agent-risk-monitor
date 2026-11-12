@@ -16,7 +16,7 @@ Meet, 12 Nov 2026. Source material for writing the final report (due 14 Nov 2026
 | `docs/reports/report_extras.md` | cost-safety table, case types, test reweighted, hypothesis power, T2 subtypes, T1 pairs, saving vs oracle |
 | `docs/reports/cost_hypotheses.md` | exploratory cost hypotheses C1-C4 |
 | `docs/reports/check_results.md` | does the model learn to ask, and ask the right check |
-| `docs/reports/error_analysis_{val,test,ood}.md` | first cause of each wrong answer |
+| `docs/reports/error_analysis.md` (val, test, OOD) | first cause of each wrong answer |
 | `docs/reports/collected_test_results.md`, `shortcut_check.md` | collected datasets, shortcut check |
 | `docs/reports/label_audit.md` | label checks by code |
 | `docs/reports/improvement_suggestions.md` | retrieval measurements (section 2), re-ranker trial (section 7), future work |
