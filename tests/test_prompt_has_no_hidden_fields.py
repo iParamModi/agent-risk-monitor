@@ -100,3 +100,28 @@ def test_prompt_examples_use_the_check_tools_real_arguments():
     tools = {t["name"]: t["args"] for t in load_check_tools(include_ood=True)}
     for check in json.loads(EXAMPLE_NEED_INFO)["checks"]:
         assert set(check["args"]) <= set(tools[check["tool"]]), check
+
+
+def test_live_runs_show_no_hidden_state_in_any_prompt():
+    """src/live: record_from_live carries visible input only; hidden facts of the LIVE state reach the monitor only
+    as gateway results of the fields a check returns, never the rest (classification, attrs, other resources)."""
+    from lma_agent.agent.gate import monitor_gate
+    from lma_agent.agent.loop import run_agent
+    from lma_agent.sim.seed_state import apply_overrides, build_seed_state
+    from lma_agent.tasks.load_tasks import load_tasks
+    from src.live.monitor_gate import KeywordOnlyEmbedder
+    from src.live.scripted_agent import scripted_agent
+
+    task = {t.task_id: t for t in load_tasks("lma_agent/tasks/demo_tasks.yaml")}["demo_hidden"]
+    overrides = dict(task.overrides) | {"files./project/report_7.pdf.attrs": {"note": SECRET},
+                                        "repos.AcmePay.attrs": {"note": GOLD_SECRET}}
+    state = apply_overrides(build_seed_state(0), overrides)
+    for setting in SETTINGS:
+        if setting == "oracle":          # oracle needs gold, which live runs never have
+            continue
+        model = FakeModel([NEED, DECIDE, DECIDE])
+        gate = monitor_gate(model, setting=setting, embedder=KeywordOnlyEmbedder(), task=task)
+        run_agent(task, state, scripted_agent("demo_hidden"), gate=gate)
+        text = json.dumps(model.prompts)
+        assert model.prompts and SECRET not in text and GOLD_SECRET not in text, setting
+        assert gate.rows[0]["gold"] is None, setting

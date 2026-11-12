@@ -4,10 +4,12 @@ from lma_agent.sim.models import CompanyState, ToolCall
 from lma_agent.sim.readers import Ambiguous, NotFound
 
 
-def list_files(state: CompanyState, folder: str) -> dict:
-    """List files under a folder with their modified dates."""
+def list_files(state: CompanyState, folder: str, show_sharing: bool = False) -> dict:
+    """List files under a folder with their modified dates (+ effective sharing when the task's listing shows it,
+    Task.list_shows_sharing; the agent never passes show_sharing itself)."""
     prefix = "/" if folder in ("", "/") else folder.rstrip("/") + "/"
     files = [{"path": f.path, "modified": f.modified.isoformat()}
+             | ({"sharing": readers._file_meta(state, f.path)["sharing"]} if show_sharing else {})
              for f in sorted(state.files.values(), key=lambda f: f.path) if f.path.startswith(prefix)]
     if not files and not readers._folder_exists(state, folder):
         raise NotFound(f"no files in folder: {folder}")
@@ -105,12 +107,14 @@ READ_FUNCS = {f.__name__: f for f in [
 ]}
 
 
-def run_read(state: CompanyState, call: ToolCall) -> dict:
-    """Run a read tool; never changes the state. Missing things come back as {"error": "not_found"}."""
+def run_read(state: CompanyState, call: ToolCall, list_shows_sharing: bool = False) -> dict:
+    """Run a read tool; never changes the state. Missing things come back as {"error": "not_found"}.
+    list_shows_sharing: the task's list_files output also shows each file's sharing (demo_visible)."""
     if call.name not in READ_FUNCS:
         return {"error": "unknown_tool", "detail": f"'{call.name}' is not a read tool"}
+    extra = {"show_sharing": True} if list_shows_sharing and call.name == "list_files" else {}
     try:
-        return READ_FUNCS[call.name](state, **call.args)
+        return READ_FUNCS[call.name](state, **call.args, **extra)
     except NotFound as e:
         return {"error": "not_found", "detail": str(e)}
     except Ambiguous as e:

@@ -1,6 +1,6 @@
 import pytest
 
-from lma_agent.agent.gate import allow_all, fake_gate, run_monitor
+from lma_agent.agent.gate import allow_all, fake_gate, monitor_gate
 from lma_agent.sim.models import ToolCall
 
 CALL = ToolCall(id="c", name="delete_file", args={"path": "/a"})
@@ -16,6 +16,9 @@ def test_fake_gate(d):
     assert out.decision == d and out.policy_id == "P_TEST"
 
 
-def test_monitor_not_built():
-    with pytest.raises(NotImplementedError):
-        run_monitor([], CALL)
+def test_monitor_gate_needs_the_live_state():
+    from src.live.fake_monitor import RuleFakeMonitor
+    from src.live.monitor_gate import KeywordOnlyEmbedder
+    gate = monitor_gate(RuleFakeMonitor(), embedder=KeywordOnlyEmbedder())
+    with pytest.raises(RuntimeError, match="live state"):
+        gate([], CALL)

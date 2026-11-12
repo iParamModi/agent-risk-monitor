@@ -1,4 +1,4 @@
-"""Gates decide what happens to a write: allow_all and fake_gate now, the real monitor later."""
+"""Gates decide what happens to a write: allow_all, fake_gate (tests) and monitor_gate (the real monitor)."""
 from collections.abc import Callable
 
 from lma_agent.sim.models import GateDecision, ToolCall
@@ -18,6 +18,13 @@ def fake_gate(fixed: str, policy_id: str | None = "P_TEST", reason: str = "fake 
     return gate
 
 
-def run_monitor(messages: list[dict], call: ToolCall) -> GateDecision:
-    """The real monitor (later); same signature as allow_all."""
-    raise NotImplementedError("the monitor is not built yet")
+def monitor_gate(model, setting: str = "selective", k: int = 3, **kwargs) -> Gate:
+    """The real monitor (src.monitor.loop.run_monitor) as a gate, over the LIVE company state.
+
+    model: has generate(messages) (src/monitor/models.py, or src.live.fake_monitor.RuleFakeMonitor on CPU).
+    k: number of retrieved policies shown. kwargs go to src.live.monitor_gate.MonitorGate (version, embedder,
+    task, run_id). The agent loop hands the gate the live state before each write (MonitorGate.observe).
+    Decisions: ALLOW applies; BLOCK / ESCALATE refuse and tell the agent the decision and the policy id;
+    ASK_CONFIRMATION asks the user (yes applies, no refuses)."""
+    from src.live.monitor_gate import MonitorGate
+    return MonitorGate(model, setting=setting, k=k, **kwargs)

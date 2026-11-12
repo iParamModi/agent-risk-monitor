@@ -153,8 +153,8 @@ def run_monitor(record: dict, setting: str, model, gateway=None, policies: list[
         output, _ = case.ask(as_messages(prompt), ("DECISION",))
     output = refs_to_ids(output, policies)
 
-    row = {k: record[k] for k in COPIED_FIELDS}
-    row.update(gold=record["gold"], output=output, calls=case.calls, passes=case.passes,
+    row = {k: record.get(k) for k in COPIED_FIELDS}      # live records (src/live) carry no gold
+    row.update(gold=record.get("gold"), output=output, calls=case.calls, passes=case.passes,
                tokens_in=case.tokens_in, tokens_out=case.tokens_out,
                time_s=round(time.perf_counter() - start, 3))
     return row

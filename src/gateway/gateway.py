@@ -1,6 +1,7 @@
 """The check gateway: the only path from the monitor (every setting and baseline) to the environment state.
 
     gateway = for_record(record)          # reads record["hidden"], record["set"], the proposed action; never gold
+    gateway = for_state(state)            # live runs: checks answered from the agent's current company state
     result = gateway.call(tool, args)     # always a dict; errors are data (decisions.md R7.3, R7.4)
 
 Four jobs, in this order, stopping at the first failure:
@@ -250,6 +251,15 @@ def for_record(record: dict, setting: str = "selective", run_id: str = "", max_c
         verify_key_facts(record, state, current)
     return Gateway(state, record["record_id"], setting, ood=record["set"] == "ood",
                    action=record["visible"]["proposed_action"], run_id=run_id, max_calls=max_calls, noise=noise)
+
+
+def for_state(state: CompanyState, setting: str = "selective", run_id: str = "", case_id: str = "live",
+              action: dict | None = None, max_calls=_DEFAULT) -> Gateway:
+    """A gateway over a LIVE simulator state (the agent's company state during a run, src/live). Same checks,
+    counting, write guard and log as for_record; noise is always off and OOD-only tools are not offered.
+    action: the proposed action, only for the log's resource_matches_action."""
+    return Gateway(state, case_id, setting, ood=False, action=action, run_id=run_id, max_calls=max_calls,
+                   noise=None)
 
 
 def run_always(gw: Gateway, action: dict | None = None) -> list[dict]:

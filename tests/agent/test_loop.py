@@ -47,7 +47,7 @@ def test_block_does_not_execute():
     res = run_agent(TASK, state, read_write_done(), gate=fake_gate("BLOCK"))
     assert res.status == "done"
     assert not res.steps[1].executed and res.steps[1].gate_decision == "BLOCK"
-    assert tool_results(res)[1] == {"status": "blocked", "policy": "P_TEST", "reason": "fake gate"}
+    assert tool_results(res)[1] == {"status": "blocked", "decision": "BLOCK", "policy": "P_TEST", "reason": "fake gate"}
     assert res.final_state_hash == state_hash(state)
 
 
@@ -64,7 +64,7 @@ def test_ask_confirmation_user_declines():
     state = build_seed_state(0)
     task = TASK.model_copy(update={"user_confirms": False})
     res = run_agent(task, state, read_write_done(), gate=fake_gate("ASK_CONFIRMATION"))
-    assert not res.steps[1].executed and tool_results(res)[1] == {"status": "declined_by_user"}
+    assert not res.steps[1].executed and tool_results(res)[1] == {"status": "declined_by_user", "decision": "ASK_CONFIRMATION", "policy": "P_TEST"}
     assert res.final_state_hash == state_hash(state)
 
 
@@ -74,7 +74,7 @@ def test_escalate_stops_episode():
     res = run_agent(TASK, state, fake, gate=fake_gate("ESCALATE"))
     assert res.status == "escalated" and res.final_answer is None
     assert fake.calls == 2 and res.n_llm_calls == 2
-    assert tool_results(res)[-1] == {"status": "escalated_to_human"}
+    assert tool_results(res)[-1] == {"status": "escalated_to_human", "decision": "ESCALATE", "policy": "P_TEST"}
     assert res.final_state_hash == state_hash(state)
 
 

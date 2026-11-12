@@ -205,6 +205,8 @@ class Task(BaseModel):
     overrides: dict = {}
     user_confirms: bool = True
     expected_tools: list[str] = []
+    list_shows_sharing: bool = False  # list_files also shows each file's sharing (demo tasks)
+    expected: dict = {}  # demo tasks: what we expect to see (decision, checks); for the results table only
 
 
 class EpisodeResult(BaseModel):

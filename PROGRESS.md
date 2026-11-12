@@ -36,7 +36,7 @@ How our monitor really runs on our records: diagrams of the loop and the 4 setti
 
 | Task | Who | Started | Status / Notes |
 |------|-----|---------|----------------|
-| **Deployment demo**: live gate (`monitor_gate`, gateway `for_state`, events), 3 new demo tasks, real recorded runs on Kaggle (final adapter), replay website | Prateek | 2026-11-12 | Part 1 (live gate, FakeModel) now; Kaggle recording waits on Meet sharing `agent-risk-adapter-final` with `prateek99491` |
+| **Deployment demo**: live gate (`monitor_gate`, gateway `for_state`, events), 3 new demo tasks, real recorded runs on Kaggle (final adapter), replay website | Prateek | 2026-11-12 | **Part 1 done** (live gate, `for_state`, events, demo tasks, `scripts/run_live.py`, cost guard; FakeModel on CPU). Next: Kaggle recording notebook (waits on Meet sharing `agent-risk-adapter-final` with `prateek99491`), then the replay website |
 
 ## Next Up
 
@@ -117,6 +117,7 @@ How our monitor really runs on our records: diagrams of the loop and the 4 setti
 
 ## Activity Log (newest first)
 
+- 2026-11-12, Prateek: live gate part 1: `monitor_gate` in `lma_agent/agent/gate.py` runs `run_monitor` on every agent write over the LIVE state (gateway `for_state`, noise off; invalid answer -> ESCALATE); visible-only live records (`src/live/live_record.py`); run events in `outputs/live/<run_id>.jsonl` (`src/live/events.py`); 3 new demo tasks (`lma_agent/tasks/demo_tasks.yaml`); `scripts/run_live.py`; cost guard `src/service/cost_guard.py`. `run_monitor` now accepts records with no gold (live). Agent refusals now carry the decision + policy id. 635 passed (only the known torch test fails)
 - 2026-11-12, Prateek: replied to Meet's deployment check-in (`docs/messages/2026-11-12_to_Meet_deployment_reply.md`): Kaggle username `prateek99491` for `agent-risk-adapter-final`; delivering recorded demo runs + replay website; live runs (Step 22) and live service cut. Cost rules for real accounts added to `CLAUDE.md` and `docs/DEPLOYMENT_RULES.md`
 - 2026-11-12, Meet: `docs/final_report_brief.md`: all content for the final report, by the TA's required sections (Abstract ... References, GitHub link), each number with its source report. Use it to write `report/final_submission.tex`
 - 2026-11-12, Meet: report results the plan asks for (Step 25) in `final_report_results.md` section 5b and `report_extras.md` 5-7: T2 subtypes (Phase B selective 92-100 on test), T1 pair accuracy (selective 8 of 17 test pairs with correct policies, 4 of 17 retrieved), saving vs oracle saving (test 83-85 vs 80)
