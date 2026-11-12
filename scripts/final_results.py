@@ -134,6 +134,8 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
     global VERSION
     VERSION = args.version
+    if VERSION != "v1":
+        CONDITIONS["retrieval"] = "retrieved policies, tag-filtered top 8 (the full system)"
     title = {("val", "test"): "Results for the 30 Oct submission: our val and test records"}.get(
         tuple(args.split), "Results: " + ", ".join(SPLIT_NAMES[x] for x in args.split) + " records")
     md = [f"# {title}", "",

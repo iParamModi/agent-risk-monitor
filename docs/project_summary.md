@@ -127,16 +127,29 @@ Same records for all three models (test: the original 120); the 30 Oct adapter a
 
 Shortcut check: most of the gain can be reached from wording alone; R-Judge has 43 near-copies of training records in its 115 test records; AgentRisk's "reply to the user = SAFE" rule gets 85.6; ATBench's error-message shortcut cannot be tested on val/test.
 
+### 5.6 System v2 (12 Nov): the final system
+
+Inference only, same adapter: retrieval ranks only the policies tagged with the proposed action's tool and shows 8; selective adds the second-source check and two prompt hints. Phase B, v1 -> v2 (`final_results_v2.md`, `report_extras.md`):
+
+| | Selective, retrieved | Selective, correct | Unsafe, selective retrieved | Unsafe, always retrieved | Oracle, retrieved |
+|---|---|---|---|---|---|
+| Test | 61.6 -> 63.0 | 69.2 -> 69.9 | 52.4 -> 39.0 | 34.1 -> 24.4 | 76.0 -> 80.8 |
+| OOD | 67.0 -> 66.1 | 78.6 -> 80.4 | 37.3 -> 35.3 | 37.3 -> 29.4 | 75.9 -> 82.1 |
+| Val | 67.5 -> 77.5 | 82.5 -> 85.0 | 52.6 -> 42.1 | 42.1 -> 36.8 | 90.0 -> 90.0 |
+
+Safer, about the same accuracy; the hypothesis still fails on test (Δ unsafe, retrieved: +14.6 [0.0, 29.7]). The second-source rule fired on 1 test record: it covers facts two tools report (the train two-check mechanism), while 32 of 34 two-check test records combine two different facts. The v3 candidates (only the action's check tools; one more ask) were not run: Kaggle weekly GPU quota used up.
+
 ## 6. What we conclude
 
 1. Fine-tuning teaches an 8B model to monitor agents with checks: Phase B beats base and both rule baselines everywhere, and the skill carries over to a new domain (OOD).
 2. Selective checking costs about 15% of always-checking, and the model learns **when** to ask (especially for stale or untrusted tool results) and mostly **what** to ask.
 3. It is **not** as safe as always-checking on in-domain test, mainly because it makes one check when two are needed (facts that disagree), and because a retrieval miss leads to the wrong check.
-4. Retrieval (recall@3 0.55) is the largest single source of errors in the full system.
+4. Retrieval misses are the most common first cause of errors in the full system, but the ceiling is smaller (+7.6 points on test). Tag-filtered retrieval (v2) cuts the unsafe rate (test, selective 52.4 -> 39.0) without changing accuracy much.
+5. Two-check cases that combine two different facts need new training data; no inference rule fixes them.
 
 ## 7. Not done / open
 
-Better retrieval, ablations (no policies, check noise, top-k), Qwen3-235B comparison, 50 human evidence checks, κ study on our records, demo / service / live runs with 2 agent LLMs (see `PROGRESS.md`).
+v3 val check (no GPU quota), retrain with two-check data of new mechanisms (S7, S8), ablations (no policies, check noise, top-k), Qwen3-235B comparison, 50 human evidence checks, κ study on our records, demo / service / live runs with 2 agent LLMs (see `PROGRESS.md`).
 
 ## 8. Constraints any change must respect
 

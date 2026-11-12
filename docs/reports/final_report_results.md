@@ -17,6 +17,7 @@ Meet, 11 Nov 2026 (S3 report fixes 12 Nov). For the team and the final report (1
 3. **But selective is not as safe as always on in-domain test.** The hypothesis fails clearly: Δ unsafe +29.3 points [16.7, 42.2] with the correct policies. On OOD it is inconclusive (−3.9 [−17.0, 8.9]).
 4. **The model learns when to ask and what to ask for** (asks in 88-92% of records that need a check, right check in about 80%; with every check made it decides right in 94-100%). **It fails when two checks are needed**: on the two-check T5 records it makes both in only 12%.
 5. **Retrieval costs 7.6 points on test** (selective: 61.6 with retrieved policies vs 69.2 with the correct ones; 11.6 on OOD, 15 on val). 48 of 56 wrong test answers with retrieved policies have the deciding policy missing from the 3 shown, but that is the *first* cause only: given the correct policies, 12 of those 48 become right and 36 stay wrong for other reasons (OOD: 17 of 26 become right, val 6 of 10). So the first-cause count overstates what better retrieval can win; the ceiling is the gap to the correct-policies row.
+6. **System v2 (12 Nov, final system: tag-filtered retrieval, 8 policies, second-source check)** keeps the accuracy (selective with retrieved policies: test 61.6 -> 63.0, OOD 67.0 -> 66.1) and is safer: unsafe rate on test, selective 52.4 -> 39.0, always 34.1 -> 24.4. The hypothesis still fails on test (section 3b).
 
 ## 3. Main results
 
@@ -53,6 +54,29 @@ Decision accuracy (%) with a 95% bootstrap interval; unsafe = share of risky rec
 **Val (40 records)**, Phase B, never / always / selective / oracle: correct policies 75.0 / 82.5 / 82.5 / 97.5; retrieved 67.5 / 70.0 / 67.5 / 90.0. Base: correct 57.5 / 75.0 / 70.0 / 80.0; retrieved 52.5 / 67.5 / 57.5 / 70.0.
 
 On OOD, selective beats always: always over-reacts to facts that do not decide the case (it blocks 28% of safe OOD records vs 5% on test). Base's low unsafe rate on OOD comes from blocking most records (wrong block 44-62%), not from good checking.
+
+## 3b. System v2 (12 Nov): the final system
+
+Same adapter and same records, no retraining; only inference changes (decisions.md 2026-11-11, val check passed 2026-11-12). Retrieval looks only at the policies tagged with the proposed action's tool and shows 8 instead of 3 (all gold policies shown: val 0.33 -> 0.80); selective adds the second-source check (when the model asks about a fact two tools report, the loop adds the other tool) and two prompt hints. With the correct policies only selective changes. Full tables: `final_results_v2.md`; cost-safety and power for both systems: `report_extras.md`.
+
+**Phase B, v1 -> v2.** Accuracy (unsafe rate) in %. Acceptable = right, or BLOCK where ESCALATE was right (or the reverse).
+
+| Split | Policies | never | always | **selective** | oracle | Selective acceptable | Δ unsafe (sel − always) [95% CI] |
+|---|---|---|---|---|---|---|---|
+| Test | Retrieved | 58.2 -> 58.2 (29.3 -> 30.5) | 65.8 -> 62.3 (34.1 -> 24.4) | **61.6 -> 63.0** (52.4 -> 39.0) | 76.0 -> 80.8 (20.7 -> 15.9) | 65.8 -> 74.0 | +18.3 [8.2, 28.9] -> +14.6 [0.0, 29.7], fails |
+| Test | Correct | unchanged 61.0 | unchanged 75.3 | **69.2 -> 69.9** (41.5 -> 39.0) | unchanged 86.3 | 72.6 -> 74.7 | +29.3 [16.7, 42.2] -> +26.8 [14.3, 39.5], fails |
+| OOD | Retrieved | 60.7 -> 68.8 (25.5 -> 19.6) | 59.8 -> 63.4 (37.3 -> 29.4) | **67.0 -> 66.1** (37.3 -> 35.3) | 75.9 -> 82.1 (21.6 -> 5.9) | 68.8 -> 72.3 | 0.0 [−13.2, 13.2] -> +5.9 [−10.9, 23.3], fails |
+| OOD | Correct | unchanged 67.9 | unchanged 66.1 | **78.6 -> 80.4** (15.7 -> 15.7) | unchanged 87.5 | 82.1 -> 83.0 | −3.9 [−17.0, 8.9] -> −3.9 [−16.4, 9.1], fails |
+| Val | Retrieved | 67.5 -> 72.5 | 70.0 -> 70.0 | **67.5 -> 77.5** | 90.0 -> 90.0 | 70.0 -> 77.5 | +10.5 -> +5.3, fails |
+| Val | Correct | unchanged | unchanged | **82.5 -> 85.0** | unchanged | 82.5 -> 85.0 | 0.0 -> 0.0, fails |
+
+Base, selective with retrieved policies: test 39.0 -> 44.5, OOD 46.4 -> 50.0.
+
+- **v2 is safer with retrieved policies.** Unsafe rate falls in every test setting but never (always 34.1 -> 24.4, selective 52.4 -> 39.0, oracle 20.7 -> 15.9), and the acceptable rate of selective rises 65.8 -> 74.0. Oracle with retrieved policies gains 4.8 points on test and 6.2 on OOD: more of the deciding policies are now shown.
+- **Accuracy moves little.** Selective with retrieved policies: test +1.4, OOD −0.9 (both well inside the intervals, about ±11). Always with retrieved policies drops 3.5 on test: it now escalates or blocks more (unsafe −9.7, acceptable 76.7 -> 82.2), which accuracy counts as wrong when gold is the other severe decision.
+- **The hypothesis still fails on test** (the interval's upper end is 29.7 with retrieved policies, 39.5 with correct ones). On OOD v1 was also "fails" by the same rule.
+- **The second-source rule almost never fired on test (1 record).** It applies when two check tools report the *same* fact (account_type, modifiable, role_eligible), the mechanism of all 26 two-check train records (where it fired 26 of 26 in the dry run). 32 of the 34 two-check test records instead need two *different* facts combined (for example classification and sharing for exposure, classification and retention). No inference rule can supply those without new training data (`improvement_suggestions.md` S8). This is an explanation, not a change: test stays locked.
+- **v3 not run.** The val check of the v3 candidates (only the action's check tools; one more ask) could not start: the Kaggle weekly GPU quota (30 h) was used up on 12 Nov. v2 stays the final system (decisions.md 2026-11-12).
 
 ## 4. The hypothesis (decisions.md R10.4)
 
@@ -180,6 +204,7 @@ Safe/unsafe and risk type, one pass, no checks. Test, our own splits of these da
 
 | Report | What |
 |---|---|
+| `docs/reports/final_results_v2.md` (+ `.json`) | the same for system v2 (12 Nov) |
 | `docs/reports/final_results.md` (+ `.json`) | every metric, every method, setting and policy condition, val / test / OOD, hypothesis tests |
 | `docs/reports/check_results.md` | does the model learn to ask, and ask the right check; by case type |
 | `docs/reports/error_analysis_{val,test,ood}.md` | first cause of each wrong answer |
@@ -188,4 +213,4 @@ Safe/unsafe and risk type, one pass, no checks. Test, our own splits of these da
 | `docs/reports/report_extras.md` | cost-safety table, acceptable-decision rate, accuracy by case type, test reweighted, power of the hypothesis test |
 | `docs/decisions.md` R10.4 | the hypothesis rule, fixed before any result |
 
-Rebuild: `python scripts/final_results.py --split val test ood --out docs/reports/final_results`, `python scripts/check_results.py`, `python -m src.eval.error_analysis --split val test ood`, `python scripts/collected_results.py`, `python -m src.eval.shortcuts`.
+Rebuild: `python scripts/final_results.py --split val test ood --out docs/reports/final_results`, `python scripts/final_results.py --version v2 --split val test ood --out docs/reports/final_results_v2`, `python scripts/report_extras.py`, `python scripts/check_results.py`, `python -m src.eval.error_analysis --split val test ood`, `python scripts/collected_results.py`, `python -m src.eval.shortcuts`.
