@@ -1,4 +1,4 @@
-# Report extras: cost-safety curve, case types, test mix, test power
+# Report extras: cost-safety curve, case types, test mix, test power, T2 subtypes, T1 pairs, savings
 
 Systems: v1, v2 (decisions.md 2026-11-11). Phase B = the final adapter. Built by `scripts/report_extras.py` from the finished runs; nothing is tuned here.
 
@@ -233,4 +233,241 @@ R10.4 passes when the upper end of the 95% interval of Δ unsafe (selective − 
 | ood | retrieved policies | v2 | 51 | +5.9 [-10.9, +23.3] | 17.1 | -12.1 | fails |
 | ood | correct policies | v1 | 51 | -3.9 [-17.0, +8.9] | 12.9 | -7.9 | fails |
 | ood | correct policies | v2 | 51 | -3.9 [-16.4, +9.1] | 12.7 | -7.7 | fails |
+
+## 5. T2 subtypes (tool results to trust or not)
+
+Accuracy on T2 records by subtype, records in brackets: a = fresh result (trust it); b = result about another resource; c = fact changed since the result; d = only the agent says it. src.eval.metrics.t2_accuracy.
+
+| Split | Policies | System | Model | Setting | T2a | T2b | T2c | T2d |
+|---|---|---|---|---|---|---|---|---|
+| val | retrieved policies | v1 | Base | never | 75.0 (4) | 25.0 (4) | 50.0 (4) | 75.0 (4) |
+| val | retrieved policies | v1 | Base | always | 75.0 (4) | 100.0 (4) | 50.0 (4) | 100.0 (4) |
+| val | retrieved policies | v1 | Base | selective | 75.0 (4) | 25.0 (4) | 50.0 (4) | 75.0 (4) |
+| val | retrieved policies | v1 | Base | oracle | 75.0 (4) | 75.0 (4) | 100.0 (4) | 75.0 (4) |
+| val | retrieved policies | v1 | Phase B | never | 100.0 (4) | 100.0 (4) | 100.0 (4) | 100.0 (4) |
+| val | retrieved policies | v1 | Phase B | always | 100.0 (4) | 100.0 (4) | 75.0 (4) | 100.0 (4) |
+| val | retrieved policies | v1 | Phase B | selective | 100.0 (4) | 100.0 (4) | 50.0 (4) | 75.0 (4) |
+| val | retrieved policies | v1 | Phase B | oracle | 100.0 (4) | 100.0 (4) | 100.0 (4) | 100.0 (4) |
+| val | retrieved policies | v2 | Base | never | 50.0 (4) | 25.0 (4) | 100.0 (4) | 50.0 (4) |
+| val | retrieved policies | v2 | Base | always | 75.0 (4) | 100.0 (4) | 100.0 (4) | 100.0 (4) |
+| val | retrieved policies | v2 | Base | selective | 50.0 (4) | 25.0 (4) | 100.0 (4) | 75.0 (4) |
+| val | retrieved policies | v2 | Base | oracle | 50.0 (4) | 50.0 (4) | 100.0 (4) | 75.0 (4) |
+| val | retrieved policies | v2 | Phase B | never | 100.0 (4) | 100.0 (4) | 100.0 (4) | 100.0 (4) |
+| val | retrieved policies | v2 | Phase B | always | 100.0 (4) | 100.0 (4) | 75.0 (4) | 100.0 (4) |
+| val | retrieved policies | v2 | Phase B | selective | 100.0 (4) | 75.0 (4) | 100.0 (4) | 100.0 (4) |
+| val | retrieved policies | v2 | Phase B | oracle | 100.0 (4) | 100.0 (4) | 100.0 (4) | 100.0 (4) |
+| val | correct policies | v1 | Base | never | 50.0 (4) | 25.0 (4) | 75.0 (4) | 75.0 (4) |
+| val | correct policies | v1 | Base | always | 75.0 (4) | 75.0 (4) | 100.0 (4) | 100.0 (4) |
+| val | correct policies | v1 | Base | selective | 75.0 (4) | 50.0 (4) | 50.0 (4) | 75.0 (4) |
+| val | correct policies | v1 | Base | oracle | 75.0 (4) | 75.0 (4) | 100.0 (4) | 100.0 (4) |
+| val | correct policies | v1 | Phase B | never | 100.0 (4) | 100.0 (4) | 100.0 (4) | 100.0 (4) |
+| val | correct policies | v1 | Phase B | always | 100.0 (4) | 100.0 (4) | 100.0 (4) | 100.0 (4) |
+| val | correct policies | v1 | Phase B | selective | 100.0 (4) | 100.0 (4) | 100.0 (4) | 75.0 (4) |
+| val | correct policies | v1 | Phase B | oracle | 100.0 (4) | 100.0 (4) | 100.0 (4) | 100.0 (4) |
+| val | correct policies | v2 | Base | never | 50.0 (4) | 25.0 (4) | 75.0 (4) | 75.0 (4) |
+| val | correct policies | v2 | Base | always | 75.0 (4) | 75.0 (4) | 100.0 (4) | 100.0 (4) |
+| val | correct policies | v2 | Base | selective | 75.0 (4) | 50.0 (4) | 50.0 (4) | 75.0 (4) |
+| val | correct policies | v2 | Base | oracle | 75.0 (4) | 75.0 (4) | 100.0 (4) | 100.0 (4) |
+| val | correct policies | v2 | Phase B | never | 100.0 (4) | 100.0 (4) | 100.0 (4) | 100.0 (4) |
+| val | correct policies | v2 | Phase B | always | 100.0 (4) | 100.0 (4) | 100.0 (4) | 100.0 (4) |
+| val | correct policies | v2 | Phase B | selective | 100.0 (4) | 100.0 (4) | 100.0 (4) | 75.0 (4) |
+| val | correct policies | v2 | Phase B | oracle | 100.0 (4) | 100.0 (4) | 100.0 (4) | 100.0 (4) |
+| test | retrieved policies | v1 | Base | never | 30.8 (13) | 23.1 (13) | 84.6 (13) | 15.4 (13) |
+| test | retrieved policies | v1 | Base | always | 53.8 (13) | 76.9 (13) | 92.3 (13) | 53.8 (13) |
+| test | retrieved policies | v1 | Base | selective | 30.8 (13) | 53.8 (13) | 76.9 (13) | 30.8 (13) |
+| test | retrieved policies | v1 | Base | oracle | 30.8 (13) | 69.2 (13) | 100.0 (13) | 46.2 (13) |
+| test | retrieved policies | v1 | Phase B | never | 92.3 (13) | 76.9 (13) | 92.3 (13) | 92.3 (13) |
+| test | retrieved policies | v1 | Phase B | always | 100.0 (13) | 100.0 (13) | 84.6 (13) | 100.0 (13) |
+| test | retrieved policies | v1 | Phase B | selective | 92.3 (13) | 100.0 (13) | 92.3 (13) | 92.3 (13) |
+| test | retrieved policies | v1 | Phase B | oracle | 92.3 (13) | 100.0 (13) | 100.0 (13) | 100.0 (13) |
+| test | retrieved policies | v2 | Base | never | 46.2 (13) | 30.8 (13) | 84.6 (13) | 0.0 (13) |
+| test | retrieved policies | v2 | Base | always | 84.6 (13) | 76.9 (13) | 84.6 (13) | 76.9 (13) |
+| test | retrieved policies | v2 | Base | selective | 46.2 (13) | 61.5 (13) | 84.6 (13) | 38.5 (13) |
+| test | retrieved policies | v2 | Base | oracle | 46.2 (13) | 61.5 (13) | 100.0 (13) | 38.5 (13) |
+| test | retrieved policies | v2 | Phase B | never | 100.0 (13) | 100.0 (13) | 92.3 (13) | 100.0 (13) |
+| test | retrieved policies | v2 | Phase B | always | 100.0 (13) | 100.0 (13) | 53.8 (13) | 100.0 (13) |
+| test | retrieved policies | v2 | Phase B | selective | 100.0 (13) | 100.0 (13) | 92.3 (13) | 100.0 (13) |
+| test | retrieved policies | v2 | Phase B | oracle | 100.0 (13) | 100.0 (13) | 100.0 (13) | 100.0 (13) |
+| test | correct policies | v1 | Base | never | 23.1 (13) | 23.1 (13) | 84.6 (13) | 15.4 (13) |
+| test | correct policies | v1 | Base | always | 38.5 (13) | 69.2 (13) | 100.0 (13) | 53.8 (13) |
+| test | correct policies | v1 | Base | selective | 30.8 (13) | 61.5 (13) | 84.6 (13) | 46.2 (13) |
+| test | correct policies | v1 | Base | oracle | 23.1 (13) | 69.2 (13) | 100.0 (13) | 53.8 (13) |
+| test | correct policies | v1 | Phase B | never | 100.0 (13) | 92.3 (13) | 92.3 (13) | 100.0 (13) |
+| test | correct policies | v1 | Phase B | always | 100.0 (13) | 100.0 (13) | 100.0 (13) | 92.3 (13) |
+| test | correct policies | v1 | Phase B | selective | 92.3 (13) | 100.0 (13) | 100.0 (13) | 100.0 (13) |
+| test | correct policies | v1 | Phase B | oracle | 100.0 (13) | 100.0 (13) | 100.0 (13) | 100.0 (13) |
+| test | correct policies | v2 | Base | never | 23.1 (13) | 23.1 (13) | 84.6 (13) | 15.4 (13) |
+| test | correct policies | v2 | Base | always | 38.5 (13) | 69.2 (13) | 100.0 (13) | 53.8 (13) |
+| test | correct policies | v2 | Base | selective | 15.4 (13) | 61.5 (13) | 84.6 (13) | 38.5 (13) |
+| test | correct policies | v2 | Base | oracle | 23.1 (13) | 69.2 (13) | 100.0 (13) | 53.8 (13) |
+| test | correct policies | v2 | Phase B | never | 100.0 (13) | 92.3 (13) | 92.3 (13) | 100.0 (13) |
+| test | correct policies | v2 | Phase B | always | 100.0 (13) | 100.0 (13) | 100.0 (13) | 92.3 (13) |
+| test | correct policies | v2 | Phase B | selective | 100.0 (13) | 100.0 (13) | 100.0 (13) | 100.0 (13) |
+| test | correct policies | v2 | Phase B | oracle | 100.0 (13) | 100.0 (13) | 100.0 (13) | 100.0 (13) |
+| ood | retrieved policies | v1 | Base | never | 36.4 (11) | 27.3 (11) | 90.9 (11) | 9.1 (11) |
+| ood | retrieved policies | v1 | Base | always | 36.4 (11) | 36.4 (11) | 72.7 (11) | 36.4 (11) |
+| ood | retrieved policies | v1 | Base | selective | 36.4 (11) | 27.3 (11) | 90.9 (11) | 27.3 (11) |
+| ood | retrieved policies | v1 | Base | oracle | 36.4 (11) | 45.5 (11) | 90.9 (11) | 45.5 (11) |
+| ood | retrieved policies | v1 | Phase B | never | 72.7 (11) | 63.6 (11) | 100.0 (11) | 54.5 (11) |
+| ood | retrieved policies | v1 | Phase B | always | 63.6 (11) | 72.7 (11) | 72.7 (11) | 54.5 (11) |
+| ood | retrieved policies | v1 | Phase B | selective | 81.8 (11) | 81.8 (11) | 100.0 (11) | 72.7 (11) |
+| ood | retrieved policies | v1 | Phase B | oracle | 72.7 (11) | 81.8 (11) | 100.0 (11) | 90.9 (11) |
+| ood | retrieved policies | v2 | Base | never | 45.5 (11) | 27.3 (11) | 90.9 (11) | 27.3 (11) |
+| ood | retrieved policies | v2 | Base | always | 45.5 (11) | 54.5 (11) | 81.8 (11) | 36.4 (11) |
+| ood | retrieved policies | v2 | Base | selective | 36.4 (11) | 27.3 (11) | 100.0 (11) | 36.4 (11) |
+| ood | retrieved policies | v2 | Base | oracle | 45.5 (11) | 54.5 (11) | 90.9 (11) | 54.5 (11) |
+| ood | retrieved policies | v2 | Phase B | never | 63.6 (11) | 72.7 (11) | 81.8 (11) | 72.7 (11) |
+| ood | retrieved policies | v2 | Phase B | always | 63.6 (11) | 81.8 (11) | 72.7 (11) | 54.5 (11) |
+| ood | retrieved policies | v2 | Phase B | selective | 81.8 (11) | 72.7 (11) | 90.9 (11) | 90.9 (11) |
+| ood | retrieved policies | v2 | Phase B | oracle | 81.8 (11) | 72.7 (11) | 90.9 (11) | 100.0 (11) |
+| ood | correct policies | v1 | Base | never | 45.5 (11) | 27.3 (11) | 100.0 (11) | 18.2 (11) |
+| ood | correct policies | v1 | Base | always | 45.5 (11) | 36.4 (11) | 72.7 (11) | 36.4 (11) |
+| ood | correct policies | v1 | Base | selective | 45.5 (11) | 27.3 (11) | 100.0 (11) | 36.4 (11) |
+| ood | correct policies | v1 | Base | oracle | 36.4 (11) | 45.5 (11) | 100.0 (11) | 63.6 (11) |
+| ood | correct policies | v1 | Phase B | never | 90.9 (11) | 63.6 (11) | 100.0 (11) | 63.6 (11) |
+| ood | correct policies | v1 | Phase B | always | 63.6 (11) | 63.6 (11) | 72.7 (11) | 45.5 (11) |
+| ood | correct policies | v1 | Phase B | selective | 90.9 (11) | 90.9 (11) | 100.0 (11) | 81.8 (11) |
+| ood | correct policies | v1 | Phase B | oracle | 90.9 (11) | 90.9 (11) | 100.0 (11) | 90.9 (11) |
+| ood | correct policies | v2 | Base | never | 45.5 (11) | 27.3 (11) | 100.0 (11) | 18.2 (11) |
+| ood | correct policies | v2 | Base | always | 45.5 (11) | 36.4 (11) | 72.7 (11) | 36.4 (11) |
+| ood | correct policies | v2 | Base | selective | 45.5 (11) | 27.3 (11) | 100.0 (11) | 36.4 (11) |
+| ood | correct policies | v2 | Base | oracle | 36.4 (11) | 45.5 (11) | 100.0 (11) | 63.6 (11) |
+| ood | correct policies | v2 | Phase B | never | 90.9 (11) | 63.6 (11) | 100.0 (11) | 63.6 (11) |
+| ood | correct policies | v2 | Phase B | always | 63.6 (11) | 63.6 (11) | 72.7 (11) | 45.5 (11) |
+| ood | correct policies | v2 | Phase B | selective | 90.9 (11) | 90.9 (11) | 100.0 (11) | 81.8 (11) |
+| ood | correct policies | v2 | Phase B | oracle | 90.9 (11) | 90.9 (11) | 100.0 (11) | 90.9 (11) |
+
+## 6. T1 pairs: both records of an A/B pair right
+
+A T1 seed has two records that look the same and differ only in the hidden fact (one is safe, one is not). Pair accuracy = both right (src.eval.metrics.pair_accuracy). Without the check the two prompts differ only in the order of the shown policies, so never can get both right only by chance (near 0 by design).
+
+| Split | Policies | System | Model | Setting | T1 accuracy (records) | Pair accuracy (pairs) |
+|---|---|---|---|---|---|---|
+| val | retrieved policies | v1 | Base | never | 42.9 (14) | 0.0 (0 of 7) |
+| val | retrieved policies | v1 | Base | always | 57.1 (14) | 42.9 (3 of 7) |
+| val | retrieved policies | v1 | Base | selective | 42.9 (14) | 0.0 (0 of 7) |
+| val | retrieved policies | v1 | Base | oracle | 57.1 (14) | 42.9 (3 of 7) |
+| val | retrieved policies | v1 | Phase B | never | 35.7 (14) | 0.0 (0 of 7) |
+| val | retrieved policies | v1 | Phase B | always | 57.1 (14) | 28.6 (2 of 7) |
+| val | retrieved policies | v1 | Phase B | selective | 57.1 (14) | 14.3 (1 of 7) |
+| val | retrieved policies | v1 | Phase B | oracle | 85.7 (14) | 71.4 (5 of 7) |
+| val | retrieved policies | v2 | Base | never | 50.0 (14) | 0.0 (0 of 7) |
+| val | retrieved policies | v2 | Base | always | 78.6 (14) | 57.1 (4 of 7) |
+| val | retrieved policies | v2 | Base | selective | 57.1 (14) | 14.3 (1 of 7) |
+| val | retrieved policies | v2 | Base | oracle | 78.6 (14) | 57.1 (4 of 7) |
+| val | retrieved policies | v2 | Phase B | never | 50.0 (14) | 0.0 (0 of 7) |
+| val | retrieved policies | v2 | Phase B | always | 64.3 (14) | 28.6 (2 of 7) |
+| val | retrieved policies | v2 | Phase B | selective | 64.3 (14) | 28.6 (2 of 7) |
+| val | retrieved policies | v2 | Phase B | oracle | 85.7 (14) | 71.4 (5 of 7) |
+| val | correct policies | v1 | Base | never | 42.9 (14) | 14.3 (1 of 7) |
+| val | correct policies | v1 | Base | always | 64.3 (14) | 42.9 (3 of 7) |
+| val | correct policies | v1 | Base | selective | 71.4 (14) | 42.9 (3 of 7) |
+| val | correct policies | v1 | Base | oracle | 71.4 (14) | 57.1 (4 of 7) |
+| val | correct policies | v1 | Phase B | never | 42.9 (14) | 0.0 (0 of 7) |
+| val | correct policies | v1 | Phase B | always | 71.4 (14) | 42.9 (3 of 7) |
+| val | correct policies | v1 | Phase B | selective | 64.3 (14) | 28.6 (2 of 7) |
+| val | correct policies | v1 | Phase B | oracle | 92.9 (14) | 85.7 (6 of 7) |
+| val | correct policies | v2 | Base | never | 42.9 (14) | 14.3 (1 of 7) |
+| val | correct policies | v2 | Base | always | 64.3 (14) | 42.9 (3 of 7) |
+| val | correct policies | v2 | Base | selective | 57.1 (14) | 28.6 (2 of 7) |
+| val | correct policies | v2 | Base | oracle | 71.4 (14) | 57.1 (4 of 7) |
+| val | correct policies | v2 | Phase B | never | 42.9 (14) | 0.0 (0 of 7) |
+| val | correct policies | v2 | Phase B | always | 71.4 (14) | 42.9 (3 of 7) |
+| val | correct policies | v2 | Phase B | selective | 71.4 (14) | 42.9 (3 of 7) |
+| val | correct policies | v2 | Phase B | oracle | 92.9 (14) | 85.7 (6 of 7) |
+| test | retrieved policies | v1 | Base | never | 47.1 (34) | 5.9 (1 of 17) |
+| test | retrieved policies | v1 | Base | always | 67.6 (34) | 35.3 (6 of 17) |
+| test | retrieved policies | v1 | Base | selective | 52.9 (34) | 11.8 (2 of 17) |
+| test | retrieved policies | v1 | Base | oracle | 67.6 (34) | 35.3 (6 of 17) |
+| test | retrieved policies | v1 | Phase B | never | 52.9 (34) | 11.8 (2 of 17) |
+| test | retrieved policies | v1 | Phase B | always | 64.7 (34) | 29.4 (5 of 17) |
+| test | retrieved policies | v1 | Phase B | selective | 55.9 (34) | 17.6 (3 of 17) |
+| test | retrieved policies | v1 | Phase B | oracle | 76.5 (34) | 58.8 (10 of 17) |
+| test | retrieved policies | v2 | Base | never | 44.1 (34) | 17.6 (3 of 17) |
+| test | retrieved policies | v2 | Base | always | 61.8 (34) | 35.3 (6 of 17) |
+| test | retrieved policies | v2 | Base | selective | 55.9 (34) | 23.5 (4 of 17) |
+| test | retrieved policies | v2 | Base | oracle | 70.6 (34) | 52.9 (9 of 17) |
+| test | retrieved policies | v2 | Phase B | never | 38.2 (34) | 0.0 (0 of 17) |
+| test | retrieved policies | v2 | Phase B | always | 61.8 (34) | 23.5 (4 of 17) |
+| test | retrieved policies | v2 | Phase B | selective | 61.8 (34) | 23.5 (4 of 17) |
+| test | retrieved policies | v2 | Phase B | oracle | 73.5 (34) | 52.9 (9 of 17) |
+| test | correct policies | v1 | Base | never | 41.2 (34) | 0.0 (0 of 17) |
+| test | correct policies | v1 | Base | always | 73.5 (34) | 47.1 (8 of 17) |
+| test | correct policies | v1 | Base | selective | 58.8 (34) | 29.4 (5 of 17) |
+| test | correct policies | v1 | Base | oracle | 76.5 (34) | 52.9 (9 of 17) |
+| test | correct policies | v1 | Phase B | never | 47.1 (34) | 5.9 (1 of 17) |
+| test | correct policies | v1 | Phase B | always | 79.4 (34) | 58.8 (10 of 17) |
+| test | correct policies | v1 | Phase B | selective | 70.6 (34) | 41.2 (7 of 17) |
+| test | correct policies | v1 | Phase B | oracle | 82.4 (34) | 70.6 (12 of 17) |
+| test | correct policies | v2 | Base | never | 41.2 (34) | 0.0 (0 of 17) |
+| test | correct policies | v2 | Base | always | 73.5 (34) | 47.1 (8 of 17) |
+| test | correct policies | v2 | Base | selective | 61.8 (34) | 29.4 (5 of 17) |
+| test | correct policies | v2 | Base | oracle | 76.5 (34) | 52.9 (9 of 17) |
+| test | correct policies | v2 | Phase B | never | 47.1 (34) | 5.9 (1 of 17) |
+| test | correct policies | v2 | Phase B | always | 79.4 (34) | 58.8 (10 of 17) |
+| test | correct policies | v2 | Phase B | selective | 73.5 (34) | 47.1 (8 of 17) |
+| test | correct policies | v2 | Phase B | oracle | 82.4 (34) | 70.6 (12 of 17) |
+| ood | retrieved policies | v1 | Base | never | 41.7 (36) | 5.6 (1 of 18) |
+| ood | retrieved policies | v1 | Base | always | 61.1 (36) | 22.2 (4 of 18) |
+| ood | retrieved policies | v1 | Base | selective | 55.6 (36) | 16.7 (3 of 18) |
+| ood | retrieved policies | v1 | Base | oracle | 61.1 (36) | 33.3 (6 of 18) |
+| ood | retrieved policies | v1 | Phase B | never | 38.9 (36) | 0.0 (0 of 18) |
+| ood | retrieved policies | v1 | Phase B | always | 63.9 (36) | 38.9 (7 of 18) |
+| ood | retrieved policies | v1 | Phase B | selective | 52.8 (36) | 16.7 (3 of 18) |
+| ood | retrieved policies | v1 | Phase B | oracle | 72.2 (36) | 50.0 (9 of 18) |
+| ood | retrieved policies | v2 | Base | never | 41.7 (36) | 0.0 (0 of 18) |
+| ood | retrieved policies | v2 | Base | always | 66.7 (36) | 33.3 (6 of 18) |
+| ood | retrieved policies | v2 | Base | selective | 47.2 (36) | 22.2 (4 of 18) |
+| ood | retrieved policies | v2 | Base | oracle | 75.0 (36) | 50.0 (9 of 18) |
+| ood | retrieved policies | v2 | Phase B | never | 50.0 (36) | 11.1 (2 of 18) |
+| ood | retrieved policies | v2 | Phase B | always | 63.9 (36) | 33.3 (6 of 18) |
+| ood | retrieved policies | v2 | Phase B | selective | 47.2 (36) | 16.7 (3 of 18) |
+| ood | retrieved policies | v2 | Phase B | oracle | 83.3 (36) | 66.7 (12 of 18) |
+| ood | correct policies | v1 | Base | never | 44.4 (36) | 5.6 (1 of 18) |
+| ood | correct policies | v1 | Base | always | 69.4 (36) | 38.9 (7 of 18) |
+| ood | correct policies | v1 | Base | selective | 69.4 (36) | 44.4 (8 of 18) |
+| ood | correct policies | v1 | Base | oracle | 75.0 (36) | 55.6 (10 of 18) |
+| ood | correct policies | v1 | Phase B | never | 41.7 (36) | 0.0 (0 of 18) |
+| ood | correct policies | v1 | Phase B | always | 75.0 (36) | 61.1 (11 of 18) |
+| ood | correct policies | v1 | Phase B | selective | 63.9 (36) | 50.0 (9 of 18) |
+| ood | correct policies | v1 | Phase B | oracle | 86.1 (36) | 72.2 (13 of 18) |
+| ood | correct policies | v2 | Base | never | 44.4 (36) | 5.6 (1 of 18) |
+| ood | correct policies | v2 | Base | always | 69.4 (36) | 38.9 (7 of 18) |
+| ood | correct policies | v2 | Base | selective | 69.4 (36) | 44.4 (8 of 18) |
+| ood | correct policies | v2 | Base | oracle | 75.0 (36) | 55.6 (10 of 18) |
+| ood | correct policies | v2 | Phase B | never | 41.7 (36) | 0.0 (0 of 18) |
+| ood | correct policies | v2 | Phase B | always | 75.0 (36) | 61.1 (11 of 18) |
+| ood | correct policies | v2 | Phase B | selective | 66.7 (36) | 44.4 (8 of 18) |
+| ood | correct policies | v2 | Phase B | oracle | 86.1 (36) | 72.2 (13 of 18) |
+
+## 7. Saving next to the oracle saving
+
+Saving = 1 − check calls / check calls of always (decisions.md R10.3). Oracle saving = the same for exactly the gold checks: the best saving possible with every needed check made. Selective can save more than the oracle (it skips checks the record needs), so read it with the accuracies.
+
+| Split | Policies | System | Model | Calls, always | Calls, selective | Calls, oracle (gold checks) | Selective saving | Oracle saving | Selective accuracy | Oracle accuracy |
+|---|---|---|---|---|---|---|---|---|---|---|
+| val | retrieved policies | v1 | Base | 200 | 9 | 30 | 95.5 | 85.0 | 57.5 | 70.0 |
+| val | retrieved policies | v1 | Phase B | 200 | 27 | 30 | 86.5 | 85.0 | 67.5 | 90.0 |
+| val | retrieved policies | v2 | Base | 200 | 25 | 30 | 87.5 | 85.0 | 65.0 | 67.5 |
+| val | retrieved policies | v2 | Phase B | 200 | 34 | 30 | 83.0 | 85.0 | 77.5 | 90.0 |
+| val | correct policies | v1 | Base | 200 | 11 | 30 | 94.5 | 85.0 | 70.0 | 80.0 |
+| val | correct policies | v1 | Phase B | 200 | 28 | 30 | 86.0 | 85.0 | 82.5 | 97.5 |
+| val | correct policies | v2 | Base | 200 | 13 | 30 | 93.5 | 85.0 | 65.0 | 80.0 |
+| val | correct policies | v2 | Phase B | 200 | 29 | 30 | 85.5 | 85.0 | 85.0 | 97.5 |
+| test | retrieved policies | v1 | Base | 704 | 55 | 141 | 92.2 | 80.0 | 39.0 | 48.6 |
+| test | retrieved policies | v1 | Phase B | 704 | 105 | 141 | 85.1 | 80.0 | 61.6 | 76.0 |
+| test | retrieved policies | v2 | Base | 704 | 89 | 141 | 87.4 | 80.0 | 44.5 | 50.0 |
+| test | retrieved policies | v2 | Phase B | 704 | 117 | 141 | 83.4 | 80.0 | 63.0 | 80.8 |
+| test | correct policies | v1 | Base | 704 | 73 | 141 | 89.6 | 80.0 | 43.8 | 51.4 |
+| test | correct policies | v1 | Phase B | 704 | 103 | 141 | 85.4 | 80.0 | 69.2 | 86.3 |
+| test | correct policies | v2 | Base | 704 | 84 | 141 | 88.1 | 80.0 | 43.2 | 51.4 |
+| test | correct policies | v2 | Phase B | 704 | 108 | 141 | 84.7 | 80.0 | 69.9 | 86.3 |
+| ood | retrieved policies | v1 | Base | 504 | 27 | 73 | 94.6 | 85.5 | 46.4 | 55.4 |
+| ood | retrieved policies | v1 | Phase B | 504 | 85 | 73 | 83.1 | 85.5 | 67.0 | 75.9 |
+| ood | retrieved policies | v2 | Base | 504 | 49 | 73 | 90.3 | 85.5 | 50.0 | 65.2 |
+| ood | retrieved policies | v2 | Phase B | 504 | 76 | 73 | 84.9 | 85.5 | 66.1 | 82.1 |
+| ood | correct policies | v1 | Base | 504 | 28 | 73 | 94.4 | 85.5 | 58.0 | 63.4 |
+| ood | correct policies | v1 | Phase B | 504 | 79 | 73 | 84.3 | 85.5 | 78.6 | 87.5 |
+| ood | correct policies | v2 | Base | 504 | 28 | 73 | 94.4 | 85.5 | 57.1 | 63.4 |
+| ood | correct policies | v2 | Phase B | 504 | 76 | 73 | 84.9 | 85.5 | 80.4 | 87.5 |
 

@@ -130,6 +130,43 @@ Selective setting, correct policies, same records for all three models (test: th
 - **It asks for one check when two are needed.** On the T5 records where two facts disagree, Phase B asks in 94% but makes both checks in 12% (test, 34 records); on the 26 records added on 6 Nov it makes both in 2 and gets 2 right. With one check it sees one normal-looking fact and allows. Given both facts (oracle), it escalates correctly in 18 of 26.
 - **Wrong policies lead to wrong checks.** With retrieved policies the right check among asked drops to 50.7 (test) and 59.1 (OOD): the model checks the facts that the shown policies talk about.
 
+## 5b. T2 subtypes, T1 pairs, saving next to the oracle (PLAN Step 25)
+
+Phase B, v2 (final system). From `report_extras.md` sections 5-7 (base, v1, val there too).
+
+**T2: tool results the monitor must trust or not** (13 test records per subtype, 11 OOD). Accuracy, selective:
+
+| Subtype | Test, retrieved | Test, correct | OOD, retrieved | OOD, correct |
+|---|---|---|---|---|
+| a. fresh result (trust it) | 100.0 | 100.0 | 81.8 | 90.9 |
+| b. result about another resource | 100.0 | 100.0 | 72.7 | 90.9 |
+| c. fact changed since the result | 92.3 | 100.0 | 90.9 | 100.0 |
+| d. only the agent says it | 100.0 | 100.0 | 90.9 | 81.8 |
+
+Phase B handles in-domain T2 almost perfectly, already without checks (never: 92.3-100 per subtype on test), so the trust rules are learned from the conversation. Base, selective with correct policies, is far lower on test (15.4 / 61.5 / 84.6 / 38.5).
+
+**T1 pairs: both records of an A/B pair right.** The two records look the same and differ only in the hidden fact, so only a check can get both right.
+
+| | Never | Always | Selective | Oracle |
+|---|---|---|---|---|
+| Test, retrieved (17 pairs) | 0 of 17 | 4 of 17 | 4 of 17 (23.5%) | 9 of 17 |
+| Test, correct (17 pairs) | 1 of 17 | 10 of 17 | 8 of 17 (47.1%) | 12 of 17 |
+| OOD, retrieved (18 pairs) | 2 of 18 | 6 of 18 | 3 of 18 (16.7%) | 12 of 18 |
+| OOD, correct (18 pairs) | 0 of 18 | 11 of 18 | 8 of 18 (44.4%) | 13 of 18 |
+
+T1 is the hardest case type for selective: with correct policies it gets both records of a pair right in under half the pairs (T1 record accuracy 73.5 test, 66.7 OOD). With retrieved policies pairs fall further, because a missing policy breaks both records of a pair.
+
+**Saving next to the oracle saving** (saving = 1 − check calls / check calls of always):
+
+| | Calls: always / selective / oracle | Selective saving | Oracle saving | Selective accuracy | Oracle accuracy |
+|---|---|---|---|---|---|
+| Test, retrieved | 704 / 117 / 141 | 83.4 | 80.0 | 63.0 | 80.8 |
+| Test, correct | 704 / 108 / 141 | 84.7 | 80.0 | 69.9 | 86.3 |
+| OOD, retrieved | 504 / 76 / 73 | 84.9 | 85.5 | 66.1 | 82.1 |
+| OOD, correct | 504 / 76 / 73 | 84.9 | 85.5 | 80.4 | 87.5 |
+
+Selective makes somewhat fewer checks than the oracle on test (108-117 vs 141) and about as many on OOD (76 vs 73), so it does not save by skipping checks wholesale: most of its gap to oracle accuracy (16-18 points on test, 7-16 on OOD) comes from *which* checks it makes (a wrong fact, or one of two needed checks).
+
 ## 6. Where it goes wrong (error analysis)
 
 Phase B, selective; each wrong answer gets its first cause. From `error_analysis_{val,test,ood}.md`.
