@@ -203,7 +203,7 @@ Safe/unsafe and risk type, one pass, no checks. Test, our own splits of these da
 - **Accuracy counts BLOCK for ESCALATE as wrong.** Counting that swap as acceptable (both stop the action), always rises from 75.3 to 89.0 on test with correct policies, but selective only from 69.2 to 72.6: most of selective's errors let the risky action through (`report_extras.md` section 1).
 - **Collected datasets** have shortcuts (section 9) and our own splits.
 
-## 11. Not done (as of 11 Nov)
+## 11. Not done (as of 12 Nov)
 
 | Item | Owner | Status |
 |---|---|---|
@@ -211,7 +211,7 @@ Safe/unsafe and risk type, one pass, no checks. Test, our own splits of these da
 | Ablations (no policies, check noise, top-k) | Moiesha | code not delivered |
 | Qwen3-235B comparison | Moiesha | dropped (no decision by 5 Nov) |
 | 50 evidence hand-checks (humans only, no LLM) | to choose | sheet to make from the final runs |
-| κ agreement study on our records | Param, Moiesha | due 11 Nov |
+| κ agreement study on our records | Param, Moiesha | **skipped** (Meet, 12 Nov: no time before 14 Nov); stated as a limit (section 10), labels checked by code (`label_audit.md`) |
 | Demo, service, live runs with 2 agent LLMs | Prateek | nothing pushed yet |
 | Perturbation test of the ATBench error shortcut | Meet | optional, not run |
 
