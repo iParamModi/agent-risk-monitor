@@ -137,7 +137,7 @@ Inference only, same adapter: retrieval ranks only the policies tagged with the 
 | OOD | 67.0 -> 66.1 | 78.6 -> 80.4 | 37.3 -> 35.3 | 37.3 -> 29.4 | 75.9 -> 82.1 |
 | Val | 67.5 -> 77.5 | 82.5 -> 85.0 | 52.6 -> 42.1 | 42.1 -> 36.8 | 90.0 -> 90.0 |
 
-Safer, about the same accuracy; the hypothesis still fails on test (Δ unsafe, retrieved: +14.6 [0.0, 29.7]). The second-source rule fired on 1 test record: it covers facts two tools report (the train two-check mechanism), while 32 of 34 two-check test records combine two different facts. The v3 candidates (only the action's check tools; one more ask) were not run: Kaggle weekly GPU quota used up.
+Safer, about the same accuracy; the hypothesis still fails on test (Δ unsafe, retrieved: +14.6 [0.0, 29.7]). The second-source rule fired on 1 test record: it covers facts two tools report (the train two-check mechanism). 10 of the 34 two-check test records are of that kind, but the model named another fact there (for example "production" instead of "modifiable"), so the rule did not start; the other 24 combine two different facts. The v3 candidates (only the action's check tools; one more ask) were not run: Kaggle weekly GPU quota used up.
 
 ### 5.7 Cost hypotheses (exploratory, stated after the results; `cost_hypotheses.md`)
 
