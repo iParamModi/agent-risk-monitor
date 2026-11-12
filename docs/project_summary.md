@@ -139,6 +139,10 @@ Inference only, same adapter: retrieval ranks only the policies tagged with the 
 
 Safer, about the same accuracy; the hypothesis still fails on test (Δ unsafe, retrieved: +14.6 [0.0, 29.7]). The second-source rule fired on 1 test record: it covers facts two tools report (the train two-check mechanism), while 32 of 34 two-check test records combine two different facts. The v3 candidates (only the action's check tools; one more ask) were not run: Kaggle weekly GPU quota used up.
 
+### 5.7 Cost hypotheses (exploratory, stated after the results; `cost_hypotheses.md`)
+
+Phase B v2, selective vs always: **check calls** 0.15-0.17 of always (holds everywhere); **model tokens** about 2.4x always (does not hold: the prompt lists every check tool and most records take a second pass), so selective is cheaper only where a check call costs more than about 350-400 tokens; **accuracy within 5 points** not shown on test (intervals too wide; −5.5 with correct policies), selective ahead on OOD with correct policies (+14.3 [3.4, 25.0]); **beats rules that run every check** by 16-26 points with one sixth of the checks.
+
 ## 6. What we conclude
 
 1. Fine-tuning teaches an 8B model to monitor agents with checks: Phase B beats base and both rule baselines everywhere, and the skill carries over to a new domain (OOD).

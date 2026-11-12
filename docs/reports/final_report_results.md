@@ -97,6 +97,21 @@ The cost side holds everywhere: selective makes about 85% fewer checks than alwa
 
 **What the test could show** (`report_extras.md` section 4). The interval half-width is 10-13 points on test and about 13 on OOD (82 and 51 risky records). With a 5-point margin the rule can only pass if the observed Δ is at most −5.3 (test, retrieved) or −7.8 (test, correct), i.e. if selective is clearly **safer** than always. The rule stays as fixed before the results; this is the power it had. **Always is not safe either:** 34.1% unsafe on test with retrieved policies (12.2% with the correct ones), because it inherits retrieval misses and sometimes decides on a fact that does not decide the case. Base "passes" on OOD only because it blocks most records (section 3). On the 30 Oct test set (120 records, old adapter) the main test also failed (+16.1 [3.8, 28.1]); the 26 two-check records added since then make it clearer.
 
+## 4b. Cost hypotheses (exploratory, stated 12 Nov after the results)
+
+Does selective keep almost the accuracy of always while costing less? Stated after the final results were seen, so these are **exploratory**; R10.4 above stays the only hypothesis fixed in advance. Thresholds are round values (half the cost, the same 5-point margin as R10.4). Phase B, v2 (final system), 95% bootstrap intervals by seed. Full tables, v1 too: `cost_hypotheses.md`.
+
+| | Hypothesis | Test, retrieved | Test, correct | OOD, retrieved | OOD, correct |
+|---|---|---|---|---|---|
+| C1 | At most half the check calls of always | **holds**: 0.17 [0.14, 0.20] of always | **holds**: 0.15 | **holds**: 0.15 | **holds**: 0.15 |
+| C2 | At most half the model tokens of always | does not hold: 2.45x | does not hold: 2.48x | does not hold: 2.33x | does not hold: 2.43x |
+| C3 | At most 5 points less accurate than always | not shown: +0.7 [−7.7, +8.6] | not shown: −5.5 [−15.0, +3.4] | not shown: +2.7 [−9.5, +14.9] | **holds**: +14.3 [+3.4, +25.0] |
+| C4 | More accurate than rules that run every check | **holds**: +16.4 [+0.7, +31.1] | **holds**: +17.8 [+3.8, +32.1] | not shown: +17.9 [0.0, +34.5] | **holds**: +25.9 [+10.5, +40.5] |
+
+- **Fewer check calls, yes; less compute, no.** Selective makes about 6 times fewer check calls (0.7-0.8 vs 4.5-4.8 per record) but uses about 2.4 times the model tokens and twice the time per record. Its prompt lists every check tool (about 1,000 tokens), and most records need a second pass after the checks (1.6-1.8 passes per record). It is cheaper overall only where one check call costs more than about 350-400 tokens of model compute: real company APIs with latency, rate limits, fees or personal data, not free local lookups. Showing only the action's check tools (v3, not run) and reusing the shared prompt prefix between passes would cut this.
+- **Accuracy:** level with always on test with retrieved policies, but the intervals are too wide to claim "within 5 points"; behind with correct policies (−5.5); ahead on OOD with correct policies.
+- **Against rules that check everything:** Phase B selective is 16-26 points more accurate with about one sixth of the checks.
+
 ## 5. Does the model learn to ask for information, and for the right information?
 
 Selective setting, correct policies, same records for all three models (test: the original 120). From `check_results.md`.
@@ -210,7 +225,8 @@ Safe/unsafe and risk type, one pass, no checks. Test, our own splits of these da
 | `docs/reports/error_analysis_{val,test,ood}.md` | first cause of each wrong answer |
 | `docs/reports/collected_test_results.md` | collected datasets, per source |
 | `docs/reports/shortcut_check.md` | word models, named cues and near-copies on the collected datasets |
+| `docs/reports/cost_hypotheses.md` | cost hypotheses C1-C4 (exploratory): check calls, tokens, accuracy kept, against rules |
 | `docs/reports/report_extras.md` | cost-safety table, acceptable-decision rate, accuracy by case type, test reweighted, power of the hypothesis test |
 | `docs/decisions.md` R10.4 | the hypothesis rule, fixed before any result |
 
-Rebuild: `python scripts/final_results.py --split val test ood --out docs/reports/final_results`, `python scripts/final_results.py --version v2 --split val test ood --out docs/reports/final_results_v2`, `python scripts/report_extras.py`, `python scripts/check_results.py`, `python -m src.eval.error_analysis --split val test ood`, `python scripts/collected_results.py`, `python -m src.eval.shortcuts`.
+Rebuild: `python scripts/final_results.py --split val test ood --out docs/reports/final_results`, `python scripts/final_results.py --version v2 --split val test ood --out docs/reports/final_results_v2`, `python scripts/report_extras.py`, `python scripts/cost_hypotheses.py`, `python scripts/check_results.py`, `python -m src.eval.error_analysis --split val test ood`, `python scripts/collected_results.py`, `python -m src.eval.shortcuts`.

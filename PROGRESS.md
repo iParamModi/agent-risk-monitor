@@ -114,6 +114,7 @@ How our monitor really runs on our records: diagrams of the loop and the 4 setti
 
 ## Activity Log (newest first)
 
+- 2026-11-12, Meet: exploratory cost hypotheses (`docs/reports/cost_hypotheses.md`, report section 4b): selective makes 0.15-0.17x the check calls of always (holds) but uses about 2.4x the model tokens (prompt lists every tool, second pass); accuracy within 5 points of always not shown on test; Phase B selective beats rules + environment by 16-26 points
 - 2026-11-12, Meet: **final v2 runs done** (base + Phase B, val/test/OOD): `docs/reports/final_results_v2.md`, v1 vs v2 in `final_report_results.md` section 3b. Selective, retrieved: test 61.6 -> 63.0, OOD 67.0 -> 66.1; test unsafe 52.4 -> 39.0. R10.4 still fails on test. v2 is the final system; v3 not run (GPU quota)
 - 2026-11-12, Meet: report fixes (review S3) in `final_report_results.md` and `project_summary.md`: retrieval ceiling (of the 48 test errors that start with a retrieval miss, 12 become right with the correct policies), test mix, power of the hypothesis test, single-run and BLOCK/ESCALATE caveats (`report_extras.md`). Base v2 final runs done; Phase B v2 on OOD. v3 val check not started: **Kaggle weekly GPU quota (30 h) used up**
 - 2026-11-12, Meet: system v2 val check passed the pre-set rule (selective, retrieved policies 27 -> 31 of 40; wrong blocks 2 -> 1; correct policies 33 -> 34). Final v2 runs of base and Phase B on val, test, OOD started on Kaggle
