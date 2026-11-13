@@ -36,13 +36,12 @@ How our monitor really runs on our records: diagrams of the loop and the 4 setti
 
 | Task | Who | Started | Status / Notes |
 |------|-----|---------|----------------|
-| **Deployment demo**: live gate (`monitor_gate`, gateway `for_state`, events), 3 new demo tasks, real recorded runs on Kaggle (final adapter), replay website | Prateek | 2026-11-12 | **Part 1 done** (live gate, `for_state`, events, demo tasks, `scripts/run_live.py`, cost guard; FakeModel on CPU). Next: Kaggle recording notebook (waits on Meet sharing `agent-risk-adapter-final` with `prateek99491`), then the replay website |
+| **Deployment demo**: live gate (`monitor_gate`, gateway `for_state`, events), 3 new demo tasks, real recorded runs on Kaggle (final adapter), replay website | Prateek | 2026-11-12 | **Part 1 done** (live gate, `for_state`, events, demo tasks, `scripts/run_live.py`, cost guard; FakeModel on CPU). Next: Kaggle recording notebook (adapter shared 13 Nov), then the replay website |
 
 ## Next Up
 
 | Task | Assigned To | Depends On | Notes |
 |------|-------------|------------|-------|
-| **Share `meet6868/agent-risk-adapter-final` (Kaggle Dataset, private) with `prateek99491` (Viewer)**: dataset page -> Settings -> Sharing. Blocks the recorded demo runs and the demo table in the report | **Meet (today)** | none | Steps + fallbacks: `docs/messages/2026-11-13_to_Meet_share_adapter.md` |
 | **Final report (14 Nov)**: draft in `report/final_submission.tex` (Meet, 12 Nov): read it, fix wording, add Prateek's recorded-demo table if done; use `docs/reports/final_report_results.md` (v2 = final system, section 3b; v1 kept as comparison) and `report_extras.md` | **Everyone** | none | Numbers come from the generated reports only |
 | v3 val check (`kaggle/v3_val_check/`, ~40 min, rule in decisions.md 2026-11-12) | Meet | Kaggle GPU quota (or a teammate's account) | optional; if it does not run, v2 stays final |
 | Step 9: optional code generator (`src/data_gen/`: skeleton via `lma_agent/sim`, gold engine over `policy_logic.yaml`+`conflicts.yaml`+trust rule, variants, assembly, schema-validate, `--person` CLI) — same spec `docs/seed_to_record.md` | Param (later, if we automate) | `required_checks` later; `decisions.md` lock | The by-hand route above is the one we're using now. This row is the eventual scripted version; `source` is `synthetic-data`. |
@@ -120,6 +119,7 @@ How our monitor really runs on our records: diagrams of the loop and the 4 setti
 
 ## Activity Log (newest first)
 
+- 2026-11-13, Meet: shared the PRIVATE Kaggle dataset `meet6868/agent-risk-adapter-final` with Prateek (`prateek99491`, Editor); demo recording unblocked
 - 2026-11-13, Prateek: adapter still not accessible for the demo. `agent-risk-adapter-final` is a Kaggle **Dataset** (input of the final eval notebooks), not a Model/Notebook; how to find and share it: `docs/messages/2026-11-13_to_Meet_share_adapter.md`
 - 2026-11-12, Meet: all three adapters, our data and the final runs uploaded to the PRIVATE Hugging Face repo `meet5568/Agent-Risk` with model, data and results cards (phaseA, phaseB_v1, phaseB_v2 = final). Prateek still needs `meet6868/agent-risk-adapter-final` shared on Kaggle with `prateek99491` (web UI, Meet).
 - 2026-11-12, Meet: final report draft `report/final_submission.tex` (+ `.bib`, `.pdf`, 12 pages, every number checked against the reports); `docs/reports` cleaned: superseded 30 Oct / 2 Nov reports removed, the three error analyses merged into `error_analysis.md`.
