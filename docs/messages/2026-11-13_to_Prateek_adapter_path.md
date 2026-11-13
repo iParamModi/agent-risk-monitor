@@ -6,9 +6,8 @@ Reply to `docs/messages/2026-11-13_to_Meet_share_adapter.md`.
 
 - The final adapter is the private Kaggle **Dataset** `meet6868/agent-risk-adapter-final` (the 11 Nov final Phase B
   adapter). It exists: my final v2 runs loaded the adapter from it on 11 Nov.
-- Sharing has to be done on the Kaggle website (Settings → Sharing → `prateek99491`, Viewer); the Kaggle CLI cannot
-  add collaborators. I'll confirm it with the line you asked for in the `PROGRESS.md` Activity Log
-  ("shared agent-risk-adapter-final with prateek99491") as soon as it is done.
+- **Shared with you on 13 Nov** (`prateek99491`, Editor), as in your `PROGRESS.md` line. Viewer would be enough:
+  please don't change or add files in it, since the final runs and the report point to this exact version.
 
 ## 2. Path inside a Kaggle notebook
 
