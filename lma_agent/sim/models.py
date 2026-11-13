@@ -207,6 +207,8 @@ class Task(BaseModel):
     expected_tools: list[str] = []
     list_shows_sharing: bool = False  # list_files also shows each file's sharing (demo tasks)
     expected: dict = {}  # demo tasks: what we expect to see (decision, checks); for the results table only
+    title: str = ""  # demo tasks: short name for the website's task chips
+    description: str = ""  # demo tasks: what the run shows, for the human viewer (never sent to the agent)
 
 
 class EpisodeResult(BaseModel):

@@ -10,7 +10,7 @@ from lma_agent.sim.models import Task, ToolCall
 from lma_agent.sim.seed_state import apply_overrides, build_seed_state, state_hash
 from lma_agent.tasks.load_tasks import load_tasks
 from src.gateway.gateway import for_state
-from src.live.events import EVENT_TYPES, ListSink, read_events
+from src.live.events import EVENT_TYPES, ListSink, first_of, read_events
 from src.live.fake_monitor import RuleFakeMonitor
 from src.live.live_record import record_from_live
 from src.live.monitor_gate import KeywordOnlyEmbedder
@@ -109,7 +109,7 @@ def test_invalid_monitor_output_escalates_never_allows():
 
 def test_event_type_sequence():
     _, _, sink, _ = run("demo_hidden")
-    assert sink.types() == ["instruction", "tool_call", "observation", "risk_action", "policies", "monitor_pass1",
+    assert sink.types() == ["company_snapshot", "instruction", "tool_call", "observation", "risk_action", "policies", "monitor_pass1",
                             "gateway_check", "monitor_pass2", "decision", "action_refused", "state_diff",
                             "final_response"]
     _, _, sink, _ = run("demo_acmepay", confirms=True)
@@ -144,7 +144,8 @@ def test_cli_writes_a_full_log(tmp_path):
     row = main(["--task", "demo_hidden", "--model", "fake", "--out", str(tmp_path)])
     events = read_events(row["file"])
     assert row["match"] and row["checks_used"] == 1 and row["decision"] == "BLOCK"
-    assert events[0]["type"] == "instruction" and events[0]["payload"]["meta"]["fake_monitor"] is True
+    assert events[0]["type"] == "company_snapshot" and events[1]["type"] == "instruction"
+    assert events[1]["payload"]["meta"]["fake_monitor"] is True
     assert events[-1]["type"] == "final_response" and all(e["run_id"] == row["run_id"] for e in events)
 
 
@@ -201,5 +202,5 @@ def test_live_run_uses_v2_policies_hints_and_logs_version(monkeypatch):
 def test_cli_log_meta_has_agent_version_and_k(tmp_path):
     from scripts.run_live import main
     row = main(["--task", "demo_visible", "--model", "fake", "--out", str(tmp_path)])
-    meta = read_events(row["file"])[0]["payload"]["meta"]
+    meta = first_of(read_events(row["file"]), "instruction")["payload"]["meta"]
     assert meta["agent"] == "scripted" and meta["monitor_version"] == "v2" and meta["k"] == 8

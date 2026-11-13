@@ -1,6 +1,7 @@
 """The agent loop: the only module that knows the order of things.
 
-on_event (optional): called with one src.live.events.Event per thing that happens (instruction, tool_call,
+on_event (optional): called with one src.live.events.Event per thing that happens (company_snapshot first: the full
+initial state for the human viewer, never given to the gate; then instruction, tool_call,
 observation, risk_action, the gate's own events, confirm_request/answer, action_applied/refused, state_diff,
 final_response). None = no events (the default; scripts/run_live.py passes a JsonlSink).
 
@@ -51,6 +52,9 @@ def run_agent(task: Task, state: CompanyState, client, gate: Gate = allow_all, u
             on_event(make_event(run_id, step, type, payload))
         return emit
 
+    if on_event is not None:
+        from src.live.company import company_snapshot
+        emitter(0)("company_snapshot", company_snapshot(task, state))
     emitter(0)("instruction", {"task_id": task.task_id, "prompt": task.prompt, "current_user": state.current_user,
                               "meta": meta or {}})
 

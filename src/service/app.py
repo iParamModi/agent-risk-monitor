@@ -10,9 +10,13 @@ It only replays logs: no model, no GPU, no API call. Runs come from
 Tries in attempts/ are never listed (they are kept in the folder for honesty, not replayed).
 
 GET /                         the page (src/service/static/replay.html)
-GET /health
+GET /health                   + live_available (False: no live backend is built; Step 2, under the cost rules)
+GET /api/tasks                the preset demo tasks (lma_agent/tasks/demo_tasks.yaml)
 GET /api/runs                 one summary per run: task, setting, agent, monitor version and k, decision, checks
 GET /api/runs/{source}/{id}   the run's events, in order
+GET /api/runs/{source}/{id}/state?step=N   the company after step N (company_snapshot + state_diffs), with the
+                              facts hidden from the monitor marked (for the human viewer; src/live/company.py)
+GET /api/results              the report's final numbers (src/service/results.py, from final_results_v2.json)
 /api/live/*  (any method)     403 unless LIVE_MODE=on AND header X-Live-Password equals LIVE_PASSWORD (constant-time
                               compare) AND the cost guard passes. The live service was cut on 12 Nov and has no priced
                               backend, so the guard is asked with Tier C and always refuses: these stay 403.
@@ -27,9 +31,12 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 
 from src.common.io import REPO_ROOT
+from src.live.company import state_at
 from src.service.cost_guard import PaidCallBlocked, require_paid_ok
+from src.service.results import load_results
 
 DEMO_DIR = REPO_ROOT / "outputs" / "live" / "demo"
+DEMO_TASKS = REPO_ROOT / "lma_agent" / "tasks" / "demo_tasks.yaml"
 STATIC = Path(__file__).resolve().parent / "static"
 RUN_ID = re.compile(r"^[A-Za-z0-9_.-]+$")
 
@@ -43,14 +50,15 @@ def read_log(path: Path) -> list[dict]:
 
 
 def summarize(events: list[dict], source: str) -> dict:
-    first = events[0] if events else {}
+    first = next((e for e in events if e["type"] == "instruction"), {})
     payload = first.get("payload", {})
     meta = payload.get("meta", {})
     decisions = [e["payload"] for e in events if e["type"] == "decision"]
     final = next((e["payload"] for e in reversed(events) if e["type"] == "final_response"), {})
     d = decisions[0] if decisions else {}
     return {
-        "source": source, "run_id": first.get("run_id"), "task": payload.get("task_id"), "prompt": payload.get("prompt"),
+        "source": source, "run_id": first.get("run_id"), "task": payload.get("task_id"),
+        "prompt": payload.get("prompt"),
         "setting": meta.get("setting"), "confirm": meta.get("confirm"), "agent": meta.get("agent"),
         "monitor_version": meta.get("monitor_version"), "k": meta.get("k"),
         "fake_monitor": bool(meta.get("fake_monitor")) or source == "fake", "monitor_model": meta.get("monitor_model"),
@@ -59,6 +67,11 @@ def summarize(events: list[dict], source: str) -> dict:
         "expected": meta.get("expected"), "decision": d.get("decision"), "checks_used": d.get("checks_used"),
         "checks_always": d.get("checks_always"), "status": final.get("status"), "events": len(events),
     }
+
+
+def live_available() -> bool:
+    """A live backend (agent + monitor) is not built in this step: always False (Step 2, under the cost rules)."""
+    return False
 
 
 def create_app(sources: dict[str, Path] | None = None) -> FastAPI:
@@ -74,21 +87,41 @@ def create_app(sources: dict[str, Path] | None = None) -> FastAPI:
 
     @app.get("/health")
     def health():
-        return {"status": "ok", "mode": "replay", "live_mode": os.environ.get("LIVE_MODE", "off") == "on"}
+        return {"status": "ok", "mode": "replay", "live_mode": os.environ.get("LIVE_MODE", "off") == "on",
+                "live_available": live_available()}
+
+    @app.get("/api/tasks")
+    def tasks():
+        from lma_agent.tasks.load_tasks import load_tasks
+        return [{"id": t.task_id, "title": t.title or t.task_id, "description": t.description, "domain": t.domain,
+                 "prompt": t.prompt, "expected": t.expected} for t in load_tasks(DEMO_TASKS)]
+
+    @app.get("/api/results")
+    def results():
+        return load_results()
 
     @app.get("/api/runs")
     def runs():
         return [summarize(read_log(path), source) for (source, _), path in logs().items()]
 
-    @app.get("/api/runs/{source}/{run_id}")
-    def run(source: str, run_id: str):
-        if not RUN_ID.match(run_id):
-            raise HTTPException(404, "no such run")
-        path = logs().get((source, run_id))
+    def find(source: str, run_id: str) -> Path:
+        path = logs().get((source, run_id)) if RUN_ID.match(run_id) else None
         if path is None:
             raise HTTPException(404, "no such run")
-        events = read_log(path)
+        return path
+
+    @app.get("/api/runs/{source}/{run_id}")
+    def run(source: str, run_id: str):
+        events = read_log(find(source, run_id))
         return {"summary": summarize(events, source), "events": events}
+
+    @app.get("/api/runs/{source}/{run_id}/state")
+    def run_state(source: str, run_id: str, step: int | None = None):
+        events = read_log(find(source, run_id))
+        try:
+            return state_at(events, step)
+        except ValueError as err:
+            raise HTTPException(409, str(err))
 
     @app.api_route("/api/live/{rest:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
     def live(rest: str, request: Request):

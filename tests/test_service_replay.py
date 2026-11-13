@@ -16,7 +16,8 @@ def client(monkeypatch):
 
 
 def test_health(client):
-    assert client.get("/health").json() == {"status": "ok", "mode": "replay", "live_mode": False}
+    assert client.get("/health").json() == {"status": "ok", "mode": "replay", "live_mode": False,
+                                            "live_available": False}
 
 
 def test_page_is_served(client):
@@ -39,7 +40,7 @@ def test_one_run_replays_all_its_events(client):
     run = next(r for r in client.get("/api/runs").json() if r["task"] == "demo_hidden" and r["setting"] == "selective")
     data = client.get(f"/api/runs/{run['source']}/{run['run_id']}").json()
     types = [e["type"] for e in data["events"]]
-    assert types[0] == "instruction" and types[-1] == "final_response"
+    assert types[:2] == ["company_snapshot", "instruction"] and types[-1] == "final_response"
     assert {"risk_action", "policies", "monitor_pass1", "gateway_check", "decision"} <= set(types)
     assert data["summary"]["checks_used"] == 1
 

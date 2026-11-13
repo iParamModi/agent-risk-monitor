@@ -35,9 +35,10 @@ def test_demo_file_has_no_secrets(path):
 @pytest.mark.parametrize("path", [p for p in demo_files() if p.suffix == ".jsonl" and p.parent.name != "attempts"],
                          ids=lambda p: str(p.relative_to(DEMO)))
 def test_demo_log_names_agent_and_monitor_system(path):
-    first = json.loads(path.read_text(encoding="utf-8").splitlines()[0])
+    events = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert events[0]["type"] == "company_snapshot" and events[0]["payload"]["hidden_from_monitor"]
+    first = next(e for e in events if e["type"] == "instruction")
     meta = first["payload"]["meta"]
-    assert first["type"] == "instruction"
     assert meta["agent"] == "scripted" or meta["agent"].startswith("groq:")
     assert meta["monitor_version"] == "v2" and meta["k"] == 8
     assert isinstance(meta.get("fake_monitor"), bool)

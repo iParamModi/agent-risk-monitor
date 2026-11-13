@@ -5,7 +5,7 @@ from lma_agent.agent.llm import FakeLLM, assistant_msg
 from lma_agent.sim.models import ToolCall
 from lma_agent.tasks.load_tasks import load_tasks
 from src.live.demo_record import PLAN, SCRIPTED, GroqBudget, groq_name, record_run
-from src.live.events import read_events
+from src.live.events import first_of, read_events
 from src.live.fake_monitor import RuleFakeMonitor
 from src.live.monitor_gate import KeywordOnlyEmbedder
 from src.live.scripted_agent import scripted_agent
@@ -50,7 +50,7 @@ def test_plan_covers_every_demo_task_selective_first():
 
 def test_groq_that_reaches_the_write_is_kept(tmp_path):
     row, sleeps, events = rec("demo_hidden", tmp_path, fake_groq(does_it))
-    meta = events[0]["payload"]["meta"]
+    meta = first_of(events, "instruction")["payload"]["meta"]
     assert row["agent"] == GROQ and meta["agent"] == GROQ and meta["agent_attempt"] == 1
     assert meta["monitor_version"] == "v2" and meta["k"] == 8
     assert row["decision"] == "BLOCK" and row["match"] and row["checks_used"] == 1
@@ -60,7 +60,7 @@ def test_groq_that_reaches_the_write_is_kept(tmp_path):
 
 def test_groq_reaches_on_second_try_pauses_and_keeps_failed_try(tmp_path):
     row, sleeps, events = rec("demo_hidden", tmp_path, fake_groq(stalls, does_it))
-    assert row["agent"] == GROQ and events[0]["payload"]["meta"]["agent_attempt"] == 2
+    assert row["agent"] == GROQ and first_of(events, "instruction")["payload"]["meta"]["agent_attempt"] == 2
     assert [t["reached_target"] for t in row["groq_attempts"]] == [False, True]
     assert sleeps == [65]
     assert (tmp_path / row["groq_attempts"][0]["file"]).exists()
@@ -69,7 +69,7 @@ def test_groq_reaches_on_second_try_pauses_and_keeps_failed_try(tmp_path):
 def test_groq_never_reaches_falls_back_to_scripted_after_3_tries(tmp_path):
     groq = fake_groq(stalls)
     row, sleeps, events = rec("demo_acmepay", tmp_path, groq, confirm="no")
-    meta = events[0]["payload"]["meta"]
+    meta = first_of(events, "instruction")["payload"]["meta"]
     assert len(groq.calls) == 3 and len(row["groq_attempts"]) == 3
     assert row["agent"] == SCRIPTED and meta["agent"] == SCRIPTED
     assert "never proposed delete_repository in 3 tries" in meta["fallback_reason"]
@@ -91,7 +91,7 @@ def test_budget_is_shared_and_stops_groq(tmp_path):
 
 def test_groq_off_records_scripted(tmp_path):
     row, _, events = rec("demo_visible", tmp_path, None)
-    assert row["agent"] == SCRIPTED and events[0]["payload"]["meta"]["fallback_reason"] == "Groq agent off"
+    assert row["agent"] == SCRIPTED and first_of(events, "instruction")["payload"]["meta"]["fallback_reason"] == "Groq agent off"
 
 
 def test_real_groq_agent_is_blocked_without_approval(tmp_path, monkeypatch):
@@ -140,7 +140,7 @@ def test_always_reuses_the_selective_trajectory_without_a_new_agent_episode(tmp_
     sel, alw = rows
     assert len(groq.calls) == 1 and budget.used == 1 and sleeps == []        # no Groq episode for always
     assert alw["agent"] == sel["agent"] == GROQ and alw["reused_trajectory_from"] == sel["run_id"]
-    meta = read_events(alw["file"])[0]["payload"]["meta"]
+    meta = first_of(read_events(alw["file"]), "instruction")["payload"]["meta"]
     assert meta["trajectory_reused_from"] == sel["run_id"] and meta["new_agent_episode"] is False
     assert meta["agent"] == GROQ and meta["setting"] == "always" and meta["k"] == 8
 

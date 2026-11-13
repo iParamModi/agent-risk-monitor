@@ -3,8 +3,10 @@
     sink = JsonlSink(OUT_DIR / f"{run_id}.jsonl")
     run_agent(..., on_event=sink)          # every Event is appended as one JSON line
 
-The run log shows only what the agent and the monitor saw, plus state_diff (what the action changed). The diff
-comes from model_dump of the states before and after the action, never from the hidden fields of one resource.
+The run log is for the HUMAN viewer (the replay website). It starts with company_snapshot (the full initial company
+state and which facts are hidden from the monitor, src/live/company.py) and has a state_diff after every write
+(what the action changed, as full rows, so src.live.company.state_at rebuilds the exact state at any step). The
+monitor never reads the run log: its prompt is built from the visible record and gateway results only.
 """
 import json
 import re
@@ -20,7 +22,8 @@ from src.common.io import REPO_ROOT
 
 OUT_DIR = REPO_ROOT / "outputs" / "live"
 
-EventType = Literal["instruction", "tool_call", "observation", "risk_action", "policies", "monitor_pass1",
+EventType = Literal["company_snapshot", "instruction", "tool_call", "observation", "risk_action", "policies",
+                    "monitor_pass1",
                     "gateway_check", "monitor_pass2", "decision", "confirm_request", "confirm_answer",
                     "action_applied", "action_refused", "state_diff", "final_response"]
 EVENT_TYPES: tuple[str, ...] = EventType.__args__
@@ -80,22 +83,12 @@ def read_events(path: str | Path) -> list[dict]:
     return [json.loads(line) for line in Path(path).read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
-# What the replay shows of a changed item: names and visible fields, never the hidden ones.
-_SHOWN = {"files": ("path", "owner", "sharing", "modified"), "repos": ("name", "owner", "visibility", "archived"),
-          "permissions": None, "accounts": ("account_id", "balance_inr"), "customers": ("customer_id", "status"),
-          "folders": ("path", "sharing")}
-
-
-def _shown(collection: str, item):
-    fields = _SHOWN.get(collection)
-    if fields is None or not isinstance(item, dict):
-        return item
-    return {k: item.get(k) for k in fields if k in item}
-
-
 def state_diff(before, after) -> dict:
-    """{"changed": bool, "changes": [{"collection", "key", "kind": added|removed|changed, "before", "after"}]}
-    over the dict collections of two CompanyStates (lists such as sent/transactions: counted as added items)."""
+    """{"changed": bool, "changes": [{"collection", "key", "kind", "before", "after"}]} between two CompanyStates,
+    exact enough to rebuild `after` from `before` (src.live.company.apply_diff):
+      dict collections: one change per key, kind added | removed | changed, with the full rows
+      lists (inbox, sent, transactions, ...): appended items as kind "added"; any other change replaces the list
+      other fields (current_user): kind "replaced" with the whole value."""
     a, b = before.model_dump(mode="json"), after.model_dump(mode="json")
     changes = []
     for coll in sorted(set(a) | set(b)):
@@ -105,18 +98,20 @@ def state_diff(before, after) -> dict:
         if isinstance(x, dict) and isinstance(y, dict):
             for key in sorted(set(x) | set(y)):
                 if key not in y:
-                    changes.append({"collection": coll, "key": key, "kind": "removed",
-                                    "before": _shown(coll, x[key]), "after": None})
+                    changes.append({"collection": coll, "key": key, "kind": "removed", "before": x[key], "after": None})
                 elif key not in x:
-                    changes.append({"collection": coll, "key": key, "kind": "added",
-                                    "before": None, "after": _shown(coll, y[key])})
+                    changes.append({"collection": coll, "key": key, "kind": "added", "before": None, "after": y[key]})
                 elif x[key] != y[key]:
-                    changes.append({"collection": coll, "key": key, "kind": "changed",
-                                    "before": _shown(coll, x[key]), "after": _shown(coll, y[key])})
-        elif isinstance(x, list) and isinstance(y, list):
-            for item in y[len(x):]:
-                changes.append({"collection": coll, "key": str(len(x)), "kind": "added", "before": None,
-                                "after": item})
+                    changes.append({"collection": coll, "key": key, "kind": "changed", "before": x[key],
+                                    "after": y[key]})
+        elif isinstance(x, list) and isinstance(y, list) and y[:len(x)] == x:
+            for i, item in enumerate(y[len(x):], start=len(x)):
+                changes.append({"collection": coll, "key": str(i), "kind": "added", "before": None, "after": item})
         else:
-            changes.append({"collection": coll, "key": "", "kind": "changed", "before": x, "after": y})
+            changes.append({"collection": coll, "key": "", "kind": "replaced", "before": x, "after": y})
     return {"changed": bool(changes), "changes": changes}
+
+
+def first_of(events: list[dict], type: str) -> dict:
+    """The first event of a type in a read log (company_snapshot comes before instruction since 13 Nov)."""
+    return next(e for e in events if e["type"] == type)
