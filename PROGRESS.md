@@ -1,7 +1,7 @@
 # Project Progress
 
 > Check this file before starting any work. Update it and push to GitHub after every change.
-> Last updated: 2026-11-13 by Prateek
+> Last updated: 2026-11-13 by Meet
 >
 > **Real accounts: Prateek only, cost rules in docs/DEPLOYMENT_RULES.md**
 
@@ -119,6 +119,7 @@ How our monitor really runs on our records: diagrams of the loop and the 4 setti
 
 ## Activity Log (newest first)
 
+- 2026-11-13, Meet: replied to Prateek (`docs/messages/2026-11-13_to_Prateek_adapter_path.md`): the final adapter is the private Kaggle Dataset `meet6868/agent-risk-adapter-final`; its path in a notebook (glob for `adapter_config.json`), setup (uninstall torchao, `--version v2`), download outside Kaggle, Hugging Face copy `meet5568/Agent-Risk/phaseB_v2`. Kaggle sharing with `prateek99491` to be confirmed here when done.
 - 2026-11-13, Meet: shared the PRIVATE Kaggle dataset `meet6868/agent-risk-adapter-final` with Prateek (`prateek99491`, Editor); demo recording unblocked
 - 2026-11-13, Prateek: adapter still not accessible for the demo. `agent-risk-adapter-final` is a Kaggle **Dataset** (input of the final eval notebooks), not a Model/Notebook; how to find and share it: `docs/messages/2026-11-13_to_Meet_share_adapter.md`
 - 2026-11-12, Meet: all three adapters, our data and the final runs uploaded to the PRIVATE Hugging Face repo `meet5568/Agent-Risk` with model, data and results cards (phaseA, phaseB_v1, phaseB_v2 = final). Prateek still needs `meet6868/agent-risk-adapter-final` shared on Kaggle with `prateek99491` (web UI, Meet).
