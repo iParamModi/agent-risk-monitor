@@ -154,3 +154,52 @@ def test_cli_groq_agent_is_blocked_without_approval(tmp_path, monkeypatch):
     monkeypatch.delenv("ALLOW_PAID_CALLS", raising=False)
     with pytest.raises(PaidCallBlocked):
         main(["--task", "demo_hidden", "--model", "fake", "--agent", "groq", "--out", str(tmp_path)])
+
+
+# --- live = eval: every system setting comes from src.monitor.case_inputs.VERSIONS["v2"] (decisions.md 2026-11-12)
+
+def test_live_gate_settings_equal_versions_v2():
+    import inspect
+
+    from src.live.monitor_gate import MonitorGate
+    from src.monitor.case_inputs import VERSIONS
+    gate = monitor_gate(RuleFakeMonitor(), embedder=KeywordOnlyEmbedder())
+    assert gate.version == "v2" and gate.config == VERSIONS["v2"]
+    assert gate.k == VERSIONS["v2"]["shown"] == 8
+    assert gate.settings == {"monitor_version": "v2", "k": 8, **VERSIONS["v2"]}
+    assert gate.siblings is not None                   # second-source check on, as in eval v2
+    assert "k" not in inspect.signature(MonitorGate).parameters      # no second place to set k
+    assert "k" not in inspect.signature(monitor_gate).parameters
+    with pytest.raises(TypeError):
+        monitor_gate(RuleFakeMonitor(), k=3, embedder=KeywordOnlyEmbedder())
+
+
+def test_live_run_uses_v2_policies_hints_and_logs_version(monkeypatch):
+    import src.live.monitor_gate as mg
+    from src.monitor.case_inputs import VERSIONS
+    from src.policies.store import load_policy_tags
+    seen = {}
+    real = mg.run_monitor
+
+    def spy(record, setting, model, **kw):
+        seen.update(kw)
+        return real(record, setting, model, **kw)
+    monkeypatch.setattr(mg, "run_monitor", spy)
+    _, _, sink, _ = run("demo_hidden")
+    v2 = VERSIONS["v2"]
+    shown = of(sink, "policies")[0]["policies"]
+    assert len(shown) == v2["shown"] == 8
+    tagged = load_policy_tags()
+    assert all("delete_file" in tagged.get(p["policy_id"], ()) for p in shown)       # tag filter on
+    assert seen["hints"] is v2["hints"] and seen["second_ask"] is bool(v2.get("second_ask"))
+    assert (seen["siblings"] is not None) is v2["second_source"]
+    decision = of(sink, "decision")[0]
+    assert decision["monitor_version"] == "v2" and decision["k"] == 8
+    assert all("latency_s" in p for p in of(sink, "monitor_pass1"))
+
+
+def test_cli_log_meta_has_agent_version_and_k(tmp_path):
+    from scripts.run_live import main
+    row = main(["--task", "demo_visible", "--model", "fake", "--out", str(tmp_path)])
+    meta = read_events(row["file"])[0]["payload"]["meta"]
+    assert meta["agent"] == "scripted" and meta["monitor_version"] == "v2" and meta["k"] == 8

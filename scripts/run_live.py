@@ -10,7 +10,10 @@
             tier, through the cost guard (docs/DEPLOYMENT_RULES.md). Default: fake.
 --embedder  keyword = BM25 only (CPU, no sentence-transformers); bge = bge-base-en-v1.5 + BM25 (the evaluation
             retriever). Default: keyword with --model fake, bge otherwise.
-Writes <out>/<run_id>.jsonl (one event per line, src/live/events.py) and prints one summary line (JSON).
+--version   the monitor system (src.monitor.case_inputs.VERSIONS); default v2 = the final system. k (v2: 8 policies),
+            the tag filter, the second-source check and the hints all come from that entry; there is no --k.
+Writes <out>/<run_id>.jsonl (one event per line, src/live/events.py) and prints one summary line (JSON). The first
+event (instruction) carries meta: "agent" ("groq:<model>" or "scripted"), "monitor_version", "k", setting, adapter.
 """
 import argparse
 import json
@@ -29,6 +32,8 @@ from lma_agent.agent.user_sim import ScriptedUser  # noqa: E402
 from lma_agent.sim.seed_state import apply_overrides, build_seed_state  # noqa: E402
 from lma_agent.tasks.load_tasks import load_tasks  # noqa: E402
 from src.live.events import OUT_DIR, JsonlSink, new_run_id  # noqa: E402
+from src.live.demo_record import SCRIPTED, groq_name  # noqa: E402
+from src.monitor.case_inputs import VERSIONS  # noqa: E402
 from src.monitor.settings import SETTINGS  # noqa: E402
 
 DEMO_TASKS = ROOT / "lma_agent" / "tasks" / "demo_tasks.yaml"
@@ -49,8 +54,7 @@ def parse_args(argv=None):
     ap.add_argument("--agent", choices=("fake", "groq"), default="fake")
     ap.add_argument("--embedder", choices=("keyword", "bge"), default=None)
     ap.add_argument("--setting", choices=SETTINGS, default="selective")
-    ap.add_argument("--k", type=int, default=3, help="retrieved policies shown to the monitor")
-    ap.add_argument("--version", choices=("v1", "v2"), default="v2")
+    ap.add_argument("--version", choices=tuple(VERSIONS), default="v2")
     ap.add_argument("--confirm", choices=("yes", "no"), default=None,
                     help="the user's answer to ASK_CONFIRMATION (default: the task's user_confirms)")
     ap.add_argument("--out", default=str(OUT_DIR))
@@ -77,13 +81,13 @@ def build_model(args):
 def build_agent(args, task_id: str):
     if args.agent == "fake":
         from src.live.scripted_agent import scripted_agent
-        return scripted_agent(task_id), "scripted"
+        return scripted_agent(task_id), SCRIPTED
     from src.service.cost_guard import require_paid_ok
     require_paid_ok(f"groq agent task {task_id}", "B", 0.0, command=" ".join(sys.argv), service="groq",
                     unit_price="free tier", price_source="https://console.groq.com/settings/billing/plans")
     from lma_agent.agent.llm import make_client
     from lma_agent.config import MODEL
-    return make_client(), MODEL
+    return make_client(), groq_name(MODEL)
 
 
 def build_embedder(args):
@@ -121,10 +125,10 @@ def run(args) -> dict:
     model = build_model(args)
     client, agent_name = build_agent(args, task.task_id)
     embedder, embedder_name = build_embedder(args)
-    gate = monitor_gate(model, setting=args.setting, k=args.k, version=args.version, embedder=embedder,
-                        task=task, run_id=run_id)
+    gate = monitor_gate(model, setting=args.setting, version=args.version, embedder=embedder, task=task,
+                        run_id=run_id)
     meta = {"monitor_model": model.name, "adapter": args.adapter, "agent": agent_name, "setting": args.setting,
-            "k": args.k, "version": args.version, "embedder": embedder_name, "confirm": "yes" if confirms else "no",
+            **gate.settings, "embedder": embedder_name, "confirm": "yes" if confirms else "no",
             "recorded_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "expected": task.expected,
             "fake_monitor": args.model == "fake"}
     state = apply_overrides(build_seed_state(task.state_seed), task.overrides)

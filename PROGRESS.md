@@ -36,7 +36,7 @@ How our monitor really runs on our records: diagrams of the loop and the 4 setti
 
 | Task | Who | Started | Status / Notes |
 |------|-----|---------|----------------|
-| **Deployment demo**: live gate (`monitor_gate`, gateway `for_state`, events), 3 new demo tasks, real recorded runs on Kaggle (final adapter), replay website | Prateek | 2026-11-12 | **Part 1 done** (live gate, `for_state`, events, demo tasks, `scripts/run_live.py`, cost guard; FakeModel on CPU). Next: Kaggle recording notebook (adapter shared 13 Nov), then the replay website |
+| **Deployment demo**: live gate (`monitor_gate`, gateway `for_state`, events), 3 new demo tasks, real recorded runs on Kaggle (final adapter), replay website | Prateek | 2026-11-12 | **Part 1 done** (live gate, `for_state`, events, demo tasks, `scripts/run_live.py`, cost guard; FakeModel on CPU). **Part 2 done 13 Nov**: live gate reads every setting from `VERSIONS["v2"]` (k=8, final system), recording notebook `kaggle/demo_record/demo_record.ipynb` (Groq agent, 3 tries, scripted fallback). Next: Prateek runs it on Kaggle, then the replay website (must show `meta.agent` and `monitor v2`) |
 
 ## Next Up
 
@@ -119,6 +119,7 @@ How our monitor really runs on our records: diagrams of the loop and the 4 setti
 
 ## Activity Log (newest first)
 
+- 2026-11-13, Prateek: demo recording part 2. Live gate now uses the full system v2 from `src.monitor.case_inputs.VERSIONS["v2"]` (k=8, tag filter, second-source check, hints, eval retrieval query); no separate k anymore, test asserts live == VERSIONS["v2"]. Was k=3 + v2 settings, which matched neither eval system. Phase B trained with 3 policies (`build_sft.py` N_POLICIES), final eval (v2) shows 8. `src/live/demo_record.py` (Groq agent up to 3 tries per run, scripted fallback, pauses for Groq's 8k tokens/min, shared Groq budget 5, every log has agent / monitor_version / k) + `kaggle/demo_record/demo_record.ipynb` (adapter path in one CONFIG value, prints adapter config, prompt tokens, latency and peak GPU per run). 645 tests pass (1 old torch-only failure)
 - 2026-11-13, Meet: replied to Prateek (`docs/messages/2026-11-13_to_Prateek_adapter_path.md`): the final adapter is the private Kaggle Dataset `meet6868/agent-risk-adapter-final`; its path in a notebook (glob for `adapter_config.json`), setup (uninstall torchao, `--version v2`), download outside Kaggle, Hugging Face copy `meet5568/Agent-Risk/phaseB_v2`. Shared with `prateek99491` on 13 Nov (line below).
 - 2026-11-13, Meet: shared the PRIVATE Kaggle dataset `meet6868/agent-risk-adapter-final` with Prateek (`prateek99491`, Editor); demo recording unblocked
 - 2026-11-13, Prateek: adapter still not accessible for the demo. `agent-risk-adapter-final` is a Kaggle **Dataset** (input of the final eval notebooks), not a Model/Notebook; how to find and share it: `docs/messages/2026-11-13_to_Meet_share_adapter.md`
