@@ -1,1 +1,119 @@
-"""FastAPI: /v1/check, /v1/continue, /health."""
+"""Replay website for the recorded demo runs, and the live endpoints locked off (CLAUDE.md, Cost safety).
+
+    uvicorn src.service.app:app --port 8000        # or: python -m src.service.app
+    open http://127.0.0.1:8000/
+
+It only replays logs: no model, no GPU, no API call. Runs come from
+    outputs/live/demo/*.jsonl        real runs (kaggle/demo_record/demo_record.ipynb), source "real"
+    outputs/live/demo/fake/*.jsonl   CPU fake monitor (scripts/record_demo_fake.py), source "fake": the page shows a
+                                     FAKE MONITOR banner on them
+Tries in attempts/ are never listed (they are kept in the folder for honesty, not replayed).
+
+GET /                         the page (src/service/static/replay.html)
+GET /health
+GET /api/runs                 one summary per run: task, setting, agent, monitor version and k, decision, checks
+GET /api/runs/{source}/{id}   the run's events, in order
+/api/live/*  (any method)     403 unless LIVE_MODE=on AND header X-Live-Password equals LIVE_PASSWORD (constant-time
+                              compare) AND the cost guard passes. The live service was cut on 12 Nov and has no priced
+                              backend, so the guard is asked with Tier C and always refuses: these stay 403.
+"""
+import hmac
+import json
+import os
+import re
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse
+
+from src.common.io import REPO_ROOT
+from src.service.cost_guard import PaidCallBlocked, require_paid_ok
+
+DEMO_DIR = REPO_ROOT / "outputs" / "live" / "demo"
+STATIC = Path(__file__).resolve().parent / "static"
+RUN_ID = re.compile(r"^[A-Za-z0-9_.-]+$")
+
+
+def default_sources() -> dict[str, Path]:
+    return {"real": DEMO_DIR, "fake": DEMO_DIR / "fake"}
+
+
+def read_log(path: Path) -> list[dict]:
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+def summarize(events: list[dict], source: str) -> dict:
+    first = events[0] if events else {}
+    payload = first.get("payload", {})
+    meta = payload.get("meta", {})
+    decisions = [e["payload"] for e in events if e["type"] == "decision"]
+    final = next((e["payload"] for e in reversed(events) if e["type"] == "final_response"), {})
+    d = decisions[0] if decisions else {}
+    return {
+        "source": source, "run_id": first.get("run_id"), "task": payload.get("task_id"), "prompt": payload.get("prompt"),
+        "setting": meta.get("setting"), "confirm": meta.get("confirm"), "agent": meta.get("agent"),
+        "monitor_version": meta.get("monitor_version"), "k": meta.get("k"),
+        "fake_monitor": bool(meta.get("fake_monitor")) or source == "fake", "monitor_model": meta.get("monitor_model"),
+        "reused_from": meta.get("trajectory_reused_from"), "fallback_reason": meta.get("fallback_reason"),
+        "agent_attempt": meta.get("agent_attempt"), "recorded_at": meta.get("recorded_at"),
+        "expected": meta.get("expected"), "decision": d.get("decision"), "checks_used": d.get("checks_used"),
+        "checks_always": d.get("checks_always"), "status": final.get("status"), "events": len(events),
+    }
+
+
+def create_app(sources: dict[str, Path] | None = None) -> FastAPI:
+    app = FastAPI(title="Agent risk monitor: recorded demo runs", docs_url=None, redoc_url=None)
+    roots = sources if sources is not None else default_sources()
+
+    def logs() -> dict[tuple[str, str], Path]:
+        out = {}
+        for source, folder in roots.items():
+            for path in sorted(Path(folder).glob("*.jsonl")):          # top level only: never attempts/
+                out[(source, path.stem)] = path
+        return out
+
+    @app.get("/health")
+    def health():
+        return {"status": "ok", "mode": "replay", "live_mode": os.environ.get("LIVE_MODE", "off") == "on"}
+
+    @app.get("/api/runs")
+    def runs():
+        return [summarize(read_log(path), source) for (source, _), path in logs().items()]
+
+    @app.get("/api/runs/{source}/{run_id}")
+    def run(source: str, run_id: str):
+        if not RUN_ID.match(run_id):
+            raise HTTPException(404, "no such run")
+        path = logs().get((source, run_id))
+        if path is None:
+            raise HTTPException(404, "no such run")
+        events = read_log(path)
+        return {"summary": summarize(events, source), "events": events}
+
+    @app.api_route("/api/live/{rest:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
+    def live(rest: str, request: Request):
+        if os.environ.get("LIVE_MODE", "off") != "on":
+            raise HTTPException(403, "live mode is off")
+        expected = os.environ.get("LIVE_PASSWORD", "")
+        given = request.headers.get("x-live-password", "")
+        if not expected or not hmac.compare_digest(given.encode(), expected.encode()):
+            raise HTTPException(403, "wrong or missing live password")
+        try:
+            require_paid_ok(f"live request /api/live/{rest}", "C", None, service="live monitor",
+                            command=f"{request.method} /api/live/{rest}")
+        except PaidCallBlocked as err:
+            raise HTTPException(403, str(err))
+        return JSONResponse({"detail": "the live service is not built (cut on 12 Nov)"}, status_code=501)
+
+    @app.get("/")
+    def page():
+        return FileResponse(STATIC / "replay.html", media_type="text/html")
+
+    return app
+
+
+app = create_app()
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="127.0.0.1", port=int(os.environ.get("PORT", "8000")))

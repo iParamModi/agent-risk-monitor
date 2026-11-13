@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monitor Run Replay</title>
+<style>
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --ink: #1d2330; --muted: #5b6475; --line: #dde1e8; --soft: #eef1f5;
+  --accent: #2f5bd3; --block: #c62f3a; --block-bg: #fde8ea; --ask: #a85d00; --ask-bg: #fff1dc;
+  --allow: #1d7f46; --allow-bg: #e3f5ea; --esc: #6a3fb5; --esc-bg: #efe7fb; --fake: #8a5a00; --fake-bg: #fff4d6;
+  --risk-bg: #fff6e8; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12151b; --panel: #1a1e26; --ink: #e6e9ef; --muted: #9aa3b4; --line: #2c323d; --soft: #222833;
+    --accent: #7ea2ff; --block: #ff7a84; --block-bg: #3a1d22; --ask: #ffb259; --ask-bg: #3a2a14;
+    --allow: #5fd394; --allow-bg: #173225; --esc: #c3a3ff; --esc-bg: #2a2140; --fake: #ffcf5c; --fake-bg: #3a2f12;
+    --risk-bg: #2e2617;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12151b; --panel: #1a1e26; --ink: #e6e9ef; --muted: #9aa3b4; --line: #2c323d; --soft: #222833;
+  --accent: #7ea2ff; --block: #ff7a84; --block-bg: #3a1d22; --ask: #ffb259; --ask-bg: #3a2a14;
+  --allow: #5fd394; --allow-bg: #173225; --esc: #c3a3ff; --esc-bg: #2a2140; --fake: #ffcf5c; --fake-bg: #3a2f12;
+  --risk-bg: #2e2617;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+header { padding: 18px 16px 8px; max-width: 1280px; margin: 0 auto; }
+h1 { font-size: 20px; margin: 0 0 4px; }
+.sub { color: var(--muted); margin: 0; font-size: 14px; }
+main { display: grid; grid-template-columns: 300px 1fr; gap: 16px; padding: 12px 16px 40px; max-width: 1280px; margin: 0 auto; }
+@media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; min-width: 0; }
+.sources { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+button { font: inherit; color: var(--ink); background: var(--soft); border: 1px solid var(--line); border-radius: 7px; padding: 5px 10px; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button[aria-pressed="true"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+button:disabled { opacity: .45; cursor: default; }
+.task { margin: 12px 0 4px; font-weight: 600; font-size: 13px; color: var(--muted); text-transform: none; }
+.run { display: block; width: 100%; text-align: left; margin: 4px 0; padding: 8px; background: var(--panel); }
+.run[aria-current="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.chip { display: inline-block; font-size: 12px; padding: 1px 7px; border-radius: 999px; background: var(--soft); border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.chip.groq { color: var(--accent); border-color: var(--accent); }
+.chip.fake { color: var(--fake); background: var(--fake-bg); border-color: var(--fake); }
+.chip.reuse { color: var(--esc); border-color: var(--esc); }
+.dec { font-weight: 700; font-size: 12px; padding: 1px 7px; border-radius: 6px; }
+.dec.BLOCK { color: var(--block); background: var(--block-bg); }
+.dec.ASK_CONFIRMATION { color: var(--ask); background: var(--ask-bg); }
+.dec.ALLOW { color: var(--allow); background: var(--allow-bg); }
+.dec.ESCALATE { color: var(--esc); background: var(--esc-bg); }
+.banner { border: 1px solid var(--fake); background: var(--fake-bg); color: var(--fake); border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; font-weight: 600; }
+.compare { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 14px; }
+.compare th, .compare td { border-bottom: 1px solid var(--line); padding: 6px; text-align: left; vertical-align: top; }
+.compare th { color: var(--muted); font-weight: 600; }
+.tablewrap { overflow-x: auto; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; }
+.prompt { font-size: 16px; margin: 0; }
+.controls { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; position: sticky; top: 0; background: var(--panel); padding: 8px 0; z-index: 1; border-bottom: 1px solid var(--line); }
+.controls .pos { color: var(--muted); font-size: 13px; margin-left: auto; }
+.timeline { list-style: none; margin: 12px 0 0; padding: 0; }
+.ev { border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 8px; padding: 8px 10px; margin: 8px 0; background: var(--panel); }
+.ev.hidden { display: none; }
+.ev.current { box-shadow: 0 0 0 2px var(--accent); }
+.ev .who { font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: .02em; }
+.ev.user { border-left-color: var(--accent); }
+.ev.agent { border-left-color: var(--muted); }
+.ev.risk { border-left-color: var(--ask); background: var(--risk-bg); }
+.ev.monitor { border-left-color: var(--esc); }
+.ev.gateway { border-left-color: var(--allow); }
+.ev.decision.BLOCK { border-left-color: var(--block); }
+.ev.decision.ASK_CONFIRMATION { border-left-color: var(--ask); }
+.ev.decision.ALLOW { border-left-color: var(--allow); }
+.ev.decision.ESCALATE { border-left-color: var(--esc); }
+.big { font-size: 18px; margin: 4px 0; }
+code, pre { font-family: var(--mono); font-size: 12.5px; }
+pre { background: var(--soft); border-radius: 6px; padding: 8px; overflow-x: auto; margin: 6px 0 0; white-space: pre-wrap; word-break: break-word; }
+details summary { cursor: pointer; color: var(--muted); font-size: 13px; margin-top: 4px; }
+ol.pol { margin: 6px 0 0; padding-left: 20px; font-size: 13.5px; }
+ol.pol li.cited { font-weight: 700; }
+.muted { color: var(--muted); }
+.empty { color: var(--muted); padding: 24px 4px; }
+.theme { float: right; }
+select { font: inherit; color: var(--ink); background: var(--soft); border: 1px solid var(--line); border-radius: 7px; padding: 4px 6px; }
+</style>
+</head>
+<body>
+<header>
+  <button class="theme" id="theme" type="button" aria-label="Switch colour theme">Theme</button>
+  <h1>Agent risk monitor: recorded demo runs</h1>
+  <p class="sub">Replays of recorded runs. Nothing runs live on this page: no model, no agent, no API call.</p>
+</header>
+<main>
+  <nav class="panel" aria-label="Runs">
+    <div class="sources" id="sources"></div>
+    <div id="runlist"><p class="empty">Loading runs...</p></div>
+  </nav>
+  <section class="panel" aria-live="polite">
+    <div class="tablewrap" id="compare"></div>
+    <div id="view"><p class="empty">Pick a run on the left.</p></div>
+  </section>
+</main>
+<script>
+"use strict";
+const DEC_LABEL = { BLOCK: "BLOCK", ASK_CONFIRMATION: "ASK CONFIRMATION", ALLOW: "ALLOW", ESCALATE: "ESCALATE" };
+const TASK_LABEL = {
+  demo_visible: "Delete old reports (sharing visible)",
+  demo_hidden: "Delete old reports (sharing hidden)",
+  demo_acmepay: "Delete the AcmePay repository",
+};
+const TASK_ORDER = Object.keys(TASK_LABEL);
+const taskRank = t => TASK_ORDER.includes(t) ? TASK_ORDER.indexOf(t) : TASK_ORDER.length;
+const settingRank = s => s === "selective" ? 0 : 1;
+const byStory = (a, b) => taskRank(a.task) - taskRank(b.task) || settingRank(a.setting) - settingRank(b.setting)
+  || String(b.confirm).localeCompare(String(a.confirm));
+const state = { runs: [], source: null, current: null, events: [], shown: 0, timer: null, speed: 1200 };
+
+function el(tag, attrs, ...kids) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v === null || v === undefined || v === false) continue;
+    if (k === "class") n.className = v; else if (k === "text") n.textContent = v;
+    else if (k.startsWith("on")) n.addEventListener(k.slice(2), v); else n.setAttribute(k, v === true ? "" : v);
+  }
+  for (const kid of kids.flat()) if (kid !== null && kid !== undefined) n.append(kid.nodeType ? kid : String(kid));
+  return n;
+}
+const chip = (text, cls) => el("span", { class: "chip " + (cls || ""), text });
+const decBadge = d => d ? el("span", { class: "dec " + d, text: DEC_LABEL[d] || d }) : el("span", { class: "muted", text: "no decision" });
+const json = v => el("pre", { text: JSON.stringify(v, null, 2) });
+const fold = (label, v) => el("details", {}, el("summary", { text: label }), json(v));
+const args = a => Object.entries(a || {}).map(([k, v]) => `${k}=${typeof v === "string" ? v : JSON.stringify(v)}`).join(", ");
+const agentChip = r => r.agent && r.agent.startsWith("groq:")
+  ? chip("agent: Groq " + r.agent.slice(5), "groq") : chip("agent: " + (r.agent || "unknown"));
+const monitorChip = r => chip(`monitor ${r.monitor_version || "?"} · k=${r.k ?? "?"}`);
+
+function runChips(r) {
+  return el("div", { class: "chips" },
+    chip(r.setting), r.confirm ? chip("user says " + r.confirm) : null, agentChip(r), monitorChip(r),
+    r.reused_from ? chip("trajectory reused", "reuse") : null, r.fake_monitor ? chip("FAKE MONITOR", "fake") : null);
+}
+
+async function load() {
+  try {
+    const res = await fetch("api/runs");
+    state.runs = (await res.json()).sort(byStory);
+  } catch (e) {
+    document.getElementById("runlist").replaceChildren(el("p", { class: "empty", text: "Could not load runs." }));
+    return;
+  }
+  const sources = [...new Set(state.runs.map(r => r.source))].sort((a, b) => a === "real" ? -1 : b === "real" ? 1 : 0);
+  const [hashSource, hashRun] = decodeURIComponent(location.hash.slice(1)).split("/");
+  const linked = state.runs.find(r => r.source === hashSource && r.run_id === hashRun);
+  state.source = linked ? linked.source : sources[0] || null;
+  const box = document.getElementById("sources");
+  box.replaceChildren(...sources.map(s => el("button", {
+    type: "button", "aria-pressed": String(s === state.source), "data-source": s,
+    text: s === "real" ? "Real runs (Kaggle)" : "Fake monitor (CPU)",
+    onclick: () => { state.source = s; for (const b of box.children) b.setAttribute("aria-pressed", String(b.dataset.source === s)); renderList(); renderCompare(); },
+  })));
+  renderList(); renderCompare();
+  const first = linked || state.runs.find(r => r.source === state.source);
+  if (first) openRun(first, new URLSearchParams(location.search).has("all"));
+}
+
+function renderList() {
+  const list = document.getElementById("runlist");
+  const runs = state.runs.filter(r => r.source === state.source);
+  if (!runs.length) { list.replaceChildren(el("p", { class: "empty", text: "No runs recorded yet." })); return; }
+  const byTask = {};
+  for (const r of runs) (byTask[r.task] ||= []).push(r);
+  list.replaceChildren(...Object.entries(byTask).flatMap(([task, rs]) => [
+    el("div", { class: "task", text: TASK_LABEL[task] || task }),
+    ...rs.map(r =>
+      el("button", { class: "run", type: "button", "aria-current": String(state.current === r), onclick: () => openRun(r) },
+        el("div", {}, decBadge(r.decision), " ", el("span", { class: "muted", text: `${r.checks_used ?? 0} check(s)` })),
+        runChips(r))),
+  ]));
+}
+
+function renderCompare() {
+  const box = document.getElementById("compare");
+  const runs = state.runs.filter(r => r.source === state.source);
+  if (!runs.length) { box.replaceChildren(); return; }
+  const rows = {};
+  for (const r of runs) {
+    const key = r.task + "|" + r.confirm;
+    (rows[key] ||= { task: r.task, confirm: r.confirm })[r.setting] = r;
+  }
+  const cell = r => r ? el("td", {}, decBadge(r.decision), el("div", { class: "muted", text: `${r.checks_used ?? 0} of ${r.checks_always ?? "?"} checks` })) : el("td", { class: "muted", text: "not recorded" });
+  box.replaceChildren(el("p", { class: "muted", style: "margin:0 0 4px;font-size:13px", text: "Same agent trajectory, two monitor settings: selective asks only for the checks it needs; always runs every check in the action's table." }),
+    el("table", { class: "compare" },
+    el("thead", {}, el("tr", {}, el("th", { text: "Task" }), el("th", { text: "User answer" }), el("th", { text: "Expected" }),
+      el("th", { text: "Selective" }), el("th", { text: "Always" }))),
+    el("tbody", {}, ...Object.values(rows).sort(byStory).map(row => {
+      const any = row.selective || row.always;
+      const exp = any && any.expected ? `${any.expected.decision}, ${any.expected.checks} check(s)` : "";
+      return el("tr", {}, el("td", { text: TASK_LABEL[row.task] || row.task }), el("td", { text: row.confirm || "" }),
+        el("td", { class: "muted", text: exp }), cell(row.selective), cell(row.always));
+    }))));
+}
+
+async function openRun(r, showAll) {
+  stop();
+  state.current = r;
+  history.replaceState(null, "", "#" + encodeURIComponent(r.source + "/" + r.run_id));
+  renderList();
+  const res = await fetch(`api/runs/${encodeURIComponent(r.source)}/${encodeURIComponent(r.run_id)}`);
+  const data = await res.json();
+  state.events = data.events;
+  state.shown = showAll ? state.events.length : 1;
+  renderRun(data.summary);
+}
+
+function renderRun(s) {
+  const exp = s.expected ? `expected: ${s.expected.decision}, ${s.expected.checks} check(s)${s.expected.check ? " (" + s.expected.check + ")" : ""}` : null;
+  const view = document.getElementById("view");
+  view.replaceChildren(...[
+    s.fake_monitor ? el("div", { class: "banner", role: "note", text: "FAKE MONITOR: a rule-based stand-in recorded on CPU, NOT the trained model. These runs exist to build and test this page." }) : null,
+    el("p", { class: "prompt" }, el("strong", { text: "Task: " }), s.prompt || ""),
+    el("div", { class: "meta" }, chip(s.setting), s.confirm ? chip("user answers " + s.confirm) : null, agentChip(s), monitorChip(s),
+      s.reused_from ? chip("trajectory reused from " + s.reused_from, "reuse") : null,
+      s.fallback_reason ? chip("scripted because " + s.fallback_reason) : null,
+      s.agent_attempt ? chip("Groq try " + s.agent_attempt) : null,
+      exp ? chip(exp) : null, s.monitor_model ? chip("model: " + s.monitor_model) : null),
+    s.reused_from ? el("p", { class: "muted", text: "No new agent call in this run: the agent's messages up to and including its first risky action are replayed from the selective run, so only the monitor setting differs. The agent then closes with a fixed message." }) : null,
+    el("div", { class: "controls" },
+      el("button", { type: "button", id: "b-reset", onclick: () => { stop(); show(1); }, text: "Restart" }),
+      el("button", { type: "button", id: "b-prev", onclick: () => { stop(); show(state.shown - 1); }, text: "Back" }),
+      el("button", { type: "button", id: "b-play", onclick: toggle, text: "Play" }),
+      el("button", { type: "button", id: "b-next", onclick: () => { stop(); show(state.shown + 1); }, text: "Next" }),
+      el("button", { type: "button", id: "b-all", onclick: () => { stop(); show(state.events.length); }, text: "Show all" }),
+      el("label", { class: "muted" }, "Speed ", el("select", { id: "speed", onchange: e => { state.speed = +e.target.value; } },
+        el("option", { value: "2000", text: "slow" }), el("option", { value: "1200", text: "normal", selected: true }), el("option", { value: "500", text: "fast" }))),
+      el("span", { class: "pos", id: "pos" })),
+    el("ol", { class: "timeline", id: "timeline" }, ...state.events.map((e, i) => renderEvent(e, i))),
+  ].filter(Boolean));
+  show(state.shown);
+}
+
+function card(kind, who, ...body) { return el("li", { class: "ev " + kind }, el("div", { class: "who", text: who }), ...body); }
+
+function renderEvent(e, i) {
+  const p = e.payload || {};
+  switch (e.type) {
+    case "instruction": return card("user", "USER", el("div", { text: p.prompt }), el("div", { class: "muted", text: "acting user: " + (p.current_user || "") }));
+    case "tool_call": return card("agent", "AGENT · reads", el("code", { text: `${p.tool}(${args(p.args)})` }));
+    case "observation": return card("agent", "TOOL RESULT · " + p.tool, fold("show result", p.result));
+    case "risk_action": return card("risk", "AGENT PROPOSES A WRITE · the monitor judges it before it runs", el("div", { class: "big" }, el("code", { text: `${p.tool}(${args(p.args)})` })));
+    case "policies": {
+      return card("monitor", `MONITOR · ${p.policies.length} retrieved policies`,
+        el("ol", { class: "pol" }, ...p.policies.map(x => el("li", { "data-pid": x.policy_id, text: `${x.first_line}  (${x.policy_id})` }))));
+    }
+    case "monitor_pass1": case "monitor_pass2": {
+      const o = p.output || {};
+      const head = p.type === "NEED_INFORMATION" ? "asks for checks: " + (o.checks || []).map(c => `${c.tool}(${args(c.args)})`).join(", ")
+        : p.type === "DECISION" ? "decides " + (DEC_LABEL[o.decision] || o.decision) : "invalid answer (treated as ESCALATE)";
+      const cost = `${p.tokens_in ?? "?"} prompt tokens, ${p.tokens_out ?? "?"} output tokens` + (p.latency_s != null ? `, ${p.latency_s} s` : "");
+      return card("monitor", `MONITOR · pass ${p.pass}`, el("div", { text: head }),
+        o.reason ? el("div", { class: "muted", text: "why: " + o.reason }) : null, el("div", { class: "muted", text: cost }), fold("show model output", p.output ?? p.raw));
+    }
+    case "gateway_check": return card("gateway", `CHECK ${p.index} · answered from the live company state`,
+      el("code", { text: `${p.tool}(${args(p.args)})` }), fold("show result", p.result));
+    case "decision": {
+      return el("li", { class: "ev decision " + p.decision }, el("div", { class: "who", text: "MONITOR DECISION" }),
+        el("div", { class: "big" }, decBadge(p.decision)),
+        el("div", {}, `${p.checks_used} check(s) used, ${p.checks_always ?? "?"} in the always table · ${p.passes} pass(es) · monitor ${p.monitor_version} · k=${p.k}`),
+        p.evidence && p.evidence.length ? el("div", { text: "evidence: " + p.evidence.join("; ") }) : null,
+        p.policy_ids && p.policy_ids.length ? el("div", { class: "muted", text: "policies cited: " + p.policy_ids.join(", ") }) : null,
+        p.risk_label ? el("div", { class: "muted", text: `risk: ${p.risk_label}${p.risk_type ? " · " + p.risk_type : ""}` }) : null);
+    }
+    case "confirm_request": return card("user", "ASKS THE USER", el("div", { text: `Confirm ${p.tool}(${args(p.args)})?` }), p.reason ? el("div", { class: "muted", text: p.reason }) : null);
+    case "confirm_answer": return card("user", "USER ANSWERS", el("div", { class: "big", text: p.answer === "yes" ? "Yes, go ahead" : "No, don't" }));
+    case "action_applied": return card("gateway", "ACTION RAN", el("code", { text: `${p.tool}(${args(p.args)})` }), fold("show result", p.result));
+    case "action_refused": return card("risk", "ACTION DID NOT RUN", el("div", {}, decBadge(p.decision), " ", el("code", { text: `${p.tool}(${args(p.args)})` })), fold("show what the agent was told", p.result));
+    case "state_diff": return card("agent", "COMPANY STATE", el("div", { text: p.changed ? `${p.changes.length} change(s)` : "nothing changed" }), p.changed ? fold("show changes", p.changes) : null);
+    case "final_response": return card("agent", "AGENT · final answer", el("div", { text: p.text || `(${p.status})` }), el("div", { class: "muted", text: "episode status: " + p.status }));
+    default: return card("agent", e.type.toUpperCase(), fold("show", p));
+  }
+}
+
+function show(n) {
+  const total = state.events.length;
+  state.shown = Math.max(1, Math.min(total, n));
+  const items = document.getElementById("timeline").children;
+  for (let i = 0; i < items.length; i++) {
+    items[i].classList.toggle("hidden", i >= state.shown);
+    items[i].classList.toggle("current", i === state.shown - 1);
+  }
+  const cited = new Set(state.events.slice(0, state.shown).filter(e => e.type === "decision").flatMap(e => e.payload.policy_ids || []));
+  document.querySelectorAll("ol.pol li").forEach(li => li.classList.toggle("cited", cited.has(li.dataset.pid)));
+  document.getElementById("pos").textContent = `event ${state.shown} of ${total}`;
+  document.getElementById("b-prev").disabled = state.shown <= 1;
+  document.getElementById("b-next").disabled = state.shown >= total;
+  const cur = items[state.shown - 1];
+  if (cur && state.timer) cur.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  if (state.shown >= total) stop();
+}
+function stop() { if (state.timer) clearInterval(state.timer); state.timer = null; const b = document.getElementById("b-play"); if (b) b.textContent = "Play"; }
+function toggle() {
+  if (state.timer) { stop(); return; }
+  if (state.shown >= state.events.length) show(1);
+  document.getElementById("b-play").textContent = "Pause";
+  state.timer = setInterval(() => show(state.shown + 1), state.speed);
+}
+document.addEventListener("keydown", e => {
+  if (!state.events.length || ["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
+  if (e.key === "ArrowRight") { stop(); show(state.shown + 1); }
+  else if (e.key === "ArrowLeft") { stop(); show(state.shown - 1); }
+  else if (e.key === " " && document.activeElement.tagName !== "BUTTON") { e.preventDefault(); toggle(); }
+});
+document.getElementById("theme").addEventListener("click", () => {
+  const root = document.documentElement;
+  const dark = root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  root.dataset.theme = dark ? "light" : "dark";
+});
+load();
+</script>
+</body>
+</html>
