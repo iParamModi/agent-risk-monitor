@@ -1,7 +1,7 @@
 # Project Progress
 
 > Check this file before starting any work. Update it and push to GitHub after every change.
-> Last updated: 2026-11-12 by Meet
+> Last updated: 2026-11-13 by Prateek
 >
 > **Real accounts: Prateek only, cost rules in docs/DEPLOYMENT_RULES.md**
 
@@ -42,6 +42,7 @@ How our monitor really runs on our records: diagrams of the loop and the 4 setti
 
 | Task | Assigned To | Depends On | Notes |
 |------|-------------|------------|-------|
+| **Share `meet6868/agent-risk-adapter-final` (Kaggle Dataset, private) with `prateek99491` (Viewer)**: dataset page -> Settings -> Sharing. Blocks the recorded demo runs and the demo table in the report | **Meet (today)** | none | Steps + fallbacks: `docs/messages/2026-11-13_to_Meet_share_adapter.md` |
 | **Final report (14 Nov)**: draft in `report/final_submission.tex` (Meet, 12 Nov): read it, fix wording, add Prateek's recorded-demo table if done; use `docs/reports/final_report_results.md` (v2 = final system, section 3b; v1 kept as comparison) and `report_extras.md` | **Everyone** | none | Numbers come from the generated reports only |
 | v3 val check (`kaggle/v3_val_check/`, ~40 min, rule in decisions.md 2026-11-12) | Meet | Kaggle GPU quota (or a teammate's account) | optional; if it does not run, v2 stays final |
 | Step 9: optional code generator (`src/data_gen/`: skeleton via `lma_agent/sim`, gold engine over `policy_logic.yaml`+`conflicts.yaml`+trust rule, variants, assembly, schema-validate, `--person` CLI) — same spec `docs/seed_to_record.md` | Param (later, if we automate) | `required_checks` later; `decisions.md` lock | The by-hand route above is the one we're using now. This row is the eventual scripted version; `source` is `synthetic-data`. |
@@ -119,6 +120,7 @@ How our monitor really runs on our records: diagrams of the loop and the 4 setti
 
 ## Activity Log (newest first)
 
+- 2026-11-13, Prateek: adapter still not accessible for the demo. `agent-risk-adapter-final` is a Kaggle **Dataset** (input of the final eval notebooks), not a Model/Notebook; how to find and share it: `docs/messages/2026-11-13_to_Meet_share_adapter.md`
 - 2026-11-12, Meet: all three adapters, our data and the final runs uploaded to the PRIVATE Hugging Face repo `meet5568/Agent-Risk` with model, data and results cards (phaseA, phaseB_v1, phaseB_v2 = final). Prateek still needs `meet6868/agent-risk-adapter-final` shared on Kaggle with `prateek99491` (web UI, Meet).
 - 2026-11-12, Meet: final report draft `report/final_submission.tex` (+ `.bib`, `.pdf`, 12 pages, every number checked against the reports); `docs/reports` cleaned: superseded 30 Oct / 2 Nov reports removed, the three error analyses merged into `error_analysis.md`.
 - 2026-11-12, Prateek: live gate part 1: `monitor_gate` in `lma_agent/agent/gate.py` runs `run_monitor` on every agent write over the LIVE state (gateway `for_state`, noise off; invalid answer -> ESCALATE); visible-only live records (`src/live/live_record.py`); run events in `outputs/live/<run_id>.jsonl` (`src/live/events.py`); 3 new demo tasks (`lma_agent/tasks/demo_tasks.yaml`); `scripts/run_live.py`; cost guard `src/service/cost_guard.py`. `run_monitor` now accepts records with no gold (live). Agent refusals now carry the decision + policy id. 635 passed (only the known torch test fails)
