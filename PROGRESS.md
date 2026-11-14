@@ -36,14 +36,13 @@ How our monitor really runs on our records: diagrams of the loop and the 4 setti
 
 | Task | Who | Started | Status / Notes |
 |------|-----|---------|----------------|
-| (nothing in progress) | | | |
+| **Step 2: production deployment** (public HTTPS link: replay for everyone, live mode behind a password; Modal model server + the Oracle VM), parts D-additions, E, F, G, H | Prateek | 2026-11-15 | Started with the Part D additions (one live run at a time, step cap, rate limit, session expiry, kill switch): local only. Parts E-G touch Modal, Oracle and Groq: each action is priced, logged in the ledger and approved by Prateek first (`docs/DEPLOYMENT_RULES.md`) |
 
 ## Next Up
 
 | Task | Assigned To | Depends On | Notes |
 |------|-------------|------------|-------|
 | **Demo section of the final report**: table + 3 sentences from `docs/reports/demo_table.md`; the draft still says the demo was not done (`report/final_submission.tex` lines 572, 837) | **Prateek, after Meet answers** | Meet's 3 decisions in `docs/messages/2026-11-14_to_Meet_demo_real_runs.md` | Which AcmePay label, how the two selective file failures are shown, whether the single-pass GPU diagnosis is run |
-| **Step 2: live mode against real accounts** (Groq agent + a hosted monitor behind `src/service/live.py` `LiveBackend`) | Prateek (only if wanted after submission) | Prateek's approval: Tier C, priced first | The wiring is done and off. A real backend needs a price from the provider's page, a ledger row and `paid=True` handling in the cost guard path; today that path always refuses |
 | **Final report (14 Nov)**: draft in `report/final_submission.tex` (Meet, 12 Nov): read it, fix wording, add Prateek's recorded-demo table if done; use `docs/reports/final_report_results.md` (v2 = final system, section 3b; v1 kept as comparison) and `report_extras.md` | **Everyone** | none | Numbers come from the generated reports only |
 | v3 val check (`kaggle/v3_val_check/`, ~40 min, rule in decisions.md 2026-11-12) | Meet | Kaggle GPU quota (or a teammate's account) | optional; if it does not run, v2 stays final |
 | Step 9: optional code generator (`src/data_gen/`: skeleton via `lma_agent/sim`, gold engine over `policy_logic.yaml`+`conflicts.yaml`+trust rule, variants, assembly, schema-validate, `--person` CLI) — same spec `docs/seed_to_record.md` | Param (later, if we automate) | `required_checks` later; `decisions.md` lock | The by-hand route above is the one we're using now. This row is the eventual scripted version; `source` is `synthetic-data`. |
