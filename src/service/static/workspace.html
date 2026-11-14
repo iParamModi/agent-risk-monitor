@@ -171,6 +171,52 @@ details > summary { cursor: pointer; }
 .waiting { color: var(--amber); font: 600 12.5px var(--mono); animation: pulse 1.4s ease-in-out infinite; }
 .mempty { margin: 16px 14px; color: var(--muted); font-size: 13px; }
 
+/* pages (audit log, compare, results, how it works): the sidebar keeps the navigation, the page takes the rest */
+.ws.paged { grid-template-columns: minmax(230px, 18%) minmax(0, 1fr); }
+.ws.paged .chat, .ws.paged .monitor, .ws.paged #mvbar, .ws.paged #appview { display: none; }
+.page { background: var(--bg); padding: 0 24px 30px; border-right: 0; }
+.page[hidden] { display: none; }
+.page h2 { font-size: 19px; margin: 18px 0 4px; }
+.page .lede { color: var(--muted); max-width: 96ch; margin: 0 0 10px; }
+.page h3.sub { font: 600 12px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); margin: 20px 0 8px; }
+.page h3.sub .small { text-transform: none; letter-spacing: 0; font-weight: 400; }
+.page a { color: var(--accent); }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; margin: 10px 0; }
+.toolbar input[type="search"] { font: inherit; color: var(--ink); background: var(--soft); border: 1px solid var(--line); border-radius: 7px; padding: 4px 9px; min-width: 200px; }
+.toolbar .lbl { color: var(--faint); font: 11px var(--mono); text-transform: uppercase; letter-spacing: .06em; }
+.toolbar .pill { border-radius: 999px; font-size: 12.5px; padding: 3px 11px; }
+table.t.wide td { white-space: normal; }
+table.t.wide td:not(.sum) { white-space: nowrap; }
+table.t.wide tbody tr[tabindex] { cursor: pointer; }
+table.t.wide tbody tr[tabindex]:hover td { background: var(--soft); }
+table.t td.notread { color: var(--faint); font-style: italic; }
+table.t.nums td { font-variant-numeric: tabular-nums; }
+table.t.nums tr.ours td { background: var(--amber-bg); font-weight: 600; }
+table.t td.ok, .ok { color: var(--green); } table.t td.bad, .bad { color: var(--red); }
+.tag.actor-user { color: var(--accent); border-color: var(--accent); } .tag.actor-monitor { color: var(--violet); border-color: var(--violet); }
+.tag.actor-gateway { color: var(--green); border-color: var(--green); } .tag.actor-company { color: var(--amber); border-color: var(--amber); }
+.drawer { position: fixed; top: 0; right: 0; bottom: 31px; width: min(520px, 94vw); background: var(--panel); border-left: 1px solid var(--line);
+  box-shadow: -12px 0 28px rgba(0, 0, 0, .28); overflow: auto; padding: 14px 16px; z-index: 5; }
+.drawer[hidden] { display: none; }
+.drawer .dhead { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; font-family: var(--mono); }
+.taskbox { margin: 0 0 12px; display: grid; gap: 5px; }
+.cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.side { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); padding: 12px 14px; min-width: 0; }
+.side .shead { display: flex; gap: 10px; align-items: baseline; margin-bottom: 8px; }
+.side h3 { margin: 0; font: 700 14px var(--mono); text-transform: uppercase; letter-spacing: .06em; }
+.side .kv { margin: 10px 0; row-gap: 4px; }
+.verdict { margin: 14px 0 0; font-size: 14.5px; }
+.more { margin-top: 18px; } .more > summary { color: var(--muted); margin-bottom: 8px; }
+.arch { display: flex; flex-wrap: wrap; align-items: stretch; gap: 6px; margin: 14px 0 6px; }
+.node { flex: 1 1 150px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.node span { color: var(--muted); font-size: 12.5px; } .node code { color: var(--faint); font-size: 11.5px; overflow-wrap: anywhere; }
+.node.gate { border-color: var(--red); } .node.mon { border-color: var(--violet); } .node.gw { border-color: var(--green); }
+.arrow { align-self: center; color: var(--faint); font: 18px var(--mono); }
+.steps { color: var(--muted); max-width: 100ch; margin: 10px 0 0; padding-left: 20px; } .steps li { margin: 3px 0; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.card { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); padding: 12px 14px; }
+.card p { margin: 8px 0 0; } .card ul { margin: 8px 0 0; padding-left: 18px; color: var(--muted); font-size: 13px; } .card li { margin: 3px 0; }
+
 /* status bar */
 .status { flex: 0 0 auto; display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; padding: 6px 14px; border-top: 1px solid var(--line); background: var(--panel); font: 12px var(--mono); color: var(--muted); }
 .status .mode { font-weight: 700; color: var(--amber); border: 1px solid var(--amber); border-radius: 4px; padding: 0 6px; letter-spacing: .08em; }
@@ -187,6 +233,11 @@ details > summary { cursor: pointer; }
   .msgs { overflow: visible; }
   .status { position: sticky; bottom: 0; }
   .msg { max-width: 92%; }
+  .ws.paged { display: flex; }
+  .page { order: 1; padding: 0 16px 24px; }
+  .ws.paged .apps { order: 2; }
+  .cmp { grid-template-columns: 1fr; }
+  .arrow { display: none; }
 }
 </style>
 </head>
@@ -203,7 +254,7 @@ details > summary { cursor: pointer; }
     </div>
     <div class="appview" id="appview"><p class="empty">Loading the company...</p></div>
     <div class="sect">Monitor</div>
-    <nav class="appnav"><a href="replay">Event timeline <span class="n">all events</span></a></nav>
+    <nav class="appnav" id="pagenav"></nav>
   </aside>
 
   <section class="col chat" aria-label="Agent">
@@ -232,6 +283,7 @@ details > summary { cursor: pointer; }
   </section>
 
   <aside class="col monitor" id="monitor" aria-label="Safety monitor"></aside>
+  <section class="col page" id="page" hidden></section>
 </div>
 <footer class="status" id="status"></footer>
 
@@ -271,7 +323,7 @@ const ID_FIELDS = ["path", "file", "repo", "account_id", "account", "to_account"
   "user_id", "user", "contact_id", "recipient", "email", "folder", "resource", "name"];
 
 const S = { runs: [], tasks: [], health: {}, source: null, run: null, summary: null, events: [], shown: 0,
-  timer: null, speed: 1000, snapshot: null, states: {}, app: "files", mv: false, selRisk: null, focus: null };
+  timer: null, speed: 1000, snapshot: null, states: {}, app: "files", mv: false, selRisk: null, focus: null, view: "workspace" };
 
 const $ = id => document.getElementById(id);
 function el(tag, attrs, ...kids) {
@@ -303,6 +355,8 @@ async function init() {
   const q = new URLSearchParams(location.search);
   if (q.get("app") && APPS.some(a => a.id === q.get("app"))) S.app = q.get("app");
   S.mv = q.get("mv") === "1"; $("mv").checked = S.mv;
+  if (["audit", "compare", "results", "how"].includes(q.get("view"))) S.view = q.get("view");
+  if (/^\d+$/.test(q.get("event") || "")) S.auditLink = +q.get("event") - 1;          // ?view=audit&event=8 opens that event
   const [hs, hr, hn] = decodeURIComponent(location.hash.slice(1)).split("/");
   const linked = S.runs.find(r => r.source === hs && r.run_id === hr);
   const sources = sourcesPresent();
@@ -424,7 +478,7 @@ function seenFacts() {
 }
 
 // ---------- rendering ----------
-function renderAll() { renderPicker(); renderChat(); renderMonitor(); renderApps(); renderStatus(); }
+function renderAll() { renderPicker(); renderChat(); renderMonitor(); renderApps(); renderStatus(); renderPageNav(); renderPage(); }
 
 function renderPresets() {
   $("presets").replaceChildren(...S.tasks.filter(t => runsOf(t.id).length).map(t => el("button", {
@@ -556,10 +610,8 @@ function renderMonitor() {
       }
       checksSeen++;
       const revealed = Object.keys(p.result || {}).filter(k => Object.values(hidden).some(h => h[k]));
-      const argVals = new Set(Object.values(p.args || {}));
-      const facts = Object.entries(p.result || {}).filter(([k, v]) => !(argVals.has(v) && k in (p.args || {}) || argVals.has(v) && typeof v === "string"));
       group.append(el("div", { class: "chk" }, el("code", { text: call(p.tool, p.args) }),
-        el("span", { class: "rv", text: "→ " + (facts.map(([k, v]) => `${k}=${typeof v === "string" ? v : JSON.stringify(v)}`).join(" · ") || oneLine(p.result)) }),
+        el("span", { class: "rv", text: "→ " + factText(p) }),
         revealed.length ? el("div", { class: "revtag", text: "reveals hidden: " + revealed.join(", ") }) : null,
         el("details", {}, el("summary", { text: "result JSON" }), el("pre", { text: JSON.stringify(p.result, null, 2) }))));
     } else if (e.type === "monitor_pass1" || e.type === "monitor_pass2") {
@@ -623,8 +675,8 @@ function renderApps() {
   const flash = new Set(cur && cur.type === "state_diff" ? cur.payload.changes.map(c => `${c.collection}|${c.key}`) : []);
   const touched = new Set(diffs.flatMap(d => d.changes.map(c => APP_OF[c.collection])));
   const count = coll => { const c = state[coll]; return Array.isArray(c) ? c.length : c ? Object.keys(c).length : 0; };
-  nav.replaceChildren(...APPS.map(a => el("button", { type: "button", "aria-current": String(a.id === S.app),
-    onclick: () => { S.app = a.id; renderApps(); } }, a.name, el("span", { class: "n" + (touched.has(a.id) ? " hot" : ""),
+  nav.replaceChildren(...APPS.map(a => el("button", { type: "button", "aria-current": String(a.id === S.app && S.view === "workspace"),
+    onclick: () => { S.app = a.id; if (S.view === "workspace") renderApps(); else setView("workspace"); } }, a.name, el("span", { class: "n" + (touched.has(a.id) ? " hot" : ""),
       text: (touched.has(a.id) ? "● " : "") + count(a.sections[0].coll) }))));
   const seen = S.mv ? seenFacts() : null;
   $("mvbar").classList.toggle("on", S.mv);
@@ -722,6 +774,299 @@ function renderStatus() {
     sep(), el("span", {}, "monitor latency ", el("b", { text: secs(S.events) })),
     el("span", { class: "right" }, el("span", { text: "live: " + (S.health.live_available ? "available" : "offline") }),
       el("button", { type: "button", id: "theme", text: "theme", onclick: flipTheme })));
+}
+
+// ---------- pages: audit log, compare, results, how it works ----------
+const PAGES = [["audit", "Audit log"], ["compare", "Compare"], ["results", "Results"], ["how", "How it works"]];
+const ACTOR = { company_snapshot: "company", instruction: "user", tool_call: "agent", observation: "company",
+  risk_action: "agent", policies: "monitor", monitor_pass1: "monitor", monitor_pass2: "monitor", gateway_check: "gateway",
+  decision: "monitor", confirm_request: "monitor", confirm_answer: "user", action_applied: "company",
+  action_refused: "monitor", state_diff: "company", final_response: "agent" };
+
+function setView(v) {
+  S.view = v; S.pageKey = null;
+  const q = new URLSearchParams(location.search);
+  if (v === "workspace") q.delete("view"); else q.set("view", v);
+  history.replaceState(null, "", location.pathname + (q.toString() ? "?" + q : "") + location.hash);
+  renderAll();
+}
+function renderPageNav() {
+  $("pagenav").replaceChildren(...PAGES.map(([id, name]) => el("button", { type: "button", "aria-current": String(S.view === id),
+    onclick: () => setView(id) }, name, id === "audit" ? el("span", { class: "n", text: String(S.events.length) }) : null)));
+}
+function renderPage() {
+  const paged = S.view !== "workspace";
+  document.querySelector(".ws").classList.toggle("paged", paged);
+  $("page").hidden = !paged;
+  if (paged) ({ audit: renderAudit, compare: renderCompare, results: renderResults, how: renderHow })[S.view]();
+}
+// The facts a gateway check returned: its result without the echo of its own arguments.
+function checkFacts(p) {
+  const vals = new Set(Object.values(p.args || {}).filter(v => typeof v === "string"));
+  return Object.entries(p.result || {}).filter(([, v]) => !(typeof v === "string" && vals.has(v)));
+}
+const factText = p => checkFacts(p).map(([k, v]) => `${k}=${typeof v === "string" ? v : JSON.stringify(v)}`).join(" · ") || oneLine(p.result);
+const isHiddenFact = (hidden, k) => Object.values(hidden || {}).some(h => h[k]);
+
+// --- audit log: every event of the current run
+function eventSummary(e) {
+  const p = e.payload || {};
+  switch (e.type) {
+    case "company_snapshot": return `starting state of ${p.company || "the company"} · ${Object.keys(p.state || {}).length} collections · ${Object.keys(p.overrides || {}).length} task override(s)`;
+    case "instruction": return p.prompt || "";
+    case "tool_call": return call(p.tool, p.args);
+    case "observation": return `${p.tool} → ${summarizeResult(p.result)}`;
+    case "risk_action": return `${call(p.tool, p.args)} · paused for the monitor`;
+    case "policies": return `${(p.policies || []).length} policies retrieved`;
+    case "monitor_pass1": case "monitor_pass2": {
+      const o = p.output || {};
+      return p.type === "NEED_INFORMATION" ? `pass ${p.pass}: needs ${o.missing_fact || "a fact"} → ${(o.checks || []).map(c => call(c.tool, c.args)).join(", ")}`
+        : p.type === "DECISION" ? `pass ${p.pass}: decides ${DEC[o.decision] || o.decision}` : `pass ${p.pass}: invalid answer`;
+    }
+    case "gateway_check": return `${call(p.tool, p.args)} → ${factText(p)}`;
+    case "decision": return `${DEC[p.decision] || p.decision} · checks ${p.checks_used} of ${p.checks_always ?? "?"}` + ((p.evidence || []).length ? ` · ${p.evidence.join("; ")}` : "");
+    case "confirm_request": return `asks you to confirm ${call(p.tool, p.args)}`;
+    case "confirm_answer": return `you answered ${p.answer}`;
+    case "action_applied": return `${call(p.tool, p.args)} ran → ${summarizeResult(p.result)}`;
+    case "action_refused": return `${call(p.tool, p.args)} did not run (${DEC[p.decision] || p.decision})`;
+    case "state_diff": return p.changed ? p.changes.map(c => `${c.collection}${c.key !== "" ? " · " + c.key : ""} ${c.kind}`).join("; ") : "no change";
+    case "final_response": return p.text || `(${p.status})`;
+    default: return "";
+  }
+}
+function renderAudit() {
+  const page = $("page"), key = "audit|" + (S.run ? S.run.run_id : "");
+  S.audit ||= { actor: "all", type: "all", q: "", open: null };
+  if (S.pageKey !== key) {
+    S.pageKey = key; S.audit.open = S.auditLink ?? null; S.auditLink = null;
+    const pickOne = (field, label, opts) => el("label", { class: "small muted" }, label + " ",
+      el("select", { onchange: e => { S.audit[field] = e.target.value; fillAudit(); } },
+        el("option", { value: "all", text: "all" }), ...opts.map(o => el("option", { value: o, text: o, selected: o === S.audit[field] }))));
+    const types = [...new Set(S.events.map(e => e.type))];
+    if (!types.includes(S.audit.type)) S.audit.type = "all";
+    page.replaceChildren(
+      el("h2", { text: "Audit log" }),
+      el("p", { class: "lede", text: "Every event of this recorded run, in order: what the agent did, what the monitor asked and decided, and what changed in the company. Click a row for the full event." }),
+      el("div", { class: "toolbar" }, pickOne("actor", "actor", [...new Set(Object.values(ACTOR))]), pickOne("type", "type", types),
+        el("input", { type: "search", placeholder: "filter text…", "aria-label": "Filter events by text", value: S.audit.q,
+          oninput: e => { S.audit.q = e.target.value; fillAudit(); } }),
+        el("span", { class: "small muted", id: "au-count" })),
+      el("div", { class: "tw" }, el("table", { class: "t wide" },
+        el("thead", {}, el("tr", {}, ...["#", "step", "time", "actor", "type", "summary"].map(h => el("th", { text: h })))),
+        el("tbody", { id: "au-body" }))),
+      el("aside", { class: "drawer", id: "drawer", hidden: true, "aria-label": "Event detail" }));
+  }
+  fillAudit();
+}
+function fillAudit() {
+  const a = S.audit, t0 = S.events.length ? S.events[0].ts : 0, q = a.q.trim().toLowerCase();
+  const rows = S.events.map((e, i) => ({ e, i, actor: ACTOR[e.type] || "?", sum: eventSummary(e) }))
+    .filter(r => (a.actor === "all" || r.actor === a.actor) && (a.type === "all" || r.e.type === a.type)
+      && (!q || (r.sum + " " + r.e.type + " " + r.actor).toLowerCase().includes(q)));
+  $("au-count").textContent = `${rows.length} of ${S.events.length} events`;
+  const open = i => { a.open = a.open === i ? null : i; fillAudit(); };
+  $("au-body").replaceChildren(...rows.map(r => el("tr", { class: a.open === r.i ? "focus" : "", tabindex: "0",
+      onclick: () => open(r.i), onkeydown: ev => { if (ev.key === "Enter") open(r.i); } },
+    el("td", { text: String(r.i + 1) }), el("td", { text: String(r.e.step) }), el("td", { text: "+" + (r.e.ts - t0).toFixed(1) + " s" }),
+    el("td", {}, el("span", { class: "tag actor-" + r.actor, text: r.actor })), el("td", { text: r.e.type }), el("td", { class: "sum", text: r.sum }))));
+  const d = $("drawer"), e = a.open === null ? null : S.events[a.open];
+  d.hidden = !e;
+  if (e) d.replaceChildren(
+    el("div", { class: "dhead" }, el("b", { text: `event ${a.open + 1} · ${e.type}` }), el("button", { type: "button", text: "close", onclick: () => open(a.open) })),
+    el("dl", { class: "kv" }, el("dt", { text: "step" }), el("dd", { text: String(e.step) }), el("dt", { text: "actor" }), el("dd", { text: ACTOR[e.type] || "?" }),
+      el("dt", { text: "time" }), el("dd", { text: new Date(e.ts * 1000).toISOString().replace("T", " ").slice(0, 19) + " UTC" }),
+      el("dt", { text: "run" }), el("dd", { text: e.run_id })),
+    el("pre", { text: JSON.stringify(e.payload, null, 2) }));
+}
+
+// --- compare: one task, the selective run next to the always run that replays its agent messages
+async function logOf(run) {
+  S.logs ||= {};
+  const key = run.source + "/" + run.run_id;
+  if (!S.logs[key]) S.logs[key] = (await api(`api/runs/${encodeURIComponent(run.source)}/${encodeURIComponent(run.run_id)}`)).events;
+  return S.logs[key];
+}
+function pairs() {
+  const rank = t => { const i = S.tasks.findIndex(x => x.id === t); return i < 0 ? S.tasks.length : i; };
+  return S.runs.filter(r => r.source === S.source && r.reused_from)
+    .map(a => ({ always: a, selective: S.runs.find(r => r.source === a.source && r.run_id === a.reused_from) })).filter(p => p.selective)
+    .sort((a, b) => rank(a.always.task) - rank(b.always.task));
+}
+function firstBlock(events) {
+  const i = events.findIndex(e => e.type === "risk_action");
+  if (i < 0) return [];
+  const j = events.findIndex((e, n) => n > i && e.type === "risk_action");
+  return events.slice(i, j < 0 ? events.length : j);
+}
+function runStats(events) {
+  const block = firstBlock(events), get = t => block.find(e => e.type === t);
+  const passes = block.filter(e => e.type === "monitor_pass1" || e.type === "monitor_pass2");
+  const ans = get("confirm_answer"), said = ans ? (ans.payload.answer === "yes" ? "you approved · " : "you denied · ") : "";
+  const snap = events.find(e => e.type === "company_snapshot");
+  return { dec: (get("decision") || { payload: {} }).payload, checks: block.filter(e => e.type === "gateway_check").map(e => e.payload),
+    action: (get("risk_action") || { payload: {} }).payload, tokens: passes.reduce((n, e) => n + (+e.payload.tokens_in || 0), 0), latency: secs(block),
+    outcome: get("action_applied") ? said + "applied" : get("action_refused") ? said + "refused · did not run" : "no outcome recorded",
+    riskActions: events.filter(e => e.type === "risk_action").length, hidden: snap ? snap.payload.hidden_from_monitor : {} };
+}
+async function renderCompare() {
+  const page = $("page"), ps = pairs(), title = t => (S.tasks.find(x => x.id === t) || {}).title || t;
+  if (!ps.length) { page.replaceChildren(el("h2", { text: "Compare" }), el("p", { class: "empty", text: "These runs hold no selective/always pair." })); return; }
+  S.cmp ||= {};
+  const cur = S.summary || {};
+  const pair = ps.find(p => p.always.run_id === S.cmp.id) || ps.find(p => p.always.task === cur.task && p.always.confirm === cur.confirm)
+    || ps.find(p => p.always.task === cur.task) || ps[0];
+  S.cmp.id = pair.always.run_id;
+  let sel, alw;
+  try { [sel, alw] = await Promise.all([logOf(pair.selective), logOf(pair.always)]); }
+  catch (e) { page.replaceChildren(el("h2", { text: "Compare" }), el("p", { class: "empty", text: "Could not load the two runs: " + e.message })); return; }
+  if (S.view !== "compare" || S.cmp.id !== pair.always.run_id) return;          // moved on while loading
+  const A = runStats(sel), B = runStats(alw), factsOf = st => st.checks.flatMap(c => checkFacts(c).map(([k, v]) => ({ tool: c.tool, key: k, value: v })));
+  const fa = factsOf(A), fb = factsOf(B), hid = k => isHiddenFact(A.hidden, k) || isHiddenFact(B.hidden, k);
+  const facts = [...new Map([...fb, ...fa].map(f => [f.tool + "|" + f.key, f])).values()];
+  const several = new Set(ps.filter(p => ps.filter(x => x.always.task === p.always.task).length > 1).map(p => p.always.task));
+  const expected = (run, st) => {
+    const x = run.expected || {};
+    if (!x.decision) return null;
+    const checks = run.setting === "always" ? st.dec.checks_always : x.checks;
+    const ok = st.dec.decision === x.decision && (checks == null || st.dec.checks_used === checks);
+    return el("span", {}, `${DEC[x.decision] || x.decision}` + (checks == null ? "" : run.setting === "always" ? `, all ${checks} checks` : `, ${checks} check(s)`),
+      " · ", el("span", { class: ok ? "ok" : "bad", text: ok ? "as expected" : "not as expected" }));
+  };
+  const side = (run, st, facts, what) => el("div", { class: "side" },
+    el("div", { class: "shead" }, el("h3", { text: run.setting }), el("span", { class: "small muted", text: what })),
+    badge(st.dec.decision, true),
+    el("dl", { class: "kv" },
+      el("dt", { text: "outcome" }), el("dd", { text: st.outcome }),
+      el("dt", { text: "checks used" }), el("dd", {}, el("b", { text: String(st.dec.checks_used ?? st.checks.length) }), ` of ${st.dec.checks_always ?? "?"} in the action's table`),
+      el("dt", { text: "hidden facts read" }), el("dd", {}, el("b", { text: String(facts.filter(f => hid(f.key)).length) }), facts.length ? " · " + facts.filter(f => hid(f.key)).map(f => f.key).join(", ") : ""),
+      el("dt", { text: "monitor passes" }), el("dd", { text: String(st.dec.passes ?? "?") }),
+      el("dt", { text: "prompt tokens" }), el("dd", { text: String(st.tokens) }),
+      el("dt", { text: "monitor latency" }), el("dd", { text: st.latency }),
+      el("dt", { text: "evidence" }), el("dd", { text: (st.dec.evidence || []).join("; ") || "none given" }),
+      el("dt", { text: "policy cited" }), el("dd", { text: (st.dec.policy_ids || []).join(", ") || "none" }),
+      el("dt", { text: "expected" }), el("dd", {}, expected(run, st) || "not stated for this task")),
+    el("button", { type: "button", text: "Open this run in the workspace", onclick: () => openRun(run, { cursor: 9999 }).then(() => setView("workspace")) }));
+  const cellFor = (list, r) => {
+    const f = list.find(x => x.tool === r.tool && x.key === r.key);
+    return f ? el("td", { class: hid(r.key) ? "revealed" : "seen" }, show1(f.value)) : el("td", { class: "notread", text: "not read" });
+  };
+  const same = A.dec.decision === B.dec.decision, used = [A.dec.checks_used, B.dec.checks_used];
+  page.replaceChildren(
+    el("h2", { text: "Compare: selective vs always" }),
+    el("p", { class: "lede", text: "The same task and the same agent messages under two monitor settings. Selective asks the gateway only for the fact it says it is missing; always runs every check in the action's table before the model decides." }),
+    el("div", { class: "toolbar" }, ...ps.map(p => el("button", { type: "button", class: "pill", "aria-pressed": String(p === pair),
+      text: title(p.always.task) + (several.has(p.always.task) ? ` (you answer ${p.always.confirm})` : ""), onclick: () => { S.cmp.id = p.always.run_id; renderCompare(); } }))),
+    el("div", { class: "blk taskbox" }, el("div", {}, el("span", { class: "tag", text: "task" }), " ", pair.selective.prompt || ""),
+      el("div", { class: "small muted" }, "risky action judged: ", el("code", { text: A.action.tool ? call(A.action.tool, A.action.args) : "none" }),
+        A.riskActions > 1 || B.riskActions > 1 ? " · only the first risky action of each run is compared" : ""),
+      el("div", { class: "small" }, chip("agent: " + (pair.selective.agent || "unknown")), " ", chip("agent messages reused by the always run", "reuse"),
+        pair.selective.fake_monitor ? [" ", chip("FAKE MONITOR", "fake")] : null)),
+    el("div", { class: "cmp" }, side(pair.selective, A, fa, "asks only for what it needs"), side(pair.always, B, fb, "every check, then one decision")),
+    el("p", { class: "verdict" }, same ? ["Both settings decided ", badge(A.dec.decision), ". "] : ["The settings disagreed: selective ", badge(A.dec.decision), ", always ", badge(B.dec.decision), ". "],
+      used.every(n => n != null) ? `Selective ran ${used[0]} gateway check(s) where always ran ${used[1]}.` : ""),
+    el("h3", { class: "sub", text: "Facts each setting read through the gateway" }),
+    facts.length ? el("div", { class: "tw" }, el("table", { class: "t wide" },
+      el("thead", {}, el("tr", {}, el("th", { text: "fact" }), el("th", { text: "check tool" }), el("th", { text: "selective" }), el("th", { text: "always" }))),
+      el("tbody", {}, ...facts.map(r => el("tr", {}, el("td", {}, r.key, hid(r.key) ? el("span", { class: "htag", title: "hidden from the monitor until a check returns it", text: "H" }) : null),
+        el("td", { text: r.tool }), cellFor(fa, r), cellFor(fb, r)))))) : el("p", { class: "empty", text: "Neither run asked the gateway for anything." }),
+    el("h3", { class: "sub", text: "All recorded pairs" }),
+    el("div", { class: "tw" }, el("table", { class: "t wide" },
+      el("thead", {}, el("tr", {}, ...["task", "you answer", "selective", "checks", "always", "checks", "same decision"].map(h => el("th", { text: h })))),
+      el("tbody", {}, ...ps.map(p => el("tr", { class: p === pair ? "focus" : "" }, el("td", { text: title(p.always.task) }), el("td", { text: p.always.confirm || "" }),
+        el("td", {}, badge(p.selective.decision)), el("td", { text: `${p.selective.checks_used ?? "?"} of ${p.selective.checks_always ?? "?"}` }),
+        el("td", {}, badge(p.always.decision)), el("td", { text: `${p.always.checks_used ?? "?"} of ${p.always.checks_always ?? "?"}` }),
+        el("td", { text: p.selective.decision === p.always.decision ? "yes" : "no" })))))));
+}
+
+// --- results: the report's tables, every cell as /api/results formats it
+const GRID = [["label", "Method"], ["setting", "Setting"], ["accuracy", "Accuracy [95% CI]"], ["unsafe_action_rate", "Unsafe action"],
+  ["wrong_block_rate", "Wrong block"], ["decision_macro_f1", "Decision macro-F1"], ["checks_per_case", "Checks / case"],
+  ["saving_vs_always", "Saving vs always"], ["invalid", "Invalid"]];
+async function renderResults() {
+  const page = $("page");
+  if (!S.results) {
+    try { S.results = await api("api/results"); }
+    catch (e) { page.replaceChildren(el("h2", { text: "Results" }), el("p", { class: "empty", text: "Could not load the report's numbers: " + e.message })); return; }
+  }
+  if (S.view !== "results") return;
+  S.res ||= { policies: "retrieval" };
+  const R = S.results, conds = [...new Map(R.tables.map(t => [t.policies, t.policies_name])).entries()];
+  const tabs = R.tables.filter(t => t.policies === S.res.policies), by = s => tabs.find(t => t.split === s);
+  const order = ["test", "ood", "val"].map(by).filter(Boolean);
+  const settings = [...new Set(R.tables.flatMap(t => t.rows.filter(r => r.method !== "rules").map(r => r.setting)))];
+  const th = hs => el("thead", {}, el("tr", {}, ...hs.map(h => el("th", { text: h }))));
+  const grid = t => el("div", { class: "tw" }, el("table", { class: "t nums" }, th(GRID.map(g => g[1])),
+    el("tbody", {}, ...t.rows.map(r => el("tr", { class: r.method === "phase_b" && r.setting === "selective" ? "ours" : "" },
+      ...GRID.map(([k]) => el("td", { text: k in r.text ? r.text[k] : r[k] })))))));
+  const section = (t, extra) => t ? [el("h3", { class: "sub" }, `Main grid · ${t.split_name}`, el("span", { class: "small muted", text: ` · ${t.cases} records · ${extra}` })), grid(t)] : [];
+  const versus = el("div", { class: "tw" }, el("table", { class: "t nums" },
+    th(["Records", "Model", "Δ unsafe action [95% CI]", "Margin", "Hypothesis", "Δ accuracy [95% CI]", "McNemar p (accuracy)"]),
+    el("tbody", {}, ...order.flatMap(t => t.selective_vs_always.map(v => el("tr", {}, el("td", { text: t.split_name }), el("td", { text: v.label }),
+      el("td", { text: v.text.unsafe_diff }), el("td", { text: v.text.margin }), el("td", { class: v.hypothesis_passes ? "ok" : "bad", text: v.text.hypothesis }),
+      el("td", { text: v.text.accuracy_diff }), el("td", { text: v.text.mcnemar_p })))))));
+  const row = (t, v, s) => t.rows.find(r => r.method === v.method && r.setting === s) || { text: {} };
+  const savings = el("div", { class: "tw" }, el("table", { class: "t nums" },
+    th(["Records", "Model", "Checks / case, selective", "Checks / case, always", "p", "Saving vs always", "Oracle saving", "Check precision", "Check recall", "Right missing fact"]),
+    el("tbody", {}, ...order.flatMap(t => t.selective_vs_always.map(v => { const s = row(t, v, "selective").text; return el("tr", {},
+      el("td", { text: t.split_name }), el("td", { text: v.label }), el("td", { text: v.text.checks_selective }), el("td", { text: v.text.checks_always }),
+      el("td", { text: v.text.checks_p }), el("td", { text: s.saving_vs_always }), el("td", { text: v.text.oracle_saving }),
+      el("td", { text: s.check_precision }), el("td", { text: s.check_recall }), el("td", { text: s.correct_missing_fact })); })))));
+  const val = by("val");
+  page.replaceChildren(
+    el("h2", { text: "Results" }),
+    el("p", { class: "lede" }, "Can a small model learn to check selectively, asking only for the facts it needs, and stay about as safe as checking everything, at a fraction of the cost? ",
+      `Each table shows the same monitor under the settings ${settings.join(", ")}, with and without our fine-tuning and next to rule baselines, on records the model was not trained on. `,
+      `The safety test, fixed before any result, is ${R.hypothesis_rule}.`),
+    el("p", { class: "small muted" }, "System ", el("b", { text: R.system }), ". Every number on this page is read from ", el("code", { text: R.source }),
+      ", the file the report's tables (", el("code", { text: R.rendered_tables }), ") are made from; rates are in %. ",
+      el("a", { href: "report.pdf", target: "_blank", rel: "noopener", text: "Open the final report (PDF)" }), "."),
+    el("div", { class: "toolbar" }, el("span", { class: "lbl", text: "policies shown to the monitor" }),
+      el("span", { class: "seg" }, ...conds.map(([id, name]) => el("button", { type: "button", "aria-pressed": String(id === S.res.policies), text: name,
+        onclick: () => { S.res.policies = id; renderResults(); } })))),
+    ...section(by("test"), "the highlighted row is the full system"),
+    el("h3", { class: "sub", text: "Selective vs always" }), versus,
+    el("h3", { class: "sub", text: "Check savings" }), savings,
+    ...section(by("ood"), "tools and domains outside training"),
+    val ? el("details", { class: "more" }, el("summary", { text: `${val.split_name} · ${val.cases} records (used to choose the system)` }), grid(val)) : null);
+}
+
+// --- how it works: the architecture, the four decisions, who built which part
+const DECISION_INFO = [
+  ["ALLOW", "The action can go ahead.", "The gate applies the write."],
+  ["ASK_CONFIRMATION", "May be fine, but a human (user or approver) must confirm first.", "The gate asks you: yes applies the write, no refuses it."],
+  ["BLOCK", "Breaks a hard rule.", "The gate refuses the write and tells the agent the decision and the policy."],
+  ["ESCALATE", "Only when policies conflict or facts disagree.", "The gate refuses the write and tells the agent. A monitor answer that cannot be read is treated as ESCALATE too."],
+];
+async function renderHow() {
+  const page = $("page");
+  if (!S.team) { try { S.team = await api("api/team"); } catch (e) { S.team = { team: [], source: "" }; } }
+  if (S.view !== "how") return;
+  const s = S.summary || {};
+  const node = (title, sub, cls, tag) => el("div", { class: "node " + (cls || "") }, el("b", { text: title }), el("span", { text: sub }), tag ? el("code", { text: tag }) : null);
+  const arrow = t => el("div", { class: "arrow", "aria-hidden": "true", text: t });
+  page.replaceChildren(
+    el("h2", { text: "How it works" }),
+    el("p", { class: "lede", text: "An AI agent works inside the company's apps. Every write it proposes is paused until our safety monitor has decided, and the monitor learns hidden facts only by asking a read-only gateway." }),
+    el("div", { class: "arch" },
+      node("You", "give a task; answer when the monitor asks for confirmation"), arrow("→"),
+      node("Agent", "an LLM that reads and writes through the company's tools", "", s.agent || null), arrow("→"),
+      node("Live gate", "lets reads through; pauses every write until the monitor has decided", "gate"), arrow("→"),
+      node("Safety monitor", "sees the conversation, the proposed write and the retrieved policies, never the company's hidden facts", "mon",
+        s.monitor_version ? `system ${s.monitor_version} · ${s.k} policies shown` : null), arrow("⇄"),
+      node("Read-only gateway", "answers one check at a time from the live company state; it cannot change anything", "gw"), arrow("→"),
+      node("Company simulator", "Northwind Labs (fictional): files, repositories, payments, email, calendar, people, customers")),
+    el("ol", { class: "steps" },
+      el("li", { text: "The agent proposes a write (delete, share, transfer, grant). The gate pauses it." }),
+      el("li", { text: "Pass 1: the monitor answers \"enough information?\". It either decides, or names the missing fact and the check that returns it." }),
+      el("li", { text: "The gateway runs only those checks (the selective setting). In the always setting every check of the action's table runs first, and the model decides in one pass." }),
+      el("li", { text: "Pass 2: the monitor decides with the check results, citing its evidence and the policy." }),
+      el("li", { text: "The gate acts on the decision, and the company state changes only if the write runs." })),
+    el("h3", { class: "sub", text: "The four decisions" }),
+    el("div", { class: "cards" }, ...DECISION_INFO.map(([d, meaning, gate]) => el("div", { class: "card" }, badge(d, true), el("p", { text: meaning }), el("p", { class: "small muted", text: gate })))),
+    el("h3", { class: "sub" }, "Who built which part", el("span", { class: "small muted", text: S.team.source ? " · from " + S.team.source : "" })),
+    S.team.team.length ? el("div", { class: "cards" }, ...S.team.team.map(p => el("div", { class: "card" }, el("b", { text: p.name }),
+      p.parts.length ? el("ul", {}, ...p.parts.map(x => el("li", { title: "PROGRESS.md: " + x.progress_rows.join("; "), text: x.part }))) : el("p", { class: "small muted", text: "no part listed" }))))
+      : el("p", { class: "empty", text: "The team list could not be loaded." }));
 }
 
 // ---------- stepping ----------

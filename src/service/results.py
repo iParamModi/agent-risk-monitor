@@ -1,12 +1,15 @@
 """The report's final numbers for the website (GET /api/results), read from the generated results file of the final
 system (v2): docs/reports/final_results_v2.json, made by scripts/final_results.py --version v2, the same file the
 report's tables (final_results_v2.md, final_report_results.md section 3b) are rendered from. Nothing is typed by
-hand or recomputed: values are passed through as fractions (the page shows them in %), with their 95% intervals.
-tests/test_results_api.py checks every value against the rendered final_results_v2.md.
+hand or recomputed: values are passed through as fractions, with their 95% intervals, and every row also carries
+"text": the same values formatted by the report's own helpers (src/eval/tables.py), which the page shows as they
+are, so the page and the report can never round differently.
+tests/test_results_api.py checks every value and every text against the rendered final_results_v2.md.
 """
 import json
 
 from src.common.io import REPO_ROOT
+from src.eval.tables import num, p_value, pct, with_ci
 
 RESULTS_JSON = REPO_ROOT / "docs" / "reports" / "final_results_v2.json"
 RESULTS_MD = REPO_ROOT / "docs" / "reports" / "final_results_v2.md"
@@ -24,13 +27,27 @@ def _ci(c: dict) -> dict:
 
 
 def _row(method: str, label: str, setting: str, s: dict, saving) -> dict:
-    return {"method": method, "label": label, "setting": setting, "cases": s["cases"],
-            "accuracy": _ci(s["ci"]["accuracy"]), "unsafe_action_rate": s["unsafe_action_rate"],
-            "wrong_block_rate": s["wrong_block_rate"], "decision_macro_f1": s["decision_f1"]["macro"],
-            "checks_per_case": s["checks_per_case"], "saving_vs_always": saving,
-            "check_precision": s["check_precision"], "check_recall": s["check_recall"],
-            "correct_missing_fact": s["correct_missing_fact"],
-            "invalid": round(s["cases"] * (1 - (s.get("valid_json_rate") or 0)))}
+    row = {"method": method, "label": label, "setting": setting, "cases": s["cases"],
+           "accuracy": _ci(s["ci"]["accuracy"]), "unsafe_action_rate": s["unsafe_action_rate"],
+           "wrong_block_rate": s["wrong_block_rate"], "decision_macro_f1": s["decision_f1"]["macro"],
+           "checks_per_case": s["checks_per_case"], "saving_vs_always": saving,
+           "check_precision": s["check_precision"], "check_recall": s["check_recall"],
+           "correct_missing_fact": s["correct_missing_fact"],
+           "invalid": round(s["cases"] * (1 - (s.get("valid_json_rate") or 0)))}
+    row["text"] = {"accuracy": with_ci(row["accuracy"]), "checks_per_case": num(row["checks_per_case"]),
+                   "invalid": str(row["invalid"]),
+                   **{k: pct(row[k]) for k in ("unsafe_action_rate", "wrong_block_rate", "decision_macro_f1",
+                                               "saving_vs_always", "check_precision", "check_recall",
+                                               "correct_missing_fact")}}
+    return row
+
+
+def _versus_text(v: dict) -> dict:
+    return {"unsafe_diff": with_ci(v["unsafe_diff"]), "margin": pct(v["margin"]),
+            "hypothesis": "passes" if v["hypothesis_passes"] else "fails",
+            "accuracy_diff": with_ci(v["accuracy_diff"]), "mcnemar_p": p_value(v["mcnemar_p"]),
+            "checks_selective": num(v["checks_selective"]), "checks_always": num(v["checks_always"]),
+            "checks_p": p_value(v["checks_p"]), "oracle_saving": pct(v["oracle_saving"])}
 
 
 def load_results(path=RESULTS_JSON) -> dict:
@@ -60,6 +77,7 @@ def load_results(path=RESULTS_JSON) -> dict:
                                "mcnemar_p": t["tests"]["correct"]["by_case"]["p_value"],
                                "checks_selective": checks["mean_a"], "checks_always": checks["mean_b"],
                                "checks_p": checks["p_value"], "oracle_saving": r.get("oracle_saving")})
+                versus[-1]["text"] = _versus_text(versus[-1])
             tables.append({"split": split, "split_name": split_name, "policies": cond, "policies_name": cond_name,
                            "cases": rows[0]["cases"] if rows else None, "rows": rows, "selective_vs_always": versus})
     return {"system": "v2 (final)", "source": str(path.relative_to(REPO_ROOT)),

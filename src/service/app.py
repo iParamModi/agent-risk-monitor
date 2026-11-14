@@ -18,6 +18,8 @@ GET /api/runs/{source}/{id}   the run's events, in order
 GET /api/runs/{source}/{id}/state?step=N   the company after step N (company_snapshot + state_diffs), with the
                               facts hidden from the monitor marked (for the human viewer; src/live/company.py)
 GET /api/results              the report's final numbers (src/service/results.py, from final_results_v2.json)
+GET /api/team                 who built which part, each part tied to its PROGRESS.md rows (src/service/team.py)
+GET /report.pdf               the final report (report/final_submission.pdf)
 /api/live/*  (any method)     403 unless LIVE_MODE=on AND header X-Live-Password equals LIVE_PASSWORD (constant-time
                               compare) AND the cost guard passes. The live service was cut on 12 Nov and has no priced
                               backend, so the guard is asked with Tier C and always refuses: these stay 403.
@@ -34,7 +36,8 @@ from fastapi.responses import FileResponse, JSONResponse
 from src.common.io import REPO_ROOT
 from src.live.company import state_at
 from src.service.cost_guard import PaidCallBlocked, require_paid_ok
-from src.service.results import load_results
+from src.service.results import REPORT_PDF, load_results
+from src.service.team import team
 
 DEMO_DIR = REPO_ROOT / "outputs" / "live" / "demo"
 DEMO_TASKS = REPO_ROOT / "lma_agent" / "tasks" / "demo_tasks.yaml"
@@ -100,6 +103,17 @@ def create_app(sources: dict[str, Path] | None = None) -> FastAPI:
     @app.get("/api/results")
     def results():
         return load_results()
+
+    @app.get("/api/team")
+    def who_built_what():
+        return team()
+
+    @app.get("/report.pdf")
+    def report():
+        path = REPO_ROOT / REPORT_PDF
+        if not path.is_file():
+            raise HTTPException(404, "the report PDF is not in this checkout")
+        return FileResponse(path, media_type="application/pdf")
 
     @app.get("/api/runs")
     def runs():

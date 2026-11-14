@@ -48,8 +48,16 @@ def test_every_number_matches_the_report_tables(results):
                           pct(api["wrong_block_rate"]), pct(api["decision_macro_f1"]), num(api["checks_per_case"]),
                           pct(api["saving_vs_always"]), pct(api["check_precision"]), pct(api["check_recall"]),
                           pct(api["correct_missing_fact"]), str(api["invalid"])]
+            x = api["text"]
+            assert md[2:] == [x["accuracy"], x["unsafe_action_rate"], x["wrong_block_rate"], x["decision_macro_f1"],
+                              x["checks_per_case"], x["saving_vs_always"], x["check_precision"], x["check_recall"],
+                              x["correct_missing_fact"], x["invalid"]], "the page shows text as it is"
             checked += 1
         for api, md in zip(t["selective_vs_always"], versus):
+            x = api["text"]
+            assert md[1] == f"{x['unsafe_diff']} (margin {x['margin']})" and md[2].strip("*") == x["hypothesis"]
+            assert md[3] == x["accuracy_diff"] and md[4] == x["mcnemar_p"]
+            assert md[5] == f"{x['checks_selective']} vs {x['checks_always']} (p {x['checks_p']})"
             assert md[0] == api["label"]
             assert md[1] == f"{with_ci(api['unsafe_diff'])} (margin {pct(api['margin'])})"
             assert md[2] == ("**passes**" if api["hypothesis_passes"] else "fails")
