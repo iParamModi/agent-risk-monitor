@@ -43,7 +43,8 @@ def test_runs_list_the_fake_demo_runs_with_agent_and_monitor(client):
 
 
 def test_one_run_replays_all_its_events(client):
-    run = next(r for r in client.get("/api/runs").json() if r["task"] == "demo_hidden" and r["setting"] == "selective")
+    run = next(r for r in client.get("/api/runs").json()
+               if r["source"] == "fake" and r["task"] == "demo_hidden" and r["setting"] == "selective")
     data = client.get(f"/api/runs/{run['source']}/{run['run_id']}").json()
     types = [e["type"] for e in data["events"]]
     assert types[:2] == ["company_snapshot", "instruction"] and types[-1] == "final_response"

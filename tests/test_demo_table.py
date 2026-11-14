@@ -106,7 +106,8 @@ def test_the_text_names_a_real_monitor_and_a_groq_agent_from_the_logs(folder):
     for row in rows:
         def change(events):
             meta = next(e for e in events if e["type"] == "instruction")["payload"]["meta"]
-            meta.update({"fake_monitor": False, "monitor_model": "Some/Model-8B", "adapter_dataset": "owner/adapter",
+            meta.update({"fake_monitor": False, "monitor_model": "Some/Model-8B+/kaggle/input/datasets/owner/adapter",
+                         "adapter_dataset": "owner/adapter",
                          "recorded_on": "kaggle", "agent": "groq:vendor/agent-model"})
         edit_log(folder / row["file"], change)
         row["agent"] = "groq:vendor/agent-model"
@@ -115,6 +116,7 @@ def test_the_text_names_a_real_monitor_and_a_groq_agent_from_the_logs(folder):
     assert dt.load(folder)[1] == []
     text = dt.describe(rows, folder)
     assert "FAKE" not in text and "Some/Model-8B" in text and "owner/adapter" in text
+    assert "/kaggle/input" not in text          # the adapter folder on the recording machine is not the model name
     assert "Groq vendor/agent-model agent in 4 runs" in text and "other 3 runs" in text
     assert text.count(". ") == 2          # three sentences
 

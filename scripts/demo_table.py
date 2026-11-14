@@ -232,6 +232,8 @@ def describe(rows: list[dict], folder: Path) -> str:
     else:
         models = sorted({str(m.get("monitor_model")) for m in metas if m.get("monitor_model")})
         adapters = sorted({str(m.get("adapter_dataset")) for m in metas if m.get("adapter_dataset")})
+        if adapters:        # the log's model label is "<base model>+<adapter folder on the recording machine>"
+            models = sorted({m.split("+", 1)[0] for m in models})
         monitor = (" and ".join(models) or "the trained model") + \
             (f" with the adapter `{' and '.join(adapters)}`" if adapters else "")
         if any(fake):

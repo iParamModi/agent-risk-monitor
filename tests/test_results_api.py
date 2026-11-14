@@ -77,7 +77,8 @@ def test_tasks_endpoint_lists_the_preset_demo_tasks():
 def test_state_endpoint_steps_through_a_run():
     client = TestClient(create_app())
     run = next(r for r in client.get("/api/runs").json()
-               if r["task"] == "demo_acmepay" and r["setting"] == "selective" and r["confirm"] == "yes")
+               if r["source"] == "fake" and r["task"] == "demo_acmepay" and r["setting"] == "selective"
+               and r["confirm"] == "yes")          # the fake monitor asks, and the scripted user approves
     url = f"/api/runs/{run['source']}/{run['run_id']}/state"
     start, end = client.get(url, params={"step": 0}).json(), client.get(url).json()
     assert "AcmePay" in start["state"]["repos"] and "AcmePay" not in end["state"]["repos"]      # approved, deleted
