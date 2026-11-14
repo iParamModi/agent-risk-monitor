@@ -9,7 +9,8 @@ It only replays logs: no model, no GPU, no API call. Runs come from
                                      FAKE MONITOR banner on them
 Tries in attempts/ are never listed (they are kept in the folder for honesty, not replayed).
 
-GET /                         the page (src/service/static/replay.html)
+GET /                         the Northwind Labs workspace (src/service/static/workspace.html)
+GET /replay                   the event timeline (src/service/static/replay.html)
 GET /health                   + live_available (False: no live backend is built; Step 2, under the cost rules)
 GET /api/tasks                the preset demo tasks (lma_agent/tasks/demo_tasks.yaml)
 GET /api/runs                 one summary per run: task, setting, agent, monitor version and k, decision, checks
@@ -139,7 +140,11 @@ def create_app(sources: dict[str, Path] | None = None) -> FastAPI:
         return JSONResponse({"detail": "the live service is not built (cut on 12 Nov)"}, status_code=501)
 
     @app.get("/")
-    def page():
+    def workspace():
+        return FileResponse(STATIC / "workspace.html", media_type="text/html")
+
+    @app.get("/replay")
+    def timeline():
         return FileResponse(STATIC / "replay.html", media_type="text/html")
 
     return app

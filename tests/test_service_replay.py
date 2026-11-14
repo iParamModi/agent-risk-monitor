@@ -20,10 +20,16 @@ def test_health(client):
                                             "live_available": False}
 
 
-def test_page_is_served(client):
+def test_workspace_is_the_home_page(client):
     res = client.get("/")
     assert res.status_code == 200 and "text/html" in res.headers["content-type"]
-    assert "FAKE MONITOR" in res.text and "monitor ${r.monitor_version" in res.text
+    assert "Northwind Labs" in res.text and "FAKE MONITOR" in res.text and "REPLAY" in res.text
+    assert "Live mode is offline" in res.text
+
+
+def test_event_timeline_is_still_served(client):
+    res = client.get("/replay")
+    assert res.status_code == 200 and "monitor ${r.monitor_version" in res.text
 
 
 def test_runs_list_the_fake_demo_runs_with_agent_and_monitor(client):

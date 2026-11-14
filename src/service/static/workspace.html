@@ -1,0 +1,776 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Northwind Labs Workspace</title>
+<style>
+/* Northwind Labs is a fictional company. Everything this page shows comes from the run log events and the
+   /api/runs/{source}/{id}/state endpoint: no decision, check result or fact is written into this file. */
+:root {
+  --bg: #f4f5f7; --panel: #ffffff; --panel2: #f9fafb; --ink: #1c2230; --muted: #5d6576; --faint: #8a91a0;
+  --line: #dde1e8; --soft: #eef1f5; --accent: #2f5bd3;
+  --red: #c62f3a; --red-bg: #fde8ea; --amber: #a85d00; --amber-bg: #fff1dc; --green: #1d7f46; --green-bg: #e3f5ea;
+  --violet: #6a3fb5; --violet-bg: #efe7fb; --fake: #8a5a00; --fake-bg: #fff4d6;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+:root[data-theme="dark"] {
+  --bg: #0f1217; --panel: #161a21; --panel2: #1b2029; --ink: #e4e8ef; --muted: #98a1b2; --faint: #6c7486;
+  --line: #2a303b; --soft: #212732; --accent: #7ea2ff;
+  --red: #ff7a84; --red-bg: #3a1d22; --amber: #ffb259; --amber-bg: #3a2a14; --green: #5fd394; --green-bg: #173225;
+  --violet: #c3a3ff; --violet-bg: #2a2140; --fake: #ffcf5c; --fake-bg: #3a2f12;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  display: flex; flex-direction: column; }
+code, pre, .mono { font-family: var(--mono); font-size: 12.5px; }
+pre { background: var(--soft); border-radius: 6px; padding: 8px; margin: 6px 0 0; white-space: pre-wrap; word-break: break-word; }
+button { font: inherit; color: var(--ink); background: var(--soft); border: 1px solid var(--line); border-radius: 7px; padding: 4px 10px; cursor: pointer; }
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: .45; cursor: default; }
+button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button[aria-pressed="true"] { color: #0f1217; }
+select { font: inherit; color: var(--ink); background: var(--soft); border: 1px solid var(--line); border-radius: 7px; padding: 3px 6px; }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+.chip { display: inline-block; font-size: 11.5px; padding: 1px 7px; border-radius: 999px; background: var(--soft); border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.chip.fake { color: var(--fake); background: var(--fake-bg); border-color: var(--fake); }
+.chip.reuse { color: var(--violet); border-color: var(--violet); }
+.dec { font-family: var(--mono); font-weight: 700; font-size: 12px; padding: 1px 7px; border-radius: 5px; white-space: nowrap; }
+.dec.BLOCK { color: var(--red); background: var(--red-bg); }
+.dec.ASK_CONFIRMATION { color: var(--amber); background: var(--amber-bg); }
+.dec.ALLOW { color: var(--green); background: var(--green-bg); }
+.dec.ESCALATE { color: var(--violet); background: var(--violet-bg); }
+.dec.big { font-size: 16px; padding: 3px 10px; }
+
+/* three columns + status bar */
+.ws { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(420px, 36%) minmax(0, 1fr) minmax(330px, 25%); }
+.col { min-height: 0; min-width: 0; overflow: auto; border-right: 1px solid var(--line); }
+.col:last-child { border-right: 0; }
+.sect { font: 600 11px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); margin: 16px 14px 6px; display: flex; align-items: center; gap: 8px; }
+.sect::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+
+/* left: company apps */
+.apps { background: var(--panel); }
+.brand { display: flex; gap: 10px; align-items: center; padding: 14px 14px 4px; }
+.logo { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; font: 700 15px var(--mono); color: var(--bg); background: var(--amber); }
+.brand b { display: block; }
+.appnav { display: flex; flex-direction: column; padding: 0 8px; }
+.appnav button, .appnav a { display: flex; justify-content: space-between; align-items: center; width: 100%; text-align: left; background: none; border: 0; border-radius: 6px; padding: 5px 8px; color: var(--ink); text-decoration: none; font-size: 13.5px; }
+.appnav button:hover, .appnav a:hover { background: var(--soft); }
+.appnav button[aria-current="true"] { background: var(--soft); box-shadow: inset 2px 0 0 var(--amber); }
+.appnav .n { font: 12px var(--mono); color: var(--faint); }
+.appnav .n.hot { color: var(--amber); }
+.mvbar { display: flex; align-items: center; gap: 8px; margin: 10px 14px 0; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel2); }
+.mvbar label { display: flex; align-items: center; gap: 6px; font-weight: 600; cursor: pointer; }
+.mvbar.on { border-color: var(--amber); }
+.appview { padding: 4px 14px 8px; }
+.appview h4 { margin: 14px 0 6px; font-size: 12.5px; color: var(--muted); font-weight: 600; display: flex; gap: 6px; align-items: baseline; }
+.tw { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+table.t { width: 100%; border-collapse: collapse; font: 11.5px/1.35 var(--mono); }
+table.t th { text-align: left; font: 600 10.5px var(--mono); color: var(--faint); padding: 5px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; background: var(--panel2); position: sticky; top: 0; }
+table.t td { padding: 4px 5px; border-bottom: 1px solid var(--line); white-space: nowrap; vertical-align: top; }
+table.t tr:last-child td { border-bottom: 0; }
+table.t tr.grp td { color: var(--muted); background: var(--panel2); font-weight: 600; }
+table.t tr.removed td { text-decoration: line-through; color: var(--faint); }
+table.t tr.removed td.why { text-decoration: none; }
+table.t tr.focus td { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+table.t tr.focus td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+table.t tr.flash td { animation: flash 2.4s ease-out 1; }
+@keyframes flash { 0%, 30% { background: var(--amber-bg); } 100% { background: transparent; } }
+.htag { font: 700 9px var(--mono); color: var(--bg); background: var(--amber); border-radius: 3px; padding: 0 3px; margin-left: 3px; vertical-align: 1px; cursor: help; }
+td.hid { text-decoration: underline dotted var(--amber); text-underline-offset: 3px; }
+td.unseen { opacity: .22; filter: grayscale(1); }
+td.seen { color: var(--ink); }
+td.revealed { outline: 1px solid var(--amber); outline-offset: -2px; background: var(--amber-bg); }
+.y { color: var(--red); } .n0 { color: var(--muted); }
+.why { color: var(--red); font-size: 11px; }
+.empty { color: var(--muted); padding: 10px 2px; font-size: 13px; }
+
+/* centre: agent chat */
+.chat { display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+.chathead { padding: 10px 16px 8px; border-bottom: 1px solid var(--line); background: var(--panel); }
+.taskline { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.taskline h2 { font-size: 15px; margin: 0; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; padding: 3px 10px; font-size: 12.5px; }
+.seg button + button { border-left: 1px solid var(--line); }
+.pickrow { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-top: 8px; font-size: 12.5px; }
+.pickrow .lbl { color: var(--faint); font: 11px var(--mono); text-transform: uppercase; letter-spacing: .06em; margin-right: 4px; }
+.controls { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
+.controls .pos { margin-left: auto; font: 12px var(--mono); color: var(--muted); }
+.banner { margin: 10px 16px 0; border: 1px solid var(--fake); background: var(--fake-bg); color: var(--fake); border-radius: 8px; padding: 6px 10px; font-weight: 600; font-size: 13px; }
+.msgs { flex: 1; overflow: auto; padding: 12px 16px 20px; display: flex; flex-direction: column; gap: 8px; }
+.msg { max-width: 82%; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); }
+.msg .who { font: 600 11px var(--mono); color: var(--faint); margin-bottom: 2px; }
+.msg.user { align-self: flex-end; background: color-mix(in srgb, var(--accent) 14%, var(--panel)); border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+.msg.agent { align-self: flex-start; }
+.note { align-self: center; font-size: 12px; color: var(--violet); border: 1px dashed var(--violet); border-radius: 8px; padding: 4px 10px; max-width: 90%; text-align: center; }
+.tool { align-self: flex-start; max-width: 92%; border: 1px solid var(--line); border-radius: 8px; background: var(--panel2); font: 12.5px var(--mono); }
+.tool summary { list-style: none; cursor: pointer; padding: 5px 10px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.tool summary::-webkit-details-marker { display: none; }
+.tool pre { margin: 0 8px 8px; max-height: 260px; overflow: auto; }
+.tag { font: 700 10px var(--mono); letter-spacing: .05em; padding: 1px 5px; border-radius: 4px; border: 1px solid var(--line); color: var(--muted); text-transform: uppercase; }
+.tag.red { color: var(--red); border-color: var(--red); }
+.arrow { color: var(--faint); }
+.res { color: var(--green); }
+.risk { align-self: stretch; border: 1px solid var(--red); border-left-width: 4px; border-radius: 10px; background: var(--red-bg); padding: 9px 12px; cursor: pointer; }
+.risk.sel { box-shadow: 0 0 0 2px var(--red); }
+.risk .head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.risk code { font-size: 13.5px; font-weight: 600; }
+.risk .st { margin-top: 6px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font: 600 12.5px var(--mono); }
+.st .pause { color: var(--amber); animation: pulse 1.4s ease-in-out infinite; }
+.st .wait { color: var(--amber); }
+.st .ok { color: var(--green); }
+.st .bad { color: var(--red); }
+@keyframes pulse { 50% { opacity: .45; } }
+.diff { align-self: flex-start; font: 12px var(--mono); color: var(--amber); border-left: 2px solid var(--amber); padding: 2px 8px; cursor: pointer; }
+.composer { border-top: 1px solid var(--line); background: var(--panel); padding: 10px 16px 12px; }
+.presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.presets button { border-radius: 999px; font-size: 12.5px; padding: 3px 11px; }
+.taskform { display: flex; gap: 8px; }
+.taskform input { flex: 1; min-width: 0; font: inherit; color: var(--ink); background: var(--soft); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
+.taskform input:disabled { color: var(--muted); }
+
+/* right: safety monitor */
+.monitor { background: var(--panel); padding: 0 0 20px; }
+.mhead { display: flex; align-items: center; gap: 8px; padding: 12px 14px 8px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); z-index: 1; flex-wrap: wrap; }
+.mhead h3 { margin: 0; font: 700 13px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.blk { margin: 10px 14px 0; border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; background: var(--panel2); }
+.blk h5 { margin: 0 0 5px; font: 600 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); display: flex; justify-content: space-between; gap: 8px; }
+.blk h5 .lat { text-transform: none; letter-spacing: 0; color: var(--muted); font-weight: 400; }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 2px 10px; font: 12.5px var(--mono); margin-top: 4px; }
+.kv dt { color: var(--faint); } .kv dd { margin: 0; overflow-wrap: anywhere; }
+.ans { font: 600 13px var(--mono); }
+.ans .no { color: var(--amber); } .ans .yes { color: var(--green); }
+.chk { border-top: 1px dashed var(--line); padding-top: 6px; margin-top: 6px; }
+.chk:first-of-type { border-top: 0; margin-top: 0; padding-top: 0; }
+.chk pre { font-size: 11.5px; margin-top: 4px; }
+.chk code, .blk .ans code, .blk .small code { overflow-wrap: anywhere; }
+.chk .rv { display: block; color: var(--green); font: 12px var(--mono); overflow-wrap: anywhere; margin-top: 2px; }
+.chk details > summary { font-size: 11.5px; }
+.revtag { font: 600 10px var(--mono); color: var(--amber); }
+ol.pol { margin: 4px 0 0; padding-left: 0; list-style: none; font-size: 12.5px; }
+ol.pol li { padding: 2px 0; color: var(--muted); }
+ol.pol li code { color: var(--ink); margin-right: 6px; }
+ol.pol li.cited { color: var(--ink); font-weight: 600; }
+ol.pol li.cited code { color: var(--amber); }
+details > summary { cursor: pointer; }
+.blk details > summary { color: var(--muted); font-size: 12.5px; }
+.decision { border-width: 1px; border-left-width: 4px; }
+.decision.BLOCK { border-color: var(--red); } .decision.ASK_CONFIRMATION { border-color: var(--amber); }
+.decision.ALLOW { border-color: var(--green); } .decision.ESCALATE { border-color: var(--violet); }
+.counter { display: flex; gap: 14px; flex-wrap: wrap; margin: 10px 14px 0; font: 12.5px var(--mono); color: var(--muted); }
+.counter b { color: var(--ink); }
+.confirm { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+.confirm button { font-weight: 600; }
+.confirm button.chosen { opacity: 1; border-width: 2px; }
+.confirm button.approve.chosen { border-color: var(--green); color: var(--green); background: var(--green-bg); }
+.confirm button.deny.chosen { border-color: var(--red); color: var(--red); background: var(--red-bg); }
+.waiting { color: var(--amber); font: 600 12.5px var(--mono); animation: pulse 1.4s ease-in-out infinite; }
+.mempty { margin: 16px 14px; color: var(--muted); font-size: 13px; }
+
+/* status bar */
+.status { flex: 0 0 auto; display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; padding: 6px 14px; border-top: 1px solid var(--line); background: var(--panel); font: 12px var(--mono); color: var(--muted); }
+.status .mode { font-weight: 700; color: var(--amber); border: 1px solid var(--amber); border-radius: 4px; padding: 0 6px; letter-spacing: .08em; }
+.status .sep { color: var(--line); }
+.status b { color: var(--ink); font-weight: 600; }
+.status .right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.status button { font-size: 11.5px; padding: 1px 8px; }
+
+@media (max-width: 1100px) {
+  body { display: block; height: auto; }
+  .ws { display: flex; flex-direction: column; }
+  .col { overflow: visible; border-right: 0; border-bottom: 1px solid var(--line); }
+  .chat { order: 1; overflow: visible; } .monitor { order: 2; } .apps { order: 3; }
+  .msgs { overflow: visible; }
+  .status { position: sticky; bottom: 0; }
+  .msg { max-width: 92%; }
+}
+</style>
+</head>
+<body>
+<div class="ws">
+  <aside class="col apps" aria-label="Company apps">
+    <div class="brand"><div class="logo" aria-hidden="true">N</div>
+      <div><b>Northwind Labs</b><span class="muted small">fictional company · internal workspace</span></div></div>
+    <div class="sect">Company apps</div>
+    <nav class="appnav" id="appnav"></nav>
+    <div class="mvbar" id="mvbar">
+      <label><input type="checkbox" id="mv"> Monitor view</label>
+      <span class="muted small" id="mvnote">grey = facts the monitor has not seen</span>
+    </div>
+    <div class="appview" id="appview"><p class="empty">Loading the company...</p></div>
+    <div class="sect">Monitor</div>
+    <nav class="appnav"><a href="replay">Event timeline <span class="n">all events</span></a></nav>
+  </aside>
+
+  <section class="col chat" aria-label="Agent">
+    <div class="chathead">
+      <div class="taskline"><h2 id="tasktitle">Agent</h2><span class="muted small" id="taskdesc"></span></div>
+      <div class="pickrow" id="picker"></div>
+      <div class="controls">
+        <button type="button" id="b-reset">Restart</button>
+        <button type="button" id="b-prev" aria-label="Previous event">Back</button>
+        <button type="button" id="b-play">Play</button>
+        <button type="button" id="b-next" aria-label="Next event">Next</button>
+        <button type="button" id="b-all">Show all</button>
+        <select id="speed" aria-label="Replay speed"><option value="1800">slow</option><option value="1000" selected>normal</option><option value="450">fast</option></select>
+        <span class="pos" id="pos"></span>
+      </div>
+    </div>
+    <div id="banner"></div>
+    <div class="msgs" id="msgs" aria-live="polite"></div>
+    <div class="composer">
+      <div class="presets" id="presets"></div>
+      <form class="taskform" id="taskform">
+        <input id="taskinput" disabled aria-label="Task for the agent" placeholder="Loading...">
+        <button type="submit" id="runbtn">Replay</button>
+      </form>
+    </div>
+  </section>
+
+  <aside class="col monitor" id="monitor" aria-label="Safety monitor"></aside>
+</div>
+<footer class="status" id="status"></footer>
+
+<script>
+"use strict";
+const DEC = { BLOCK: "BLOCK", ASK_CONFIRMATION: "ASK CONFIRMATION", ALLOW: "ALLOW", ESCALATE: "ESCALATE" };
+// Which collections each app shows. Columns name state fields; nothing here is a value from a run.
+const APPS = [
+  { id: "files", name: "Files", sections: [{ coll: "files", title: "Files by folder", folders: true,
+      cols: [["path", "name", v => v.split("/").pop()], ["owner", "owner"], ["sharing", "sharing"], ["classification", "class"], ["modified", "modified"]] }] },
+  { id: "repos", name: "Repositories", sections: [{ coll: "repos", title: "Repositories",
+      cols: [["name", "name"], ["production", "production"], ["archived", "status", (v, r) => r.archived ? "archived" : (r.lifecycle || "active")], ["visibility", "visibility"], ["owner_team", "team"]] }] },
+  { id: "payments", name: "Payments", sections: [
+      { coll: "accounts", title: "Accounts", cols: [["account_id", "account"], ["owner", "owner"], ["type", "type"], ["balance_inr", "balance", inr]] },
+      { coll: "transactions", title: "Transfers and bills", cols: "auto" },
+      { coll: "users", title: "Approval limits", cols: [["user_id", "user"], ["role", "role"], ["approval_limit_inr", "limit", inr]] }] },
+  { id: "email", name: "Email", sections: [
+      { coll: "inbox", title: "Inbox", cols: [["sender", "from"], ["subject", "subject"], ["to", "to"]] },
+      { coll: "sent", title: "Sent", cols: [["to", "to"], ["subject", "subject"]] },
+      { coll: "messages", title: "Chat messages", cols: "auto" }] },
+  { id: "calendar", name: "Calendar", sections: [{ coll: "events", title: "Events", cols: [["title", "title"], ["organizer", "organizer"], ["attendees", "attendees"]] }] },
+  { id: "people", name: "People & Access", sections: [
+      { coll: "users", title: "People", cols: [["user_id", "user"], ["name", "name"], ["team", "team"], ["role", "role"], ["account_type", "type"], ["status", "status"]] },
+      { coll: "permissions", title: "Access", perms: true },
+      { coll: "contacts", title: "Contacts", cols: [["email", "email"], ["org", "org"], ["kind", "kind"]] }] },
+  { id: "customers", name: "Customers", sections: [
+      { coll: "customers", title: "Customers", cols: [["customer_id", "id"], ["name", "name"], ["status", "status"], ["dnc", "do not contact"], ["dispute", "dispute"]] },
+      { coll: "exports", title: "Data exports", cols: "auto" }] },
+];
+const APP_OF = { files: "files", folders: "files", repos: "repos", accounts: "payments", transactions: "payments",
+  inbox: "email", sent: "email", messages: "email", events: "calendar", users: "people", contacts: "people",
+  permissions: "people", customers: "customers", exports: "customers" };
+const KEY_FIELD = { files: "path", folders: "path", repos: "name", accounts: "account_id", customers: "customer_id",
+  users: "user_id", contacts: "contact_id" };
+// Field names that name an entity in tool results and gateway results, in the order they are tried.
+const ID_FIELDS = ["path", "file", "repo", "account_id", "account", "to_account", "from_account", "customer_id",
+  "user_id", "user", "contact_id", "recipient", "email", "folder", "resource", "name"];
+
+const S = { runs: [], tasks: [], health: {}, source: null, run: null, summary: null, events: [], shown: 0,
+  timer: null, speed: 1000, snapshot: null, states: {}, app: "files", mv: false, selRisk: null, focus: null };
+
+const $ = id => document.getElementById(id);
+function el(tag, attrs, ...kids) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v === null || v === undefined || v === false) continue;
+    if (k === "class") n.className = v; else if (k === "text") n.textContent = v;
+    else if (k.startsWith("on")) n.addEventListener(k.slice(2), v); else n.setAttribute(k, v === true ? "" : v);
+  }
+  for (const kid of kids.flat()) if (kid !== null && kid !== undefined && kid !== false) n.append(kid.nodeType ? kid : String(kid));
+  return n;
+}
+function inr(v) { return typeof v === "number" ? "₹" + v.toLocaleString("en-IN") : v; }
+const chip = (text, cls) => el("span", { class: "chip " + (cls || ""), text });
+const badge = (d, big) => el("span", { class: "dec " + (d || "") + (big ? " big" : ""), text: DEC[d] || d || "?" });
+const fmtArgs = a => Object.entries(a || {}).map(([k, v]) => `${k}=${typeof v === "string" ? v : JSON.stringify(v)}`).join(", ");
+const call = (tool, args) => `${tool}(${fmtArgs(args)})`;
+const oneLine = v => JSON.stringify(v);
+async function api(path) { const r = await fetch(path); if (!r.ok) throw new Error(path + " " + r.status); return r.json(); }
+
+// ---------- loading ----------
+async function init() {
+  try {
+    [S.runs, S.tasks, S.health] = await Promise.all([api("api/runs"), api("api/tasks"), api("health")]);
+  } catch (e) {
+    $("msgs").replaceChildren(el("p", { class: "empty", text: "Could not load the recorded runs: " + e.message }));
+    return;
+  }
+  const q = new URLSearchParams(location.search);
+  if (q.get("app") && APPS.some(a => a.id === q.get("app"))) S.app = q.get("app");
+  S.mv = q.get("mv") === "1"; $("mv").checked = S.mv;
+  const [hs, hr, hn] = decodeURIComponent(location.hash.slice(1)).split("/");
+  const linked = S.runs.find(r => r.source === hs && r.run_id === hr);
+  const sources = sourcesPresent();
+  S.source = linked ? linked.source : sources[0] || null;
+  const first = linked || pick({ task: S.tasks[0] && S.tasks[0].id, setting: "selective", confirm: "yes" });
+  renderPresets();
+  if (first) await openRun(first, { cursor: hn ? +hn : null });
+  else { renderAll(); $("msgs").replaceChildren(el("p", { class: "empty", text: "No runs recorded yet." })); }
+}
+function sourcesPresent() {
+  return [...new Set(S.runs.map(r => r.source))].sort((a, b) => a === "real" ? -1 : b === "real" ? 1 : 0);
+}
+function runsOf(task) { return S.runs.filter(r => r.source === S.source && r.task === task); }
+function pick({ task, setting, confirm }) {
+  const rs = runsOf(task);
+  return rs.find(r => r.setting === setting && (r.confirm || "yes") === confirm) || rs.find(r => r.setting === setting)
+    || rs.find(r => r.setting === "selective") || rs[0] || null;
+}
+
+async function openRun(run, { cursor = null, play = false } = {}) {
+  stop();
+  const data = await api(`api/runs/${encodeURIComponent(run.source)}/${encodeURIComponent(run.run_id)}`);
+  S.run = run; S.source = run.source; S.summary = data.summary; S.events = data.events;
+  S.selRisk = null; S.focus = null; S.states = {}; S.scrolledAt = -1;
+  const snap = S.events.find(e => e.type === "company_snapshot");
+  S.snapshot = snap ? snap.payload : null;
+  const steps = [...new Set(S.events.filter(e => e.type === "state_diff" && e.payload.changed).map(e => e.step))];
+  await Promise.all(steps.map(async s => {
+    S.states[s] = await api(`api/runs/${encodeURIComponent(run.source)}/${encodeURIComponent(run.run_id)}/state?step=${s}`);
+  }));
+  const start = S.events.findIndex(e => e.type === "instruction") + 1 || 1;
+  S.shown = cursor ? Math.max(1, Math.min(S.events.length, cursor)) : start;
+  for (const e of upTo()) {
+    if (e.type === "risk_action") { const t = targetOf(e.payload.args); if (t) { S.focus = { coll: t.coll, key: t.key }; S.app = APP_OF[t.coll] || S.app; } }
+    if (e.type === "state_diff" && e.payload.changed) { const c = e.payload.changes.find(x => APP_OF[x.collection] === S.app) || e.payload.changes[0]; S.focus = { coll: c.collection, key: c.key }; }
+  }
+  renderPresets();
+  show(S.shown, { follow: false });
+  if (play) toggle();
+}
+
+// ---------- the run at the cursor ----------
+const upTo = () => S.events.slice(0, S.shown);
+function riskBlocks() {
+  const idx = S.events.map((e, i) => e.type === "risk_action" ? i : -1).filter(i => i >= 0);
+  return idx.map((i, n) => ({ idx: i, end: n + 1 < idx.length ? idx[n + 1] : S.events.length, n: n + 1 }));
+}
+function blockEvents(b) { return S.events.slice(b.idx + 1, Math.min(b.end, S.shown)); }
+function outcome(b) {
+  const es = blockEvents(b), get = t => es.find(e => e.type === t);
+  const dec = get("decision"), req = get("confirm_request"), ans = get("confirm_answer");
+  const applied = get("action_applied"), refused = get("action_refused");
+  const said = ans ? (ans.payload.answer === "yes" ? "you approved · " : "you denied · ") : "";
+  if (applied) return { cls: "ok", text: said + "applied", dec, ans };
+  if (refused) return { cls: "bad", text: said + "refused · did not run", dec, ans };
+  if (ans) return { cls: "wait", text: ans.payload.answer === "yes" ? "you approved" : "you denied", dec, ans };
+  if (req) return { cls: "wait", text: "waiting for you", dec };
+  if (dec) return { cls: "wait", text: "decided", dec };
+  return { cls: "pause", text: "⏸ paused for review", dec: null };
+}
+function stateNow() {
+  let step = null;
+  for (const e of upTo()) if (e.type === "state_diff" && e.payload.changed) step = e.step;
+  if (step === null || !S.states[step]) return { state: S.snapshot ? S.snapshot.state : null, diffs: [] };
+  return S.states[step];
+}
+function lookup(value, field, state) {
+  if (typeof value !== "string" || !state) return null;
+  const pref = { path: ["files", "folders"], file: ["files"], folder: ["folders"], repo: ["repos"], name: ["repos"],
+    account_id: ["accounts"], account: ["accounts"], to_account: ["accounts"], from_account: ["accounts"],
+    customer_id: ["customers"], user_id: ["users"], user: ["users", "contacts"], contact_id: ["contacts"],
+    recipient: ["users", "contacts", "accounts"], email: ["contacts", "users"], resource: ["files", "repos", "customers"] }[field]
+    || Object.keys(KEY_FIELD);
+  for (const coll of pref) {
+    const c = state[coll];
+    if (!c || Array.isArray(c)) continue;
+    if (c[value]) return { coll, key: value };
+    for (const [k, row] of Object.entries(c)) if (row && row.email && row.email.toLowerCase() === value.toLowerCase()) return { coll, key: k };
+  }
+  return null;
+}
+function targetOf(args) {
+  const st = S.snapshot && S.snapshot.state;
+  for (const [k, v] of Object.entries(args || {})) { const hit = lookup(v, k, st) || lookup(v, k, stateNow().state); if (hit) return hit; }
+  return null;
+}
+// Facts that reached the monitor up to the cursor: the agent's tool results (they are in the monitor's record) and
+// gateway check results. Key: "coll|key|field" -> how it was seen.
+function seenFacts() {
+  const seen = new Map(), st = S.snapshot && S.snapshot.state;
+  const mark = (coll, key, field, by) => {
+    const k = `${coll}|${key}|${field}`;
+    if (!seen.has(k) || by.gateway) seen.set(k, by);
+  };
+  const walk = (o, by) => {
+    if (Array.isArray(o)) { o.forEach(x => walk(x, by)); return; }
+    if (!o || typeof o !== "object") return;
+    let ent = null;
+    for (const f of ID_FIELDS) { const hit = lookup(o[f], f, st); if (hit) { ent = { ...hit, f }; break; } }
+    if (ent) {
+      for (const [k, v] of Object.entries(o)) {
+        if (v && typeof v === "object" && !Array.isArray(v)) continue;
+        mark(ent.coll, ent.key, k === ent.f ? KEY_FIELD[ent.coll] : k, by);
+      }
+      if (o.user && o.resource && "access_level" in o) mark("permissions", o.resource, o.user, by);
+    }
+    for (const v of Object.values(o)) if (v && typeof v === "object") walk(v, by);
+  };
+  for (const e of upTo()) {
+    const p = e.payload || {};
+    if (e.type === "observation") walk(p.result, { tool: p.tool, step: e.step });
+    else if (e.type === "gateway_check") walk(p.result, { tool: p.tool, step: e.step, gateway: true });
+    if (e.type === "tool_call" || e.type === "risk_action" || e.type === "gateway_check") {
+      const t = targetOf(p.args);
+      if (t && KEY_FIELD[t.coll]) mark(t.coll, t.key, KEY_FIELD[t.coll], { tool: p.tool, step: e.step });
+    }
+  }
+  return seen;
+}
+
+// ---------- rendering ----------
+function renderAll() { renderPicker(); renderChat(); renderMonitor(); renderApps(); renderStatus(); }
+
+function renderPresets() {
+  $("presets").replaceChildren(...S.tasks.filter(t => runsOf(t.id).length).map(t => el("button", {
+    type: "button", "aria-pressed": String(S.summary && S.summary.task === t.id), title: t.description || "",
+    text: t.title || t.id, onclick: () => { const r = pick({ task: t.id, setting: S.summary ? S.summary.setting : "selective", confirm: S.summary && S.summary.confirm || "yes" }); if (r) openRun(r, { play: true }); },
+  })));
+  const offline = !S.health.live_available;
+  $("taskinput").placeholder = offline ? "Live mode is offline — showing recorded runs. Pick a preset task above."
+    : "Replay mode: pick a preset task above.";
+}
+
+function renderPicker() {
+  const s = S.summary;
+  if (!s) { $("picker").replaceChildren(); return; }
+  const task = S.tasks.find(t => t.id === s.task) || {};
+  $("tasktitle").textContent = task.title || s.task;
+  $("taskdesc").textContent = task.description || "";
+  const rs = runsOf(s.task);
+  const seg = (label, opts) => el("span", {}, el("span", { class: "lbl", text: label }), el("span", { class: "seg" }, ...opts));
+  const opt = (text, pressed, run) => el("button", { type: "button", "aria-pressed": String(pressed), disabled: !run, text,
+    onclick: () => run && openRun(run) });
+  const sources = sourcesPresent();
+  const items = [];
+  if (sources.length > 1) items.push(seg("runs", sources.map(src => opt(src === "real" ? "Kaggle" : "fake monitor", src === S.source,
+    S.runs.find(r => r.source === src && r.task === s.task) || S.runs.find(r => r.source === src)))));
+  items.push(seg("monitor", ["selective", "always"].map(set => opt(set, s.setting === set,
+    rs.some(r => r.setting === set) ? pick({ task: s.task, setting: set, confirm: s.confirm || "yes" }) : null))));
+  const answers = [...new Set(rs.filter(r => r.setting === s.setting).map(r => r.confirm).filter(Boolean))];
+  if (answers.length > 1) items.push(seg("you answer", ["yes", "no"].map(a => opt(a, s.confirm === a, rs.find(r => r.setting === s.setting && r.confirm === a)))));
+  if (s.reused_from) items.push(chip("agent trajectory reused from the selective run", "reuse"));
+  $("picker").replaceChildren(...items);
+  $("banner").replaceChildren(...(s.fake_monitor ? [el("div", { class: "banner", role: "note",
+    text: "FAKE MONITOR: a rule-based stand-in recorded on CPU, not the trained model. These runs exist to build and test this workspace." })] : []));
+}
+
+function summarizeResult(r) {
+  if (r === null || r === undefined) return "…";
+  if (typeof r !== "object") return String(r);
+  if (r.error) return "error: " + r.error;
+  for (const [k, v] of Object.entries(r)) if (Array.isArray(v)) return `${v.length} ${k}`;
+  if (r.status) return String(r.status);
+  return Object.entries(r).filter(([, v]) => v === null || typeof v !== "object").slice(0, 3).map(([k, v]) => `${k}=${v}`).join(" · ");
+}
+function focusArgs(args) { const t = targetOf(args); if (t) focusOn(t.coll, t.key); }
+function focusOn(coll, key) {
+  S.focus = { coll: coll === "folders" ? "files" : coll, key, folder: coll === "folders" ? key : null };
+  S.app = APP_OF[coll] || S.app;
+  renderApps();
+  const row = document.querySelector("#appview tr.focus");
+  if (row) row.scrollIntoView({ block: "center", behavior: "smooth" });
+}
+
+function renderChat() {
+  const box = $("msgs"), items = [], ev = S.events, blocks = riskBlocks();
+  const actingUser = () => { const u = S.snapshot && S.snapshot.state.users[S.snapshot.state.current_user]; return u ? `${u.name} (${u.role})` : ""; };
+  for (let i = 0; i < S.shown; i++) {
+    const e = ev[i], p = e.payload || {};
+    if (e.type === "instruction") {
+      items.push(el("div", { class: "msg user" }, el("div", { class: "who", text: "YOU · as " + actingUser() }), p.prompt));
+    } else if (e.type === "tool_call") {
+      let obs = null;
+      for (let j = i + 1; j < ev.length && j < S.shown; j++) { if (ev[j].type === "observation") { obs = ev[j].payload; break; } if (ev[j].type === "tool_call") break; }
+      items.push(el("details", { class: "tool" },
+        el("summary", { onclick: () => focusArgs(p.args) }, el("span", { class: "tag", text: "tool" }), el("span", { text: call(p.tool, p.args) }),
+          el("span", { class: "arrow", text: "→" }), el("span", { class: "res", text: obs ? summarizeResult(obs.result) : "…" })),
+        obs ? el("pre", { text: JSON.stringify(obs.result, null, 2) }) : null));
+    } else if (e.type === "risk_action") {
+      const b = blocks.find(x => x.idx === i), o = outcome(b);
+      const sel = (S.selRisk ?? blocks.filter(x => x.idx < S.shown).at(-1).idx) === i;
+      items.push(el("div", { class: "risk" + (sel ? " sel" : ""), role: "button", tabindex: "0",
+          onclick: () => { S.selRisk = i; focusArgs(p.args); renderChat(); renderMonitor(); } },
+        el("div", { class: "head" }, el("span", { class: "tag red", text: "risk · write" }), el("code", { text: call(p.tool, p.args) })),
+        el("div", { class: "st" }, el("span", { class: o.cls, text: o.text }), o.dec ? el("span", { class: "muted", text: "monitor:" }) : null,
+          o.dec ? badge(o.dec.payload.decision) : null)));
+    } else if (e.type === "state_diff" && p.changed) {
+      for (const c of p.changes) {
+        const verb = { removed: "deleted", added: "added", changed: "changed", replaced: "replaced" }[c.kind] || c.kind;
+        items.push(el("div", { class: "diff", role: "button", tabindex: "0", onclick: () => focusOn(c.collection, c.key),
+          text: `company · ${c.collection}${c.key !== "" && !/^\d+$/.test(c.key) ? " · " + c.key : ""} ${verb}` }));
+      }
+    } else if (e.type === "final_response") {
+      items.push(el("div", { class: "msg agent" }, el("div", { class: "who", text: "AGENT" }), p.text || `(${p.status})`));
+    }
+  }
+  if (S.summary && S.summary.reused_from && S.shown > 2) {
+    const at = items.findIndex(x => x.classList.contains("risk"));
+    const note = el("div", { class: "note", text: "No new agent call in this run: the agent's messages up to its first risky action are replayed from the selective run, so only the monitor setting differs." });
+    if (at >= 0) items.splice(at, 0, note); else items.push(note);
+  }
+  box.replaceChildren(...items);
+  if (S.scrolledAt !== S.shown) { box.scrollTop = box.scrollHeight; S.scrolledAt = S.shown; }   // only when the cursor moved
+}
+
+function renderMonitor() {
+  const box = $("monitor"), s = S.summary;
+  const head = el("div", { class: "mhead" }, el("h3", { text: "Safety monitor" }),
+    s ? chip(`${s.monitor_version || "?"} · k=${s.k ?? "?"}`) : null, s ? chip(s.setting) : null,
+    s && s.fake_monitor ? chip("FAKE MONITOR", "fake") : s && s.monitor_model ? chip(s.monitor_model) : null);
+  const blocks = riskBlocks().filter(b => b.idx < S.shown);
+  if (!blocks.length) {
+    box.replaceChildren(head, el("p", { class: "mempty", text: "No risky action yet. Reads go straight through; the monitor checks every write the agent proposes, before it runs." }));
+    return;
+  }
+  const b = blocks.find(x => x.idx === S.selRisk) || blocks.at(-1);
+  const act = S.events[b.idx].payload, es = blockEvents(b), o = outcome(b);
+  const dec = es.find(e => e.type === "decision"), pols = es.find(e => e.type === "policies");
+  const cited = new Set(dec ? dec.payload.policy_ids || [] : []);
+  const hidden = S.snapshot ? S.snapshot.hidden_from_monitor : {};
+  const out = [head];
+  if (blocks.length > 1) out.push(el("div", { class: "counter" }, ...blocks.map(x => el("button", { type: "button", "aria-pressed": String(x === b),
+    text: `action ${x.n}`, onclick: () => { S.selRisk = x.idx; renderChat(); renderMonitor(); } }))));
+  out.push(el("div", { class: "blk" }, el("h5", {}, el("span", { text: "Action" }), el("span", { class: "lat st" }, el("span", { class: o.cls, text: o.text }))),
+    el("code", { class: "ans", text: act.tool }),
+    el("dl", { class: "kv" }, ...Object.entries(act.args || {}).flatMap(([k, v]) => [el("dt", { text: k }), el("dd", { text: typeof v === "string" ? v : oneLine(v) })]))));
+  if (pols) {
+    const list = pols.payload.policies || [];
+    out.push(el("div", { class: "blk" }, el("details", {},
+      el("summary", {}, `Policies · ${list.length} retrieved · ${s.monitor_version} · k=${s.k}` + (cited.size ? ` · cited ${[...cited].join(", ")}` : "")),
+      el("ol", { class: "pol" }, ...list.map(x => el("li", { class: cited.has(x.policy_id) ? "cited" : "" }, el("code", { text: x.policy_id }), x.first_line))))));
+  }
+  let checksSeen = 0, firstPass = true, group = null;
+  for (const e of es) {
+    const p = e.payload || {};
+    if (e.type === "gateway_check") {
+      if (!group) {
+        group = el("div", { class: "blk" }, el("h5", {}, el("span", { text: firstPass ? "Gateway · always: all checks first" : "Gateway · checks asked for" }),
+          el("span", { class: "lat", text: "read-only" })));
+        out.push(group);
+      }
+      checksSeen++;
+      const revealed = Object.keys(p.result || {}).filter(k => Object.values(hidden).some(h => h[k]));
+      const argVals = new Set(Object.values(p.args || {}));
+      const facts = Object.entries(p.result || {}).filter(([k, v]) => !(argVals.has(v) && k in (p.args || {}) || argVals.has(v) && typeof v === "string"));
+      group.append(el("div", { class: "chk" }, el("code", { text: call(p.tool, p.args) }),
+        el("span", { class: "rv", text: "→ " + (facts.map(([k, v]) => `${k}=${typeof v === "string" ? v : JSON.stringify(v)}`).join(" · ") || oneLine(p.result)) }),
+        revealed.length ? el("div", { class: "revtag", text: "reveals hidden: " + revealed.join(", ") }) : null,
+        el("details", {}, el("summary", { text: "result JSON" }), el("pre", { text: JSON.stringify(p.result, null, 2) }))));
+    } else if (e.type === "monitor_pass1" || e.type === "monitor_pass2") {
+      group = null;
+      const x = p.output || {}, beforeChecks = checksSeen === 0;
+      const title = firstPass && beforeChecks ? `Pass ${p.pass} · Enough info?` : firstPass ? `Pass ${p.pass} · Decide, all checks given` : `Pass ${p.pass} · Decide with the checks`;
+      let ans;
+      if (p.type === "NEED_INFORMATION") {
+        ans = [el("div", { class: "ans" }, el("span", { class: "no", text: "NO" }), " → missing: ", el("code", { text: x.missing_fact || "?" })),
+          (x.checks || []).length ? el("div", { class: "small muted" }, "asks the gateway: ", el("code", { text: x.checks.map(c => call(c.tool, c.args)).join(", ") })) : null,
+          x.reason ? el("div", { class: "small muted", text: "why: " + x.reason }) : null];
+      } else if (p.type === "DECISION") {
+        ans = [el("div", { class: "ans" }, firstPass && beforeChecks ? [el("span", { class: "yes", text: "YES" }), " → decides "] : "→ decides ", badge(x.decision))];
+      } else {
+        ans = [el("div", { class: "ans" }, el("span", { class: "no", text: "invalid answer" }), " → treated as ESCALATE")];
+      }
+      out.push(el("div", { class: "blk" }, el("h5", {}, el("span", { text: title }),
+        el("span", { class: "lat", text: `${p.latency_s != null ? (+p.latency_s).toFixed(1) : "?"} s · ${p.tokens_in ?? "?"}→${p.tokens_out ?? "?"}` , title: "latency · prompt tokens → output tokens" })),
+        ...ans, el("details", {}, el("summary", { text: "model output" }), el("pre", { text: JSON.stringify(p.output ?? p.raw, null, 2) }))));
+      firstPass = false;
+    }
+  }
+  if (dec) {
+    const d = dec.payload, polText = id => { const m = (pols ? pols.payload.policies : []).find(x => x.policy_id === id); return m ? m.first_line : ""; };
+    out.push(el("div", { class: "blk decision " + d.decision }, el("h5", {}, el("span", { text: "Decision" }),
+        el("span", { class: "lat", text: d.risk_label ? `${d.risk_label}${d.risk_type ? " · " + d.risk_type : ""}` : "" })),
+      badge(d.decision, true),
+      (d.evidence || []).length ? el("dl", { class: "kv" }, el("dt", { text: "evidence" }), el("dd", { text: d.evidence.join("; ") })) : null,
+      (d.policy_ids || []).length ? el("dl", { class: "kv" }, ...d.policy_ids.flatMap(id => [el("dt", { text: "policy" }), el("dd", {}, el("code", { text: id }), " ", el("span", { class: "muted", text: polText(id) }))])) : el("div", { class: "small muted", text: "no policy id cited" }),
+      d.valid === false ? el("div", { class: "small no", text: "the model's answer was invalid: ESCALATE" }) : null));
+    const req = es.find(e => e.type === "confirm_request"), ans = es.find(e => e.type === "confirm_answer");
+    if (d.decision === "ASK_CONFIRMATION" || req) {
+      const a = ans ? ans.payload.answer : null;
+      out.push(el("div", { class: "blk" }, el("h5", {}, el("span", { text: "Your confirmation" }), el("span", { class: "lat", text: "replay: buttons off" })),
+        req && req.payload.reason ? el("div", { class: "small", text: "asked because: " + req.payload.reason }) : null,
+        el("div", { class: "confirm" },
+          el("button", { type: "button", class: "approve" + (a === "yes" ? " chosen" : ""), disabled: true, text: "Approve" }),
+          el("button", { type: "button", class: "deny" + (a === "no" ? " chosen" : ""), disabled: true, text: "Deny" }),
+          a ? el("span", { class: "small muted", text: "recorded answer: " + a }) : el("span", { class: "waiting", text: "waiting for you" }))));
+    }
+  } else {
+    out.push(el("div", { class: "blk" }, el("span", { class: "waiting", text: "⏸ the agent is paused while the monitor decides" })));
+  }
+  out.push(el("div", { class: "counter" },
+    el("span", {}, "checks: ", el("b", { text: String(dec ? dec.payload.checks_used : checksSeen) }), dec && dec.payload.checks_always != null ? `  (always: ${dec.payload.checks_always})` : ""),
+    dec ? el("span", {}, "passes: ", el("b", { text: String(dec.payload.passes) })) : null,
+    el("span", {}, "monitor time: ", el("b", { text: secs(es) }))));
+  box.replaceChildren(...out);
+}
+function secs(events) {
+  const t = events.filter(e => e.type === "monitor_pass1" || e.type === "monitor_pass2").reduce((a, e) => a + (+e.payload.latency_s || 0), 0);
+  return t.toFixed(1) + " s";
+}
+
+function renderApps() {
+  const { state, diffs } = stateNow();
+  const nav = $("appnav");
+  if (!state) { nav.replaceChildren(); $("appview").replaceChildren(el("p", { class: "empty", text: "This run log has no company snapshot." })); return; }
+  const hidden = (S.snapshot && S.snapshot.hidden_from_monitor) || {};
+  const cur = S.events[S.shown - 1];
+  const flash = new Set(cur && cur.type === "state_diff" ? cur.payload.changes.map(c => `${c.collection}|${c.key}`) : []);
+  const touched = new Set(diffs.flatMap(d => d.changes.map(c => APP_OF[c.collection])));
+  const count = coll => { const c = state[coll]; return Array.isArray(c) ? c.length : c ? Object.keys(c).length : 0; };
+  nav.replaceChildren(...APPS.map(a => el("button", { type: "button", "aria-current": String(a.id === S.app),
+    onclick: () => { S.app = a.id; renderApps(); } }, a.name, el("span", { class: "n" + (touched.has(a.id) ? " hot" : ""),
+      text: (touched.has(a.id) ? "● " : "") + count(a.sections[0].coll) }))));
+  const seen = S.mv ? seenFacts() : null;
+  $("mvbar").classList.toggle("on", S.mv);
+  const removedOf = coll => diffs.flatMap(d => d.changes.filter(c => c.collection === coll && c.kind === "removed").map(c => ({ key: c.key, row: c.before, step: d.step })));
+  const app = APPS.find(a => a.id === S.app);
+  const out = [];
+  for (const sec of app.sections) {
+    const data = state[sec.coll];
+    const hid = hidden[sec.coll] || {};
+    out.push(el("h4", {}, sec.title, el("span", { class: "small muted", text: `· ${count(sec.coll)}` })));
+    if (sec.perms) { out.push(permTable(state.permissions || {}, seen, flash)); continue; }
+    let rows = Array.isArray(data) ? data.map((r, i) => ({ key: String(i), row: r })) : Object.entries(data || {}).map(([k, r]) => ({ key: k, row: r }));
+    rows = rows.concat(removedOf(sec.coll).map(x => ({ ...x, removed: true })));
+    if (!rows.length) { out.push(el("p", { class: "empty", text: "Nothing here yet." })); continue; }
+    const cols = sec.cols === "auto" ? [...new Set(rows.flatMap(r => Object.keys(r.row)))].map(k => [k, k]) : sec.cols;
+    const head = el("tr", {}, ...cols.map(([f, label]) => el("th", {}, label, hid[f] ? el("span", { class: "htag", title: hideTitle(hid[f]), text: "H" }) : null)),
+      rows.some(r => r.removed) ? el("th", {}) : null);
+    const body = [];
+    if (sec.folders) rows.sort((a, b) => a.key.localeCompare(b.key));
+    let folder = null;
+    for (const r of rows) {
+      if (sec.folders) {
+        const f = r.key.slice(0, r.key.lastIndexOf("/")) || "/";
+        if (f !== folder) {
+          folder = f;
+          const fo = (state.folders || {})[f];
+          const fsee = seen ? seen.get(`folders|${f}|sharing`) : null;
+          body.push(el("tr", { class: "grp" + (S.focus && S.focus.folder === f ? " focus" : "") }, el("td", { colspan: String(cols.length + 1) }, f,
+            fo ? el("span", { class: "muted" }, "  · folder sharing ", el("span", { class: seen ? (fsee ? (fsee.gateway ? "revealed" : "seen") : "unseen") : "hid", text: fo.sharing })) : null)));
+        }
+      }
+      const isFocus = S.focus && S.focus.coll === sec.coll && S.focus.key === r.key;
+      body.push(el("tr", { class: [r.removed ? "removed" : "", isFocus ? "focus" : "", flash.has(`${sec.coll}|${r.key}`) ? "flash" : ""].join(" ") },
+        ...cols.map(([f, , fmt]) => cell(sec.coll, r, f, fmt, hid, seen, state)),
+        rows.some(x => x.removed) ? el("td", { class: "why", text: r.removed ? `deleted · step ${r.step}` : "" }) : null));
+    }
+    out.push(el("div", { class: "tw" }, el("table", { class: "t" }, el("thead", {}, head), el("tbody", {}, ...body))));
+  }
+  if (!S.mv) out.unshift(el("p", { class: "small muted", style: "margin:8px 0 0" }, el("span", { class: "htag", text: "H" }),
+    " hidden from the monitor: only a gateway check (or the agent reading it) shows it. You see it here; the monitor does not."));
+  if (S.mv) out.unshift(el("p", { class: "small muted", style: "margin:8px 0 0",
+    text: "Monitor view: lit = reached the monitor (the agent's tool results or a gateway check); amber = a hidden fact a gateway check revealed; grey = never seen." }));
+  $("appview").replaceChildren(...out);
+}
+function hideTitle(h) {
+  return "Hidden from the monitor. Checked by " + (h.checks.join(", ") || "no check tool") + (h.revealed_by.length ? "; the agent's " + h.revealed_by.join(", ") + " can also show it" : "");
+}
+function show1(v) {
+  if (v === true) return el("span", { class: "y", text: "yes" });
+  if (v === false) return el("span", { class: "n0", text: "no" });
+  if (v === null || v === undefined) return el("span", { class: "n0", text: "—" });
+  if (Array.isArray(v)) return v.join(", ");
+  if (typeof v === "object") return oneLine(v);
+  return String(v);
+}
+function cell(coll, r, field, fmt, hid, seen, state) {
+  let v = r.row[field], content;
+  if (fmt) content = fmt(v, r.row);
+  else if (coll === "files" && field === "sharing" && v === null) {
+    const f = (state.folders || {})[r.key.slice(0, r.key.lastIndexOf("/"))];
+    content = el("span", { class: "n0", title: "no sharing of its own: inherits the folder's", text: "↳ " + (f ? f.sharing : "folder") });
+  } else content = show1(v);
+  let cls = hid[field] ? "hid" : "";
+  if (seen) {
+    const k = seen.get(`${coll}|${r.key}|${field}`);
+    cls = k ? (k.gateway && hid[field] ? "revealed" : "seen") : "unseen";
+    return el("td", { class: cls, title: k ? `seen by the monitor: ${k.tool} (step ${k.step})` : "the monitor has not seen this" }, content);
+  }
+  return el("td", { class: cls, title: hid[field] ? hideTitle(hid[field]) : null }, content);
+}
+function permTable(perms, seen, flash) {
+  const rows = Object.entries(perms).flatMap(([res, m]) => Object.entries(m).map(([u, lvl]) => ({ res, u, lvl })));
+  if (!rows.length) return el("p", { class: "empty", text: "No access entries." });
+  return el("div", { class: "tw" }, el("table", { class: "t" },
+    el("thead", {}, el("tr", {}, el("th", { text: "resource" }), el("th", { text: "user" }), el("th", { text: "level" }))),
+    el("tbody", {}, ...rows.map(x => {
+      const k = seen ? seen.get(`permissions|${x.res}|${x.u}`) : null;
+      const cls = seen ? (k ? (k.gateway ? "revealed" : "seen") : "unseen") : "";
+      const isFocus = S.focus && S.focus.coll === "permissions" && S.focus.key === x.res;
+      return el("tr", { class: (flash.has(`permissions|${x.res}`) ? "flash" : "") + (isFocus ? " focus" : "") },
+        el("td", { class: cls, text: x.res }), el("td", { class: cls, text: x.u }), el("td", { class: cls, text: x.lvl }));
+    }))));
+}
+
+function renderStatus() {
+  const s = S.summary;
+  if (!s) { $("status").replaceChildren(); return; }
+  const when = s.recorded_at ? new Date(s.recorded_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC" }) + " UTC" : "unknown date";
+  const agent = s.agent && s.agent.startsWith("groq:") ? "groq:" + s.agent.slice(5).split("/").pop() : (s.agent || "unknown");
+  const sep = () => el("span", { class: "sep", text: "│" });
+  $("status").replaceChildren(
+    el("span", { class: "mode", text: "REPLAY" }), el("span", {}, "recording of ", el("b", { text: when }), s.source === "fake" ? " · fake monitor on CPU" : " · Kaggle"),
+    sep(), el("span", {}, "agent ", el("b", { text: agent })),
+    sep(), el("span", {}, "monitor ", el("b", { text: `${s.monitor_version || "?"} (k=${s.k ?? "?"})` }), s.monitor_model ? " · " + s.monitor_model : ""),
+    sep(), el("span", {}, "monitor latency ", el("b", { text: secs(S.events) })),
+    el("span", { class: "right" }, el("span", { text: "live: " + (S.health.live_available ? "available" : "offline") }),
+      el("button", { type: "button", id: "theme", text: "theme", onclick: flipTheme })));
+}
+
+// ---------- stepping ----------
+function show(n, { follow = true } = {}) {
+  const prev = S.shown, total = S.events.length;
+  S.shown = Math.max(1, Math.min(total, n));
+  if (follow && S.shown > prev) {
+    const e = S.events[S.shown - 1];
+    if (e.type === "risk_action") { S.selRisk = null; const t = targetOf(e.payload.args); if (t) { S.focus = { coll: t.coll, key: t.key }; S.app = APP_OF[t.coll] || S.app; } }
+    if (e.type === "state_diff" && e.payload.changed) { const c = e.payload.changes.find(x => APP_OF[x.collection] === S.app) || e.payload.changes[0]; S.focus = { coll: c.collection, key: c.key }; S.app = APP_OF[c.collection] || S.app; }
+  }
+  renderAll();
+  $("pos").textContent = `event ${S.shown} of ${total}`;
+  $("b-prev").disabled = S.shown <= 1;
+  $("b-next").disabled = S.shown >= total;
+  if (S.run) history.replaceState(null, "", location.pathname + location.search + "#" + encodeURIComponent(`${S.run.source}/${S.run.run_id}/${S.shown}`).replace(/%2F/g, "/"));
+  const f = document.querySelector("#appview tr.focus");
+  if (f && follow) f.scrollIntoView({ block: "nearest" });
+  if (S.shown >= total) stop();
+}
+function stop() { if (S.timer) clearInterval(S.timer); S.timer = null; $("b-play").textContent = "Play"; }
+function toggle() {
+  if (S.timer) { stop(); return; }
+  if (S.shown >= S.events.length) show(1, { follow: false });
+  $("b-play").textContent = "Pause";
+  S.timer = setInterval(() => show(S.shown + 1), S.speed);
+}
+function flipTheme() {
+  const root = document.documentElement;
+  root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark";
+  try { localStorage.setItem("nw-theme", root.dataset.theme); } catch (e) { /* storage off: theme resets on reload */ }
+}
+try { const t = localStorage.getItem("nw-theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) { /* keep dark */ }
+
+$("b-reset").onclick = () => { stop(); show(S.events.findIndex(e => e.type === "instruction") + 1 || 1, { follow: false }); };
+$("b-prev").onclick = () => { stop(); show(S.shown - 1, { follow: false }); };
+$("b-next").onclick = () => { stop(); show(S.shown + 1); };
+$("b-play").onclick = toggle;
+$("b-all").onclick = () => { stop(); show(S.events.length); };
+$("speed").onchange = e => { S.speed = +e.target.value; if (S.timer) { stop(); toggle(); } };
+$("mv").onchange = e => { S.mv = e.target.checked; renderApps(); };
+$("taskform").onsubmit = e => { e.preventDefault(); if (S.run) { stop(); show(1, { follow: false }); toggle(); } };
+document.addEventListener("keydown", e => {
+  if (!S.events.length || ["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
+  if (e.key === "ArrowRight") { stop(); show(S.shown + 1); }
+  else if (e.key === "ArrowLeft") { stop(); show(S.shown - 1, { follow: false }); }
+  else if (e.key === " " && document.activeElement.tagName !== "BUTTON") { e.preventDefault(); toggle(); }
+});
+init();
+</script>
+</body>
+</html>
