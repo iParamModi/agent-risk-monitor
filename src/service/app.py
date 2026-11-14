@@ -14,6 +14,7 @@ GET /replay                   the event timeline (src/service/static/replay.html
 GET /health                   + live_available (False: no live backend is built; Step 2, under the cost rules)
 GET /api/tasks                the preset demo tasks (lma_agent/tasks/demo_tasks.yaml)
 GET /api/runs                 one summary per run: task, setting, agent, monitor version and k, decision, checks
+                              (+ monitor_label, the short model name for the page: monitor_label below)
 GET /api/runs/{source}/{id}   the run's events, in order
 GET /api/runs/{source}/{id}/state?step=N   the company after step N (company_snapshot + state_diffs), with the
                               facts hidden from the monitor marked (for the human viewer; src/live/company.py)
@@ -49,6 +50,29 @@ def default_sources() -> dict[str, Path]:
     return {"real": DEMO_DIR, "fake": DEMO_DIR / "fake"}
 
 
+# Which training phase an adapter dataset is: the final adapter is the 11 Nov Phase B adapter
+# (docs/messages/2026-11-13_to_Prateek_adapter_path.md). An adapter that is not listed gets no phase in its label.
+ADAPTER_PHASE = {"meet6868/agent-risk-adapter-final": "Phase B"}
+PEFT_NAMES = {"LORA": "LoRA"}
+
+
+def monitor_label(meta: dict) -> str | None:
+    """Short name of the monitor model for the page header, built from the run's own meta:
+    "Qwen3-8B + LoRA (Phase B)" instead of "<base>+<adapter folder on the recording machine>"."""
+    if meta.get("fake_monitor"):
+        return None
+    config = meta.get("adapter_config") or {}
+    base = config.get("base_model_name_or_path") or str(meta.get("monitor_model") or "").split("+")[0]
+    if not base:
+        return None
+    label = base.split("/")[-1]
+    if config or meta.get("adapter_dataset"):
+        label += " + " + PEFT_NAMES.get(str(config.get("peft_type") or "").upper(), "adapter")
+        phase = ADAPTER_PHASE.get(meta.get("adapter_dataset"))
+        label += f" ({phase})" if phase else ""
+    return label
+
+
 def read_log(path: Path) -> list[dict]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
@@ -66,6 +90,7 @@ def summarize(events: list[dict], source: str) -> dict:
         "setting": meta.get("setting"), "confirm": meta.get("confirm"), "agent": meta.get("agent"),
         "monitor_version": meta.get("monitor_version"), "k": meta.get("k"),
         "fake_monitor": bool(meta.get("fake_monitor")) or source == "fake", "monitor_model": meta.get("monitor_model"),
+        "monitor_label": monitor_label(meta),
         "reused_from": meta.get("trajectory_reused_from"), "fallback_reason": meta.get("fallback_reason"),
         "agent_attempt": meta.get("agent_attempt"), "recorded_at": meta.get("recorded_at"),
         "expected": meta.get("expected"), "decision": d.get("decision"), "checks_used": d.get("checks_used"),

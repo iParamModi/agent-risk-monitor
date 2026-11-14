@@ -572,11 +572,19 @@ function renderChat() {
   if (S.scrolledAt !== S.shown) { box.scrollTop = box.scrollHeight; S.scrolledAt = S.shown; }   // only when the cursor moved
 }
 
+// The monitor model's short name comes from the server (monitor_label, built from the run's adapter config);
+// a fake-monitor run has none. The full label of the log is the chip's tooltip.
+function modelName(s) {
+  const name = s.fake_monitor ? "" : (s.monitor_label || s.monitor_model || "");
+  return name ? name + ", " : "";
+}
+
 function renderMonitor() {
   const box = $("monitor"), s = S.summary;
   const head = el("div", { class: "mhead" }, el("h3", { text: "Safety monitor" }),
-    s ? chip(`${s.monitor_version || "?"} · k=${s.k ?? "?"}`) : null, s ? chip(s.setting) : null,
-    s && s.fake_monitor ? chip("FAKE MONITOR", "fake") : s && s.monitor_model ? chip(s.monitor_model) : null);
+    s && s.fake_monitor ? chip("FAKE MONITOR", "fake") : null,
+    s ? el("span", { class: "chip", title: s.monitor_model || "", text: `${modelName(s)}monitor ${s.monitor_version || "?"}` }) : null,
+    s ? chip(`k=${s.k ?? "?"}`) : null, s ? chip(s.setting) : null);
   const blocks = riskBlocks().filter(b => b.idx < S.shown);
   if (!blocks.length) {
     box.replaceChildren(head, el("p", { class: "mempty", text: "No risky action yet. Reads go straight through; the monitor checks every write the agent proposes, before it runs." }));
@@ -770,7 +778,7 @@ function renderStatus() {
   $("status").replaceChildren(
     el("span", { class: "mode", text: "REPLAY" }), el("span", {}, "recording of ", el("b", { text: when }), s.source === "fake" ? " · fake monitor on CPU" : " · Kaggle"),
     sep(), el("span", {}, "agent ", el("b", { text: agent })),
-    sep(), el("span", {}, "monitor ", el("b", { text: `${s.monitor_version || "?"} (k=${s.k ?? "?"})` }), s.monitor_model ? " · " + s.monitor_model : ""),
+    sep(), el("span", {}, "monitor ", el("b", { text: `${s.monitor_version || "?"} (k=${s.k ?? "?"})` }), modelName(s) ? " · " + modelName(s).slice(0, -2) : ""),
     sep(), el("span", {}, "monitor latency ", el("b", { text: secs(S.events) })),
     el("span", { class: "right" }, el("span", { text: "live: " + (S.health.live_available ? "available" : "offline") }),
       el("button", { type: "button", id: "theme", text: "theme", onclick: flipTheme })));

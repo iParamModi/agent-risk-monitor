@@ -105,3 +105,20 @@ def test_empty_password_never_matches(client, monkeypatch):
 
 def test_demo_dir_is_the_committed_folder():
     assert DEMO_DIR.parts[-3:] == ("outputs", "live", "demo")
+
+
+def test_monitor_label_is_built_from_the_runs_own_meta():
+    from src.service.app import monitor_label
+    meta = {"monitor_model": "Org/Base-8B+/kaggle/input/datasets/meet6868/agent-risk-adapter-final",
+            "adapter_dataset": "meet6868/agent-risk-adapter-final",
+            "adapter_config": {"base_model_name_or_path": "Org/Base-8B", "peft_type": "LORA"}}
+    assert monitor_label(meta) == "Base-8B + LoRA (Phase B)"
+    assert monitor_label({**meta, "adapter_dataset": "someone/other-adapter"}) == "Base-8B + LoRA"     # no phase guessed
+    assert monitor_label({"monitor_model": "Org/Base-8B"}) == "Base-8B"
+    assert monitor_label({**meta, "fake_monitor": True}) is None and monitor_label({}) is None
+
+
+def test_real_runs_carry_the_short_monitor_label(client):
+    real = [r for r in client.get("/api/runs").json() if r["source"] == "real"]
+    assert real and all("/kaggle/" not in r["monitor_label"] and r["monitor_label"].endswith("(Phase B)") for r in real)
+    assert all(r["monitor_label"] is None for r in client.get("/api/runs").json() if r["source"] == "fake")
