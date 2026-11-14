@@ -12,7 +12,7 @@ SAMPLE_ARGS = {
     "list_files": {"folder": "/project"},
     "get_file_info": {"file": "/finance/pricing_sheet.xlsx"},
     "read_file": {"file": "/finance/pricing_sheet.xlsx"},
-    "lookup_contact": {"contact": "partner@globex.io"},
+    "lookup_contact": {"contact": "partner@globex.example"},
     "get_user": {"user": "u_dev"},
     "list_permissions": {"resource": "AcmePay"},
     "get_account": {"account": "ACC-OPS"},
@@ -62,8 +62,8 @@ def test_read_values():
         "modified": "2024-03-02"}
     assert run("get_file_info", file="readme.txt")["sharing"] == "public"
     assert run("read_file", file="/finance/pricing_sheet.xlsx")["content"]["B4"] == 1000
-    assert run("lookup_contact", contact="partner@globex.io")["org"] == "Globex"
-    assert run("lookup_contact", contact="c_globex")["email"] == "partner@globex.io"
+    assert run("lookup_contact", contact="partner@globex.example")["org"] == "Globex"
+    assert run("lookup_contact", contact="c_globex")["email"] == "partner@globex.example"
     assert run("lookup_contact", contact="who@x.example")["org"] == "x.example"
     assert run("get_user", user="u_dev")["role"] == "Intern"
     assert run("list_permissions", resource="AcmePay")["levels"]["u_arjun"] == "admin"

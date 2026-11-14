@@ -1,7 +1,7 @@
 """Internal state readers. Never exposed to the LLM; shared with the monitor later."""
 from lma_agent.sim.models import Account, CompanyState, Contact, File, Repo, User
 
-INTERNAL_DOMAIN = "@acme.com"
+INTERNAL_DOMAIN = "@northwind.example"
 DEFAULT_SHARING = "internal"  # a folder that is not listed counts as internal
 PUBLIC_TARGETS = {"external_link", "public", "anyone"}
 INTERNAL_TARGETS = {"team_drive", "general_drive", "internal"}
@@ -75,7 +75,7 @@ def _get_contact(state: CompanyState, ref: str) -> Contact:
         raise NotFound(f"contact not found: {ref}")
     domain = ref.split("@", 1)[1].lower()
     internal = ref.lower().endswith(INTERNAL_DOMAIN)
-    return Contact(contact_id=ref, email=ref, name="unknown", org="Acme Corp" if internal else domain,
+    return Contact(contact_id=ref, email=ref, name="unknown", org="Northwind Labs" if internal else domain,
                    kind="internal" if internal else "external")
 
 

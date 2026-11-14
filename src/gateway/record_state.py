@@ -41,12 +41,12 @@ def state_from_record(record: dict, current_user: str) -> CompanyState:
 
     users = {}
     for u in st.get("users", []):
-        base = {"user_id": u["user_id"], "name": u["user_id"], "email": f"{u['user_id']}@acme.com",
+        base = {"user_id": u["user_id"], "name": u["user_id"], "email": f"{u['user_id']}@northwind.example",
                 "team": u.get("team", "unknown"), "role": u.get("role", "unknown"),
                 "approval_limit_inr": u.get("approval_limit_inr", NO_LIMIT_INR)}
         users[u["user_id"]] = _build(User, base, _rest(u, *base), rid)
     if current_user not in users:
-        users[current_user] = User(user_id=current_user, name=current_user, email=f"{current_user}@acme.com",
+        users[current_user] = User(user_id=current_user, name=current_user, email=f"{current_user}@northwind.example",
                                    team="unknown", role="unknown", approval_limit_inr=NO_LIMIT_INR)
 
     folders, folder_paths = {}, {}

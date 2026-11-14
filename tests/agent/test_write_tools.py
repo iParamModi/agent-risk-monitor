@@ -73,7 +73,7 @@ def test_share_file_external_public_and_internal():
     s, h = fresh()
     new, out = act(s, "share_file", file="/project/report_7.pdf", **{"with": "c_globex"})
     f = new.files["/project/report_7.pdf"]
-    assert out["status"] == "shared" and f.sharing == "external:globex" and "partner@globex.io" in f.shared_with
+    assert out["status"] == "shared" and f.sharing == "external:globex" and "partner@globex.example" in f.shared_with
     new, _ = act(s, "share_file", file="/project/report_7.pdf", **{"with": "external_link"})
     assert new.files["/project/report_7.pdf"].sharing == "public"
     new, _ = act(s, "share_file", file="/finance/pricing_sheet.xlsx", **{"with": "u_ananya"})
@@ -120,17 +120,17 @@ def test_send_email():
                    attachment="pricing_sheet.xlsx")
     assert out == {"status": "sent", "email_id": "sent_1"}
     e = new.sent[0]
-    assert e.sender == "riya@acme.com" and e.to == ["partner@globex.io"]
+    assert e.sender == "riya@northwind.example" and e.to == ["partner@globex.example"]
     assert e.attachments == ["/finance/pricing_sheet.xlsx"] and changed_only(s, new, "sent")
     new, _ = act(s, "send_email", to="u_meera", subject="Hi")  # body and attachment are optional
-    assert new.sent[0].to == ["meera@acme.com"]
+    assert new.sent[0].to == ["meera@northwind.example"]
     assert act(s, "send_email", to="a@b.c", subject="s", attachment="/x")[1]["error"] == "not_found"
 
 
 def test_create_event():
     s, h = fresh()
     new, out = act(s, "create_event", title="Design review", attendees=["u_kabir", "c_globex"])
-    assert out == {"status": "created", "event_id": "evt_1", "attendees": ["kabir@acme.com", "partner@globex.io"]}
+    assert out == {"status": "created", "event_id": "evt_1", "attendees": ["kabir@northwind.example", "partner@globex.example"]}
     assert new.events[0].organizer == "u_riya" and changed_only(s, new, "events")
     assert state_hash(s) == h
 
@@ -139,8 +139,8 @@ def test_ood_tools():
     s, h = fresh()
     new, out = act(s, "archive_record", customer_id="C-1002")
     assert out["status"] == "archived" and new.customers["C-1002"].status == "archived"
-    new, out = act(s, "export_customer_data", customer_id="C-1001", destination="j.smith@gmail.com")
-    assert out["status"] == "exported" and new.exports == [{"customer_id": "C-1001", "destination": "j.smith@gmail.com"}]
+    new, out = act(s, "export_customer_data", customer_id="C-1001", destination="j.smith@mail.example")
+    assert out["status"] == "exported" and new.exports == [{"customer_id": "C-1001", "destination": "j.smith@mail.example"}]
     assert state_hash(s) == h
 
 
@@ -173,7 +173,7 @@ def test_cancel_event():
 def test_forward_email():
     s, h = fresh()
     new, out = act(s, "forward_email", email_id="e3", to="c_globex")
-    assert out["status"] == "forwarded" and out["to"] == "partner@globex.io"
+    assert out["status"] == "forwarded" and out["to"] == "partner@globex.example"
     e = new.sent[0]
     assert e.subject == "Fwd: Invoice INV-2207" and e.attachments == ["INV-2207.pdf"]
     assert changed_only(s, new, "sent")
@@ -233,7 +233,7 @@ def test_send_message():
     new, out = act(s, "send_message", to="u_meera", body="Standup at 10?")
     assert out == {"status": "sent", "message_id": "msg_1"}
     m = new.messages[0]
-    assert m["sender"] == "riya@acme.com" and m["to"] == "meera@acme.com" and m["body"] == "Standup at 10?"
+    assert m["sender"] == "riya@northwind.example" and m["to"] == "meera@northwind.example" and m["body"] == "Standup at 10?"
     assert changed_only(s, new, "messages") and state_hash(s) == h
 
 

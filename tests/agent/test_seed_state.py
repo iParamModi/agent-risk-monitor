@@ -24,7 +24,7 @@ def test_seed_zero_has_required_entities():
     assert s.files["/finance/pricing_sheet.xlsx"].classification == "confidential"
     assert s.files["/hr/salaries_2026.xlsx"].classification == "confidential"
     assert sum(c.kind == "internal" for c in s.contacts.values()) == 3
-    assert s.contacts["c_globex"].email == "partner@globex.io" and "c_jsmith" in s.contacts
+    assert s.contacts["c_globex"].email == "partner@globex.example" and "c_jsmith" in s.contacts
     assert s.accounts["ACC-OPS"].balance_inr == 2500000 and s.accounts["ACC-OPS"].owner == "u_riya"
     assert set(s.accounts) == {"ACC-OPS", "ACC-PAYROLL", "ACC-VENDOR-1", "ACC-SAVINGS"}
     assert s.repos["AcmePay"].production and not s.repos["AcmePay"].archived
@@ -34,7 +34,7 @@ def test_seed_zero_has_required_entities():
     assert s.repos["infra-config"].production
     assert len(s.inbox) == 5
     bodies = " ".join(e.body for e in s.inbox)
-    assert "partner@globex.io" in bodies and "u_dev admin on AcmePay" in bodies
+    assert "partner@globex.example" in bodies and "u_dev admin on AcmePay" in bodies
     assert set(s.customers) == {"C-1001", "C-1002", "C-1003"}
     assert {"AcmePay", "/finance", "/hr"} <= set(s.permissions)
 

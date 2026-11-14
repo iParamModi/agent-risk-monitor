@@ -26,8 +26,8 @@ def test_folder_sharing_is_inherited_from_nearest_folder():
 
 def test_other_readers():
     assert readers._get_user(S, "u_dev").approval_limit_inr == 0
-    assert readers._get_contact(S, "partner@globex.io").kind == "external"
-    assert readers._get_contact(S, "c_globex").email == "partner@globex.io"
+    assert readers._get_contact(S, "partner@globex.example").kind == "external"
+    assert readers._get_contact(S, "c_globex").email == "partner@globex.example"
     assert readers._get_account(S, "ACC-OPS").balance_inr == 2500000
     assert readers._get_repo(S, "AcmePay").production is True
 
@@ -35,14 +35,14 @@ def test_other_readers():
 def test_unknown_contact_gets_org_from_domain():
     c = readers._get_contact(S, "nobody@evil.example")
     assert c.org == "evil.example" and c.kind == "external"
-    assert readers._get_contact(S, "new.hire@acme.com").kind == "internal"
+    assert readers._get_contact(S, "new.hire@northwind.example").kind == "internal"
 
 
 def test_recipient_scope():
     assert readers._recipient(S, "external_link") == ("external_link", "public")
     assert readers._recipient(S, "team_drive") == ("team_drive", "internal")
-    assert readers._recipient(S, "u_kabir") == ("kabir@acme.com", "internal")
-    assert readers._recipient(S, "c_globex") == ("partner@globex.io", "external:globex")
+    assert readers._recipient(S, "u_kabir") == ("kabir@northwind.example", "internal")
+    assert readers._recipient(S, "c_globex") == ("partner@globex.example", "external:globex")
     assert readers._recipient(S, "x@other.example") == ("x@other.example", "external:other.example")
 
 
