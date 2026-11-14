@@ -206,13 +206,122 @@ def test_reset_drops_the_session_and_returns_the_fresh_company(client):
     assert again["reset"] is False and again["events"][0]["type"] == "company_snapshot"
 
 
-def test_too_many_runs_at_once_are_refused(client):
-    running = [start(client, task_id="demo_acmepay") for _ in range(2)]
-    assert all(session(client, sid).wait_for("confirm_request") for sid in running)
-    res = client.post("/api/live/run", json={"task_id": "demo_acmepay"}, headers=HEADERS)
-    assert res.status_code == 429
-    for sid in running:
-        client.post("/api/live/reset", json={"session": sid}, headers=HEADERS)
+# --- limits: one run at a time, step cap, session expiry, rate limits, kill switch
+
+def test_one_live_run_at_a_time_the_second_gets_busy(client):
+    first = start(client, task_id="demo_acmepay")
+    assert session(client, first).wait_for("confirm_request")           # still running: waiting for an answer
+    res = client.post("/api/live/run", json={"task_id": "demo_hidden"}, headers=HEADERS)
+    assert res.status_code == 429 and res.json()["detail"] == "monitor busy, try in a minute"
+    assert len(client.app.state.live_sessions._sessions) == 1
+    client.post("/v1/continue", json={"session": first, "answer": "no"}, headers=HEADERS)
+    stream(client, first)                                                # the run is over
+    session(client, first)._thread.join(5)
+    assert start(client, task_id="demo_hidden")                          # and the next one is taken
+
+
+def test_a_reset_run_still_counts_as_busy_until_it_has_stopped(client):
+    sessions = client.app.state.live_sessions
+    sid = start(client, task_id="demo_acmepay")
+    run = session(client, sid)
+    assert run.wait_for("confirm_request")
+    client.post("/api/live/reset", json={"session": sid}, headers=HEADERS)
+    run._thread.join(5)
+    assert run.done and not sessions.busy and not sessions._sessions
+
+
+def test_a_live_task_stops_after_15_agent_steps(env):
+    from lma_agent.agent.llm import FakeLLM, assistant_msg
+    from lma_agent.sim.models import ToolCall
+    from src.service.live import LIVE_MAX_STEPS
+    reads = [assistant_msg(None, [ToolCall(id=f"c{i}", name="list_files", args={"folder": "/project"})])
+             for i in range(40)]
+    looping = dataclasses.replace(local_fake_backend(), agent_for=lambda task: (FakeLLM(reads), "scripted"))
+    app = TestClient(create_app(live=looping))
+    sid = start(app, prompt="keep listing the project folder")
+    events, _, end = stream(app, sid)
+    assert LIVE_MAX_STEPS == 15 and end
+    assert sum(e["type"] == "tool_call" for e in events) == 15
+    assert events[-1]["type"] == "final_response" and events[-1]["payload"]["status"] == "max_steps"
+
+
+def test_a_session_expires_after_30_minutes_and_its_pending_request_is_denied(client):
+    from src.service.live import SESSION_TTL_S
+    sessions = client.app.state.live_sessions
+    now = [1000.0]
+    sessions.clock = lambda: now[0]
+    sid = start(client, task_id="demo_acmepay")
+    run = session(client, sid)
+    assert SESSION_TTL_S == 1800 and run.wait_for("confirm_request")
+    now[0] += SESSION_TTL_S - 1
+    assert client.get("/api/live/state", params={"session": sid}, headers=HEADERS).status_code == 200
+    now[0] += 2
+    res = client.post("/v1/continue", json={"session": sid, "answer": "yes"}, headers=HEADERS)
+    assert res.status_code == 404 and "expires" in res.json()["detail"]
+    run._thread.join(5)
+    assert run.done and "action_applied" not in [e["type"] for e in run.events]
+    assert not sessions.busy
+
+
+def test_a_repeated_continue_is_rejected(client):
+    sid = start(client, task_id="demo_acmepay")
+    assert session(client, sid).wait_for("confirm_request")
+    post = lambda: client.post("/v1/continue", json={"session": sid, "answer": "yes"}, headers=HEADERS)  # noqa: E731
+    assert post().status_code == 200
+    stream(client, sid)
+    assert post().status_code == 409
+    assert [e["type"] for e in session(client, sid).events].count("action_applied") == 1
+
+
+def test_live_requests_are_rate_limited_per_address(client):
+    requests_limit, _ = client.app.state.live_limits
+    requests_limit.limit = 3
+    codes = [client.get("/api/live/anything", headers=HEADERS).status_code for _ in range(5)]
+    assert codes == [404, 404, 404, 429, 429]
+    other = client.get("/api/live/anything", headers={**HEADERS, "X-Forwarded-For": "203.0.113.9"})
+    assert other.status_code == 429                    # the test client is not a proxy: its header is not believed
+
+
+def test_wrong_passwords_lock_the_address_out(client):
+    from src.service.live import BAD_PASSWORDS_PER_10_MIN
+    wrong = {"X-Live-Password": "guess"}
+    codes = [client.post("/api/live/run", json={"task_id": "demo_hidden"}, headers=wrong).status_code
+             for _ in range(BAD_PASSWORDS_PER_10_MIN)]
+    assert set(codes) == {403}
+    assert client.post("/api/live/run", json={"task_id": "demo_hidden"}, headers=HEADERS).status_code == 429
+    assert not client.app.state.live_sessions._sessions
+
+
+def test_address_behind_the_sites_proxy_is_the_last_forwarded_entry():
+    from types import SimpleNamespace as NS
+    from src.service.app import client_address
+    request = lambda peer, xff: NS(client=NS(host=peer), headers={"x-forwarded-for": xff} if xff else {})  # noqa: E731
+    assert client_address(request("172.18.0.3", "198.51.100.7, 203.0.113.9")) == "203.0.113.9"      # proxy added it
+    assert client_address(request("127.0.0.1", "")) == "127.0.0.1"
+    assert client_address(request("203.0.113.50", "10.0.0.1")) == "203.0.113.50"                   # not our proxy
+
+
+def test_kill_switch_an_app_started_with_live_off_stays_off_until_restart(monkeypatch, ledger):
+    monkeypatch.setenv("LIVE_MODE", "off")
+    monkeypatch.setenv("LIVE_PASSWORD", PASSWORD)
+    monkeypatch.setenv(APPROVAL_VAR, APPROVED)
+    app = TestClient(create_app(live=local_fake_backend()))
+    assert app.app.state.live_sessions is None and app.get("/health").json()["live_available"] is False
+    assert app.post("/api/live/run", json={"task_id": "demo_hidden"}, headers=HEADERS).status_code == 403
+    monkeypatch.setenv("LIVE_MODE", "on")              # flipping the variable without a restart changes nothing
+    res = app.post("/api/live/run", json={"task_id": "demo_hidden"}, headers=HEADERS)
+    assert res.status_code == 403 and "restart" in res.json()["detail"]
+    assert app.get("/health").json()["live_available"] is False and not ledger.exists()
+
+
+def test_kill_switch_turning_the_flag_off_stops_a_running_app_at_once(client, monkeypatch):
+    sid = start(client, task_id="demo_hidden")
+    stream(client, sid)
+    monkeypatch.setenv("LIVE_MODE", "off")
+    for method, path in LIVE_ROUTES:
+        res = client.request(method, path, headers=HEADERS, params={"session": sid},
+                             json={"session": sid, "answer": "yes"} if method == "POST" else None)
+        assert res.status_code == 403 and res.json()["detail"] == "live mode is off"
 
 
 # --- free-text tasks: only in live mode, behind the password

@@ -17,12 +17,20 @@ the same Event objects a recorded run writes to its log (src/live/events.py), ke
 
 A confirmation nobody answers within confirm_timeout_s is DENIED (the action does not run).
 
+Limits (the hosted monitor has one container, so the site must not queue work on it):
+  one live run at a time    a second start while a run is active raises LiveBusy ("monitor busy, try in a minute")
+  LIVE_MAX_STEPS            at most 15 agent steps per task
+  SESSION_TTL_S             a session is dropped 30 minutes after it started; a pending confirmation is denied
+  RateLimit                 per-address request limits on the live routes (src/service/app.py uses two of them)
+
 `LiveBackend.paid` says whether the backend reaches a real account (Groq, Modal). The only backend in this repo is
 the local fake (paid = False). A paid backend is Step 2 under the cost rules: src.service.app asks the cost guard
 with Tier C for it, which always refuses.
 """
 import threading
+import time
 import uuid
+from collections import deque
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -36,6 +44,11 @@ from src.live.company import company_snapshot
 from src.live.events import Event, make_event, new_run_id
 
 SETTINGS = ("selective", "always")
+LIVE_MAX_STEPS = 15              # agent steps per live task
+SESSION_TTL_S = 30 * 60          # a live session expires after 30 minutes
+BUSY = "monitor busy, try in a minute"
+LIVE_REQUESTS_PER_MINUTE = 120   # per address, all live routes together
+BAD_PASSWORDS_PER_10_MIN = 10    # per address; after that the address is refused until the window has passed
 FREE_TEXT_ID = "live_free_text"
 MAX_PROMPT_CHARS = 600
 NO_SCRIPT = ("The local fake agent only knows the preset tasks, so it took no action on this free-text task. "
@@ -80,6 +93,41 @@ def free_text_task(prompt: str) -> Task:
     return Task(task_id=FREE_TEXT_ID, domain="LIVE", prompt=text, title="Free-text task")
 
 
+class LiveBusy(RuntimeError):
+    """A live run is already active (the monitor serves one run at a time)."""
+
+
+class RateLimit:
+    """At most `limit` hits per `window_s` seconds for one key (an address), counted in a sliding window."""
+
+    def __init__(self, limit: int, window_s: float, clock: Callable[[], float] = time.monotonic):
+        self.limit, self.window_s, self.clock = int(limit), float(window_s), clock
+        self._hits: dict[str, deque] = {}
+        self._lock = threading.Lock()
+
+    def _recent(self, key: str) -> deque:
+        now = self.clock()
+        for k in [k for k, q in self._hits.items() if not q or now - q[-1] > self.window_s]:
+            del self._hits[k]                       # forget addresses that went quiet
+        q = self._hits.setdefault(key, deque())
+        while q and now - q[0] > self.window_s:
+            q.popleft()
+        return q
+
+    def count(self, key: str) -> int:
+        with self._lock:
+            return len(self._recent(key))
+
+    def hit(self, key: str) -> bool:
+        """Record one hit; False when the key is over its limit (the hit is not recorded then)."""
+        with self._lock:
+            q = self._recent(key)
+            if len(q) >= self.limit:
+                return False
+            q.append(self.clock())
+            return True
+
+
 class WebUser:
     """The person at the page, in place of lma_agent's ScriptedUser: confirm() waits for Approve / Deny."""
 
@@ -113,9 +161,11 @@ class WebUser:
 
 
 class LiveSession:
-    def __init__(self, backend: LiveBackend, task: Task, setting: str, confirm_timeout_s: float):
+    def __init__(self, backend: LiveBackend, task: Task, setting: str, confirm_timeout_s: float,
+                 max_steps: int = LIVE_MAX_STEPS, started: float = 0.0):
         self.id = uuid.uuid4().hex
         self.task, self.setting, self.backend = task, setting, backend
+        self.max_steps, self.started = max_steps, started
         self.run_id = new_run_id(task.task_id, setting, "live")
         self.user = WebUser(confirm_timeout_s)
         self.events: list[dict] = []
@@ -144,7 +194,7 @@ class LiveSession:
                     "recorded_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "live": True,
                     "backend": backend.name, **backend.meta}
             run_agent(task, state, client, gate=gate, user=self.user, on_event=self._emit, run_id=self.run_id,
-                      meta=meta)
+                      meta=meta, max_steps=self.max_steps)
         except Exception as err:        # a broken run must still end its stream; the page shows the error text
             if not any(e["type"] == "final_response" for e in self.events):
                 self._emit(make_event(self.run_id, 0, "final_response",
@@ -185,32 +235,53 @@ class LiveSession:
 
 
 class LiveSessions:
-    """The sessions of one app. At most max_running runs at a time; finished sessions are kept until reset."""
+    """The sessions of one app. One run at a time; a finished session is kept (for its stream and state) until it
+    is reset, expires, or max_kept newer ones exist."""
 
-    def __init__(self, backend: LiveBackend, max_running: int = 2, max_kept: int = 8, confirm_timeout_s: float = 300):
+    def __init__(self, backend: LiveBackend, max_running: int = 1, max_kept: int = 8, confirm_timeout_s: float = 300,
+                 ttl_s: float = SESSION_TTL_S, max_steps: int = LIVE_MAX_STEPS,
+                 clock: Callable[[], float] = time.monotonic):
         self.backend, self.max_running, self.max_kept = backend, max_running, max_kept
-        self.confirm_timeout_s = confirm_timeout_s
+        self.confirm_timeout_s, self.ttl_s, self.max_steps, self.clock = confirm_timeout_s, ttl_s, max_steps, clock
         self._sessions: dict[str, LiveSession] = {}
+        self._active: list[LiveSession] = []        # started and not finished, even after a reset or an expiry
         self._lock = threading.Lock()
+
+    def _sweep(self) -> None:
+        """Drop expired sessions (their pending confirmation is denied). Called with the lock held."""
+        now = self.clock()
+        for key in [k for k, s in self._sessions.items() if now - s.started > self.ttl_s]:
+            self._sessions.pop(key).cancel()
+        self._active = [s for s in self._active if not s.done]
+
+    @property
+    def busy(self) -> bool:
+        with self._lock:
+            self._sweep()
+            return len(self._active) >= self.max_running
 
     def start(self, task: Task, setting: str) -> LiveSession:
         if setting not in SETTINGS:
             raise ValueError(f"setting must be one of {SETTINGS}")
         with self._lock:
-            if sum(not s.done for s in self._sessions.values()) >= self.max_running:
-                raise RuntimeError("too many live runs at once; wait for one to finish or reset it")
-            for old in [k for k, s in self._sessions.items() if s.done][:max(0, len(self._sessions) - self.max_kept + 1)]:
-                del self._sessions[old]
-            session = LiveSession(self.backend, task, setting, self.confirm_timeout_s)
+            self._sweep()
+            if len(self._active) >= self.max_running:
+                raise LiveBusy(BUSY)
+            for old in list(self._sessions)[:max(0, len(self._sessions) - self.max_kept + 1)]:
+                del self._sessions[old]              # the oldest finished ones (nothing is running here)
+            session = LiveSession(self.backend, task, setting, self.confirm_timeout_s, self.max_steps, self.clock())
             self._sessions[session.id] = session
+            self._active.append(session)
         return session.start()
 
     def get(self, session_id: str) -> LiveSession | None:
         with self._lock:
+            self._sweep()
             return self._sessions.get(str(session_id))
 
     def reset(self, session_id: str | None) -> bool:
         with self._lock:
+            self._sweep()
             session = self._sessions.pop(str(session_id), None) if session_id else None
         if session is not None:
             session.cancel()

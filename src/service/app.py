@@ -28,6 +28,10 @@ AND the cost guard passes:
   no backend, or a backend that reaches a real account   the guard is asked with Tier C and always refuses
   the local fake backend (no real account)                starting a run is a $0 Tier B ledger row; the other
                                                           routes need the same approval variable
+Limits: one live run at a time (a second start gets 429 "monitor busy, try in a minute"), 15 agent steps per task,
+sessions expire after 30 minutes, and per address 120 live requests a minute and 10 wrong passwords in 10 minutes
+(then 429). KILL SWITCH: set LIVE_MODE=off and restart the app. An app that started with LIVE_MODE off builds no
+sessions at all and stays off until it is restarted with LIVE_MODE=on; LIVE_MODE is also read on every request.
 POST /api/live/run            {"task_id": preset} or {"prompt": free text}, + "setting": a new session on its own
                               fresh simulator state; the run starts. Free-text tasks exist only here
 GET  /api/live/events         ?session=&after=N: the session's events as Server-Sent Events while it runs
@@ -36,6 +40,7 @@ POST /v1/continue             {"session", "answer": "yes"|"no"}: answers the pen
 POST /api/live/reset          {"session"}: drops the session and returns the fresh seed company ("Reset company")
 """
 import hmac
+import ipaddress
 import json
 import os
 import re
@@ -48,7 +53,8 @@ from src.common.io import REPO_ROOT
 from src.live.company import state_at
 from src.service import cost_guard
 from src.service.cost_guard import APPROVAL_VAR, PaidCallBlocked, approved, require_paid_ok
-from src.service.live import SETTINGS, LiveBackend, LiveSessions, free_text_task
+from src.service.live import (BAD_PASSWORDS_PER_10_MIN, LIVE_REQUESTS_PER_MINUTE, SETTINGS, LiveBackend, LiveBusy,
+                              LiveSessions, RateLimit, free_text_task)
 from src.service.results import REPORT_PDF, load_results
 from src.service.team import team
 
@@ -110,10 +116,26 @@ def summarize(events: list[dict], source: str) -> dict:
     }
 
 
-def live_available(backend: LiveBackend | None = None) -> bool:
-    """True only for an app that was built with a live backend, while LIVE_MODE is on. create_app() has no backend
-    (a live backend against real accounts is Step 2, under the cost rules), so the served site always says False."""
-    return backend is not None and os.environ.get("LIVE_MODE", "off") == "on"
+# Where the site's own reverse proxy can sit: this host or a private (Docker) network. Only then is X-Forwarded-For read.
+PROXY_NETS = tuple(ipaddress.ip_network(n) for n in ("127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",
+                                                     "::1/128", "fc00::/7"))
+
+
+def live_flag() -> bool:
+    return os.environ.get("LIVE_MODE", "off") == "on"
+
+
+def client_address(request: Request) -> str:
+    """The caller's address for the rate limits. Behind the site's own reverse proxy (a loopback or private peer)
+    it is the last X-Forwarded-For entry, the one the proxy added itself; a caller cannot forge that one."""
+    peer = request.client.host if request.client else "unknown"
+    forwarded = [x.strip() for x in request.headers.get("x-forwarded-for", "").split(",") if x.strip()]
+    try:
+        address = ipaddress.ip_address(peer)
+        proxied = any(address in net for net in PROXY_NETS)
+    except ValueError:
+        proxied = False
+    return forwarded[-1] if proxied and forwarded else peer
 
 
 def sse(data: dict, event: str | None = None, id: int | None = None) -> str:
@@ -125,8 +147,11 @@ def create_app(sources: dict[str, Path] | None = None, live: LiveBackend | None 
     """live: a live backend (src/service/live.py). None (the default, and the served app) keeps live mode off."""
     app = FastAPI(title="Agent risk monitor: recorded demo runs", docs_url=None, redoc_url=None)
     roots = sources if sources is not None else default_sources()
-    sessions = LiveSessions(live) if live is not None else None
-    app.state.live_sessions = sessions
+    # Kill switch: an app that starts with LIVE_MODE off builds no live sessions and stays off until a restart.
+    sessions = LiveSessions(live) if live is not None and live_flag() else None
+    requests_limit = RateLimit(LIVE_REQUESTS_PER_MINUTE, 60)
+    password_limit = RateLimit(BAD_PASSWORDS_PER_10_MIN, 600)
+    app.state.live_sessions, app.state.live_limits = sessions, (requests_limit, password_limit)
 
     def logs() -> dict[tuple[str, str], Path]:
         out = {}
@@ -138,7 +163,7 @@ def create_app(sources: dict[str, Path] | None = None, live: LiveBackend | None 
     @app.get("/health")
     def health():
         return {"status": "ok", "mode": "replay", "live_mode": os.environ.get("LIVE_MODE", "off") == "on",
-                "live_available": live_available(live)}
+                "live_available": sessions is not None and live_flag()}
 
     @app.get("/api/tasks")
     def tasks():
@@ -188,11 +213,17 @@ def create_app(sources: dict[str, Path] | None = None, live: LiveBackend | None 
 
     def live_gate(request: Request, action: str, starts_run: bool = False) -> LiveSessions:
         """403 unless LIVE_MODE=on AND the password matches AND the cost guard passes. Returns the sessions."""
-        if os.environ.get("LIVE_MODE", "off") != "on":
+        if not live_flag():
             raise HTTPException(403, "live mode is off")
+        if live is not None and sessions is None:
+            raise HTTPException(403, "live mode was off when the app started; restart it to turn live mode on")
+        who = client_address(request)
+        if password_limit.count(who) >= password_limit.limit or not requests_limit.hit(who):
+            raise HTTPException(429, "too many live requests from this address; try again later")
         expected = os.environ.get("LIVE_PASSWORD", "")
         given = request.headers.get("x-live-password", "")
         if not expected or not hmac.compare_digest(given.encode(), expected.encode()):
+            password_limit.hit(who)
             raise HTTPException(403, "wrong or missing live password")
         try:
             if live is None or live.paid:       # a backend on real accounts is Step 2: Tier C, always refused
@@ -220,7 +251,7 @@ def create_app(sources: dict[str, Path] | None = None, live: LiveBackend | None 
     def session_of(live_sessions: LiveSessions, session_id):
         session = live_sessions.get(session_id) if isinstance(session_id, str) else None
         if session is None:
-            raise HTTPException(404, "no such live session")
+            raise HTTPException(404, "no such live session (a session expires 30 minutes after it started)")
         return session
 
     @app.post("/api/live/run")
@@ -242,7 +273,7 @@ def create_app(sources: dict[str, Path] | None = None, live: LiveBackend | None 
                 raise HTTPException(400, str(err))
         try:
             session = live_sessions.start(task, setting)
-        except RuntimeError as err:
+        except LiveBusy as err:
             raise HTTPException(429, str(err))
         return {"session": session.id, "run_id": session.run_id, "task": task.task_id, "setting": setting,
                 "backend": live.name}
