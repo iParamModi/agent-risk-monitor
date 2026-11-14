@@ -129,6 +129,10 @@ td.revealed { outline: 1px solid var(--amber); outline-offset: -2px; background:
 .composer { border-top: 1px solid var(--line); background: var(--panel); padding: 10px 16px 12px; }
 .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .presets button { border-radius: 999px; font-size: 12.5px; padding: 3px 11px; }
+.liverow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; font-size: 12.5px; }
+.liverow input { font: inherit; color: var(--ink); background: var(--soft); border: 1px solid var(--line); border-radius: 7px; padding: 3px 8px; width: 150px; }
+.liverow .err { color: var(--red); }
+.chip.live { color: var(--green); border-color: var(--green); }
 .taskform { display: flex; gap: 8px; }
 .taskform input { flex: 1; min-width: 0; font: inherit; color: var(--ink); background: var(--soft); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
 .taskform input:disabled { color: var(--muted); }
@@ -219,6 +223,7 @@ table.t td.ok, .ok { color: var(--green); } table.t td.bad, .bad { color: var(--
 
 /* status bar */
 .status { flex: 0 0 auto; display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; padding: 6px 14px; border-top: 1px solid var(--line); background: var(--panel); font: 12px var(--mono); color: var(--muted); }
+.status .mode.live { color: var(--green); border-color: var(--green); }
 .status .mode { font-weight: 700; color: var(--amber); border: 1px solid var(--amber); border-radius: 4px; padding: 0 6px; letter-spacing: .08em; }
 .status .sep { color: var(--line); }
 .status b { color: var(--ink); font-weight: 600; }
@@ -274,6 +279,7 @@ table.t td.ok, .ok { color: var(--green); } table.t td.bad, .bad { color: var(--
     <div id="banner"></div>
     <div class="msgs" id="msgs" aria-live="polite"></div>
     <div class="composer">
+      <div class="liverow" id="liverow" hidden></div>
       <div class="presets" id="presets"></div>
       <form class="taskform" id="taskform">
         <input id="taskinput" disabled aria-label="Task for the agent" placeholder="Loading...">
@@ -323,7 +329,8 @@ const ID_FIELDS = ["path", "file", "repo", "account_id", "account", "to_account"
   "user_id", "user", "contact_id", "recipient", "email", "folder", "resource", "name"];
 
 const S = { runs: [], tasks: [], health: {}, source: null, run: null, summary: null, events: [], shown: 0,
-  timer: null, speed: 1000, snapshot: null, states: {}, app: "files", mv: false, selRisk: null, focus: null, view: "workspace" };
+  timer: null, speed: 1000, snapshot: null, states: {}, app: "files", mv: false, selRisk: null, focus: null, view: "workspace",
+  live: { on: false, password: "", setting: "selective", session: null, running: false, error: "" } };
 
 const $ = id => document.getElementById(id);
 function el(tag, attrs, ...kids) {
@@ -378,6 +385,7 @@ function pick({ task, setting, confirm }) {
 
 async function openRun(run, { cursor = null, play = false } = {}) {
   stop();
+  dropLive();
   const data = await api(`api/runs/${encodeURIComponent(run.source)}/${encodeURIComponent(run.run_id)}`);
   S.run = run; S.source = run.source; S.summary = data.summary; S.events = data.events;
   S.selRisk = null; S.focus = null; S.states = {}; S.scrolledAt = -1;
@@ -481,21 +489,31 @@ function seenFacts() {
 function renderAll() { renderPicker(); renderChat(); renderMonitor(); renderApps(); renderStatus(); renderPageNav(); renderPage(); }
 
 function renderPresets() {
-  $("presets").replaceChildren(...S.tasks.filter(t => runsOf(t.id).length).map(t => el("button", {
+  const live = S.live.on;
+  $("presets").replaceChildren(...S.tasks.filter(t => live || runsOf(t.id).length).map(t => el("button", {
     type: "button", "aria-pressed": String(S.summary && S.summary.task === t.id), title: t.description || "",
-    text: t.title || t.id, onclick: () => { const r = pick({ task: t.id, setting: S.summary ? S.summary.setting : "selective", confirm: S.summary && S.summary.confirm || "yes" }); if (r) openRun(r, { play: true }); },
+    text: t.title || t.id, onclick: () => {
+      if (live) { startLive({ task_id: t.id }); return; }
+      const r = pick({ task: t.id, setting: S.summary ? S.summary.setting : "selective", confirm: S.summary && S.summary.confirm || "yes" }); if (r) openRun(r, { play: true }); },
   })));
   const offline = !S.health.live_available;
   $("taskinput").placeholder = offline ? "Live mode is offline — showing recorded runs. Pick a preset task above."
-    : "Replay mode: pick a preset task above.";
+    : live ? "Type a task for the agent, or pick a preset task above." : "Replay mode: pick a preset task above, or go live.";
+  renderLive();
 }
 
 function renderPicker() {
   const s = S.summary;
   if (!s) { $("picker").replaceChildren(); return; }
   const task = S.tasks.find(t => t.id === s.task) || {};
-  $("tasktitle").textContent = task.title || s.task;
+  $("tasktitle").textContent = task.title || (s.source === "live" ? "Your task" : s.task);
   $("taskdesc").textContent = task.description || "";
+  if (s.source === "live") {
+    $("picker").replaceChildren(chip("live session", "live"), chip("monitor: " + s.setting));
+    $("banner").replaceChildren(...(s.fake_monitor ? [el("div", { class: "banner", role: "note",
+      text: "FAKE MONITOR: a rule-based stand-in on CPU with a scripted agent, not the trained model. This live session only tests the wiring." })] : []));
+    return;
+  }
   const rs = runsOf(s.task);
   const seg = (label, opts) => el("span", {}, el("span", { class: "lbl", text: label }), el("span", { class: "seg" }, ...opts));
   const opt = (text, pressed, run) => el("button", { type: "button", "aria-pressed": String(pressed), disabled: !run, text,
@@ -568,6 +586,7 @@ function renderChat() {
     const note = el("div", { class: "note", text: "No new agent call in this run: the agent's messages up to its first risky action are replayed from the selective run, so only the monitor setting differs." });
     if (at >= 0) items.splice(at, 0, note); else items.push(note);
   }
+  if (!items.length && S.live.on) items.push(el("p", { class: "empty", text: "Live mode: the company is fresh. Type a task or pick a preset task below." }));
   box.replaceChildren(...items);
   if (S.scrolledAt !== S.shown) { box.scrollTop = box.scrollHeight; S.scrolledAt = S.shown; }   // only when the cursor moved
 }
@@ -653,12 +672,14 @@ function renderMonitor() {
     const req = es.find(e => e.type === "confirm_request"), ans = es.find(e => e.type === "confirm_answer");
     if (d.decision === "ASK_CONFIRMATION" || req) {
       const a = ans ? ans.payload.answer : null;
-      out.push(el("div", { class: "blk" }, el("h5", {}, el("span", { text: "Your confirmation" }), el("span", { class: "lat", text: "replay: buttons off" })),
+      const isLive = s && s.source === "live";
+      const pending = isLive && S.live.running && !!req && !ans;      // only a running live session takes an answer
+      out.push(el("div", { class: "blk" }, el("h5", {}, el("span", { text: "Your confirmation" }), el("span", { class: "lat", text: isLive ? "live: your answer decides" : "replay: buttons off" })),
         req && req.payload.reason ? el("div", { class: "small", text: "asked because: " + req.payload.reason }) : null,
         el("div", { class: "confirm" },
-          el("button", { type: "button", class: "approve" + (a === "yes" ? " chosen" : ""), disabled: true, text: "Approve" }),
-          el("button", { type: "button", class: "deny" + (a === "no" ? " chosen" : ""), disabled: true, text: "Deny" }),
-          a ? el("span", { class: "small muted", text: "recorded answer: " + a }) : el("span", { class: "waiting", text: "waiting for you" }))));
+          el("button", { type: "button", class: "approve" + (a === "yes" ? " chosen" : ""), disabled: !pending, onclick: () => answerLive("yes"), text: "Approve" }),
+          el("button", { type: "button", class: "deny" + (a === "no" ? " chosen" : ""), disabled: !pending, onclick: () => answerLive("no"), text: "Deny" }),
+          a ? el("span", { class: "small muted", text: (isLive ? "your answer: " : "recorded answer: ") + a }) : el("span", { class: "waiting", text: "waiting for you" }))));
     }
   } else {
     out.push(el("div", { class: "blk" }, el("span", { class: "waiting", text: "⏸ the agent is paused while the monitor decides" })));
@@ -776,12 +797,122 @@ function renderStatus() {
   const agent = s.agent && s.agent.startsWith("groq:") ? "groq:" + s.agent.slice(5).split("/").pop() : (s.agent || "unknown");
   const sep = () => el("span", { class: "sep", text: "│" });
   $("status").replaceChildren(
-    el("span", { class: "mode", text: "REPLAY" }), el("span", {}, "recording of ", el("b", { text: when }), s.source === "fake" ? " · fake monitor on CPU" : " · Kaggle"),
+    ...(s.source === "live"
+      ? [el("span", { class: "mode live", text: "LIVE" }), el("span", {}, "session started ", el("b", { text: when }), s.fake_monitor ? " · fake monitor on CPU" : "")]
+      : [el("span", { class: "mode", text: "REPLAY" }), el("span", {}, "recording of ", el("b", { text: when }), s.source === "fake" ? " · fake monitor on CPU" : " · Kaggle")]),
     sep(), el("span", {}, "agent ", el("b", { text: agent })),
     sep(), el("span", {}, "monitor ", el("b", { text: `${s.monitor_version || "?"} (k=${s.k ?? "?"})` }), modelName(s) ? " · " + modelName(s).slice(0, -2) : ""),
     sep(), el("span", {}, "monitor latency ", el("b", { text: secs(S.events) })),
     el("span", { class: "right" }, el("span", { text: "live: " + (S.health.live_available ? "available" : "offline") }),
       el("button", { type: "button", id: "theme", text: "theme", onclick: flipTheme })));
+}
+
+// ---------- live mode: built, kept off ----------
+// The server offers it only when /health says live_available (an app built with a live backend, LIVE_MODE on).
+// Then the same UI is fed by the session's event stream instead of a log file. Every live request carries the
+// password in a header; it is kept in memory only, never stored and never put in a URL.
+async function liveCall(path, body) {
+  const r = await fetch(path, { method: body ? "POST" : "GET", body: body ? JSON.stringify(body) : undefined,
+    headers: { "Content-Type": "application/json", "X-Live-Password": S.live.password } });
+  if (!r.ok) { let why = String(r.status); try { why = (await r.json()).detail || why; } catch (e) { /* no JSON body */ } throw new Error(why); }
+  return r;
+}
+function renderLive() {
+  const row = $("liverow"), L = S.live, ok = !!S.health.live_available;
+  row.hidden = !ok;
+  $("taskinput").disabled = !(ok && L.on);
+  $("runbtn").textContent = ok && L.on ? "Run live" : "Replay";
+  if (!ok) return;
+  row.replaceChildren(...[
+    el("button", { type: "button", "aria-pressed": String(L.on), text: L.on ? "Live mode: on" : "Go live", onclick: toggleLive }),
+    L.on ? el("input", { type: "password", "aria-label": "Live password", placeholder: "live password", autocomplete: "off", value: L.password, oninput: e => { L.password = e.target.value; } }) : null,
+    L.on ? el("select", { "aria-label": "Monitor setting for live runs", onchange: e => { L.setting = e.target.value; } },
+      ...["selective", "always"].map(v => el("option", { value: v, selected: v === L.setting, text: "monitor: " + v }))) : null,
+    L.on ? el("button", { type: "button", text: "Reset company", onclick: resetLive }) : null,
+    L.running ? el("span", { class: "waiting", text: "run in progress" }) : null,
+    L.error ? el("span", { class: "err", role: "alert", text: L.error }) : null].filter(Boolean));
+}
+function toggleLive() {
+  const L = S.live;
+  L.on = !L.on; L.error = "";
+  if (!L.on && (L.session || !S.run)) {            // back to the recordings
+    const back = S.lastRun || pick({ task: S.tasks[0] && S.tasks[0].id, setting: "selective", confirm: "yes" });
+    if (back) { openRun(back); return; }
+  }
+  renderPresets();
+}
+function dropLive() {                              // leave the live session: a pending confirmation is denied
+  const L = S.live;
+  if (L.session) liveCall("api/live/reset", { session: L.session }).catch(() => {});
+  L.session = null; L.running = false;
+}
+function clearRun() {
+  if (S.run) S.lastRun = S.run;
+  S.run = null; S.summary = null; S.events = []; S.shown = 0; S.states = {}; S.snapshot = null;
+  S.selRisk = null; S.focus = null; S.scrolledAt = -1;
+  $("picker").replaceChildren(); $("banner").replaceChildren(); $("pos").textContent = "";
+  $("tasktitle").textContent = "Agent"; $("taskdesc").textContent = "";
+  history.replaceState(null, "", location.pathname + location.search);
+}
+async function startLive(body) {
+  const L = S.live;
+  stop(); L.error = "";
+  try {
+    const run = await (await liveCall("api/live/run", { ...body, setting: L.setting })).json();
+    dropLive(); clearRun();
+    L.session = run.session; L.running = true;
+    renderAll(); renderPresets();
+    readLive(run.session);
+  } catch (e) { L.error = "live run refused: " + e.message; renderLive(); }
+}
+async function readLive(session) {
+  const L = S.live;
+  try {
+    const res = await liveCall(`api/live/events?session=${encodeURIComponent(session)}&after=0`);
+    const reader = res.body.getReader(), text = new TextDecoder();
+    let buf = "";
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done || L.session !== session) break;
+      buf += text.decode(value, { stream: true });
+      let cut;
+      while ((cut = buf.indexOf("\n\n")) >= 0) {
+        const lines = buf.slice(0, cut).split("\n");
+        buf = buf.slice(cut + 2);
+        const data = lines.filter(l => l.startsWith("data: ")).map(l => l.slice(6)).join("\n");
+        const kind = (lines.find(l => l.startsWith("event: ")) || "").slice(7);
+        if (!data || L.session !== session) continue;
+        if (kind === "summary") { S.summary = JSON.parse(data); show(S.events.length); }
+        else if (!kind) await liveEvent(session, JSON.parse(data));
+      }
+    }
+  } catch (e) { if (L.session === session) L.error = "live stream stopped: " + e.message; }
+  if (L.session === session) { L.running = false; renderAll(); renderLive(); }
+}
+async function liveEvent(session, e) {
+  S.events.push(e);
+  if (e.type === "company_snapshot") S.snapshot = e.payload;
+  if (e.type === "state_diff" && e.payload.changed)
+    S.states[e.step] = await (await liveCall(`api/live/state?session=${encodeURIComponent(session)}&step=${e.step}`)).json();
+  if (S.summary && S.live.session === session) show(S.events.length);
+}
+async function answerLive(answer) {
+  const L = S.live;
+  try { await liveCall("v1/continue", { session: L.session, answer }); L.error = ""; }
+  catch (e) { L.error = "answer not taken: " + e.message; }
+  renderLive();
+}
+async function resetLive() {
+  const L = S.live;
+  stop();
+  try {
+    const fresh = await (await liveCall("api/live/reset", { session: L.session })).json();
+    L.session = null; L.running = false; L.error = "";
+    clearRun();
+    S.events = fresh.events; S.shown = S.events.length;
+    S.snapshot = S.events[0] ? S.events[0].payload : null;
+  } catch (e) { L.error = "reset refused: " + e.message; }
+  renderAll(); renderPresets();
 }
 
 // ---------- pages: audit log, compare, results, how it works ----------
@@ -1116,7 +1247,13 @@ $("b-play").onclick = toggle;
 $("b-all").onclick = () => { stop(); show(S.events.length); };
 $("speed").onchange = e => { S.speed = +e.target.value; if (S.timer) { stop(); toggle(); } };
 $("mv").onchange = e => { S.mv = e.target.checked; renderApps(); };
-$("taskform").onsubmit = e => { e.preventDefault(); if (S.run) { stop(); show(1, { follow: false }); toggle(); } };
+$("taskform").onsubmit = e => {
+  e.preventDefault();
+  if (S.live.on && S.health.live_available) {       // free text exists only in live mode, behind the password
+    const text = $("taskinput").value.trim();
+    if (text) { $("taskinput").value = ""; startLive({ prompt: text }); }
+  } else if (S.run) { stop(); show(1, { follow: false }); toggle(); }
+};
 document.addEventListener("keydown", e => {
   if (!S.events.length || ["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
   if (e.key === "ArrowRight") { stop(); show(S.shown + 1); }

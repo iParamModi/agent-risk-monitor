@@ -79,9 +79,14 @@ def test_every_api_path_the_page_calls_exists(client):
     assert client.get(f"/api/runs/{run['source']}/{run['run_id']}/state?step=2").status_code == 200
 
 
-def test_approve_and_deny_are_disabled_in_replay():
-    block = PAGE[PAGE.index('class: "approve"'):PAGE.index('class: "approve"') + 400]
-    assert block.count("disabled: true") == 2
+def test_approve_and_deny_work_only_in_a_running_live_session():
+    """In replay they are disabled; only a running live session with an open request takes an answer."""
+    at = PAGE.index('class: "approve"')
+    block = PAGE[at - 600:at + 500]
+    assert block.count("disabled: !pending") == 2 and "disabled: true" not in block
+    pending = re.search(r"const pending = ([^;]+);", block).group(1)
+    assert pending == "isLive && S.live.running && !!req && !ans"
+    assert 'const isLive = s && s.source === "live";' in block and "replay: buttons off" in block
 
 
 def test_free_text_task_box_is_off_in_replay():
@@ -146,3 +151,37 @@ def test_compare_pairs_come_from_the_recorded_reuse(client):
         assert selective and selective["setting"] == "selective" and always["setting"] == "always"
         assert selective["task"] == always["task"] and selective["confirm"] == always["confirm"]
     assert "r.reused_from" in _between("function pairs()", "function firstBlock")
+
+
+# ---------- Part D: live mode wiring (built, kept off) ----------
+
+def test_live_mode_is_offered_only_when_health_says_available():
+    code = _between("function renderLive()", "function toggleLive()")
+    assert "ok = !!S.health.live_available" in code and "row.hidden = !ok" in code
+    assert '$("taskinput").disabled = !(ok && L.on)' in code            # free text: live mode only
+    assert "Reset company" in code
+    assert "Live mode is offline — showing recorded runs" in PAGE
+
+
+def test_live_password_goes_in_a_header_and_is_never_stored_or_put_in_a_url():
+    code = _between("async function liveCall", "// ---------- pages")
+    assert '"X-Live-Password": S.live.password' in code and 'type: "password"' in code
+    assert "localStorage" not in code and "sessionStorage" not in PAGE and "password=" not in PAGE
+    assert re.findall(r"localStorage\.setItem\(\"([^\"]+)", PAGE) == ["nw-theme"]
+
+
+def test_live_paths_the_page_calls_are_gated_routes(client):
+    paths = set(re.findall(r'liveCall\(\s*[`"]([^`"?$]+)', PAGE))
+    assert paths == {"api/live/run", "api/live/events", "api/live/state", "api/live/reset", "v1/continue"}
+    routes = {r.path for r in client.app.routes}
+    for path in paths:
+        assert "/" + path in routes, path
+        method = "get" if path in ("api/live/events", "api/live/state") else "post"
+        assert getattr(client, method)("/" + path).status_code == 403, path       # off in the served app
+    assert "answerLive" in PAGE and 'liveCall("v1/continue", { session: L.session, answer })' in PAGE
+
+
+def test_live_events_go_through_the_same_renderer_as_a_recording():
+    code = _between("async function liveEvent", "async function answerLive")
+    assert "S.events.push(e)" in code and "show(S.events.length)" in code
+    assert "decision" not in code and "BLOCK" not in code               # the live path adds no value of its own
