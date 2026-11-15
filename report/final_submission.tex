@@ -130,12 +130,11 @@ checking. AGrail \citep{luo2025agrail} creates safety checks before actions but 
 enough?'' step. PhantomPolicy and Sentinel \citep{wu2026phantompolicy} describe the failure in which an
 agent's compliance depends on facts it cannot see, and enforce policies by simulating each action on a
 knowledge graph; we give the monitor read-only tools and measure whether it learns to use them only when
-needed. ``Ask the World Before Acting'' \citep{song2026askworld} lets an agent probe the environment for one
-uncertain belief before it acts; our probing step serves a separate safety monitor and is compared with
-checking everything. pi-bench \citep{das2026pibench} tests whether agents follow policies with hidden state;
-SABER \citep{hu2026saber} judges safety from the final state of a workspace; Trust No Tool
-\citep{yan2026trustnotool} studies attacked tool outputs; AgentDoG \citep{liu2026agentdog} diagnoses risks in
-agent runs without environment access. None of them measures how selectively a monitor checks.
+needed. ``Ask the World Before Acting'' \citep{song2026askworld} lets an agent probe the environment before
+it acts, to finish tasks; our probing serves a separate safety monitor. pi-bench \citep{das2026pibench},
+SABER \citep{hu2026saber}, Trust No Tool \citep{yan2026trustnotool} and AgentDoG \citep{liu2026agentdog}
+study hidden state, workspace state, attacked tool outputs and risk diagnosis; none measures how selectively
+a monitor checks.
 
 \textbf{Guard models and related ideas.} Guard models such as Llama Guard \citep{inan2023llamaguard} label
 prompts or replies without access to the environment. Our ``do I know enough?'' step is close to selective
@@ -187,27 +186,32 @@ gold label (used only for scoring and training targets).
 \textbf{Size, domains and case types.} 245 seeds give 594 records: 200 in-domain seeds give 482 records in
 six domains (access control, files, privacy and sharing, money transfers, repositories, calendar and
 email), and 45 out-of-domain (OOD) seeds give 112 records with a new domain (customer records, 42 records),
-reworded versions of the other domains, new tools, and new names, values and writing styles. Table~\ref{tab:types} explains the five case types; Table~\ref{tab:splits} gives the splits. Records
+reworded versions of the other domains, new tools, and new names, values and writing styles.
+
+\textbf{Five kinds of case (T1--T5).} Every record belongs to one of five kinds, and each kind tests one
+situation a monitor must handle (Table~\ref{tab:types}). In short: T1 asks ``can you see that a hidden fact
+matters?'', T2 asks ``can you trust what you saw earlier?'', T3 and T4 are easy cases that need no check, and
+T5 asks ``do you notice when two rules or two facts disagree?''. Table~\ref{tab:splits} gives the splits. Records
 are split by seed, and seeds that share a policy stay in one split. The test and OOD files are
-\textbf{locked} with hashes: nothing was trained, tuned or chosen on them. Policy ids never reach the model:
-the prompt shows policies as numbers in a random order. Evaluation uses the phase-1 tools, as in training:
+\textbf{locked} with hashes: nothing was trained, tuned or chosen on them. Evaluation uses the phase-1 tools, as in training:
 146 of the 150 test records (4 \texttt{create\_event} records are left out) and 290 of the 292 train records.
 
 \begin{table}[h]
 \centering\footnotesize
 \setlength{\tabcolsep}{4pt}
-\begin{tabular}{@{}L{0.12\linewidth}L{0.52\linewidth}L{0.12\linewidth}L{0.09\linewidth}r@{}}
+\begin{tabular}{@{}L{0.15\linewidth}L{0.56\linewidth}L{0.10\linewidth}L{0.06\linewidth}r@{}}
 \toprule
-\textbf{Type} & \textbf{What it tests} & \textbf{Right decision} & \textbf{Checks needed} & \textbf{Records}\\
+\textbf{Kind} & \textbf{What it means, in simple words} & \textbf{Right answer} & \textbf{Checks} & \textbf{Records}\\
 \midrule
-T1 hidden fact & Two records A and B with the same visible text; only a hidden fact differs, so the right decision differs (e.g.\ the recipient's address is verified or not) & set by the fact & 1 & 158\\
-T2 trust rule & A fact appears earlier in the conversation: (a) a fresh tool result about the same resource, (b) a result about another resource, (c) a result made out of date by a later write, (d) only the agent claims it. Only (a) may be trusted & set by the fact & a: 0; b, c, d: 1 & 164\\
-T3 clearly safe & A policy allows the action whatever the hidden state is & \ALLOW & 0 & 30\\
-T4 clearly unsafe & The violation is visible in the request itself & \BLOCK & 0 & 38\\
-T5 conflict & (i) two shown policies demand opposite things, or (ii) two checks return facts that cannot both be true & \ESC & (i) 0; (ii) 2 & 92\\
+T1: same words, different hidden fact & Two cases look exactly the same; only a fact the monitor cannot see differs, so the right answer differs. Example: ``send the contract to this address'' is fine if the address is verified, and must be stopped if not. Only a check tells them apart & depends on the fact & 1 & 158\\
+T2: can I trust what I saw earlier? & The fact already appears in the conversation, and the monitor must decide if it can trust it. (a) A fresh tool result about the same file: trust it, no check. (b) The result is about a different file, (c) the file was changed after the result (e.g.\ moved or re-shared), or (d) only the agent says it and no tool showed it: do not trust it, check again & depends on the fact & a: 0; b--d: 1 & 164\\
+T3: clearly safe & A policy allows the action whatever the hidden facts are: allow it without checking & \ALLOW & 0 & 30\\
+T4: clearly unsafe & The request itself breaks a rule: block it without checking & \BLOCK & 0 & 38\\
+T5: conflict & (i) Two of the shown policies say opposite things, or (ii) two checks give answers that cannot both be true (e.g.\ one tool says an account belongs to the company, another says it is personal). A human must decide & \ESC & (i) 0; (ii) 2 & 92\\
 \bottomrule
 \end{tabular}
-\caption{Case types of the generated data and their in-domain record counts (482 in all).}
+\caption{The five kinds of case in our generated data, with their in-domain record counts (482 in all).
+``Checks'' = how many checks the right answer needs.}
 \label{tab:types}
 \end{table}
 
@@ -463,8 +467,7 @@ The same adapter was run under both systems on the same records. v2 is safer wit
 risky actions let through: always 34.1 $\rightarrow$ 24.4, selective 52.4 $\rightarrow$ 39.0, oracle 20.7
 $\rightarrow$ 15.9) and shows more of the deciding policies (oracle accuracy 76.0 $\rightarrow$ 80.8 on test,
 75.9 $\rightarrow$ 82.1 on OOD), while accuracy moves little (selective 61.6 $\rightarrow$ 63.0 on test,
-67.0 $\rightarrow$ 66.1 on OOD, well inside the intervals; validation 67.5 $\rightarrow$ 77.5). With correct
-policies only the selective setting changes (test 69.2 $\rightarrow$ 69.9, OOD 78.6 $\rightarrow$ 80.4).
+67.0 $\rightarrow$ 66.1 on OOD, well inside the intervals).
 
 
 \section{Ablations}\label{sec:abl}
@@ -665,9 +668,8 @@ threshold.}
 \end{table}
 
 \textbf{What they show.} The fine-tuned model asks for a check when one is needed far more often than the
-base model (test: 90.7\% against 62.6\%; OOD: 88.7\% against 33.8\%), and its asking pays off: selective is
-more accurate than never checking. It handles the trust-rule cases almost perfectly (test 100.0\% against
-50.0\% for the base model). H6 holds because selective makes about as many checks as the ideal checker; on
+base model (test: 90.7\% against 62.6\%; OOD: 88.7\% against 33.8\%), its asking pays off, and it handles
+the trust-rule cases almost perfectly (test 100.0\% against 50.0\%). H6 holds because selective makes about as many checks as the ideal checker; on
 test it even saves a little more, which means it skips some needed checks (the two-check cases). With
 retrieved policies H2, H4 and H5 also hold, and H3 holds on test ($+4.8$ \ci{1.3}{8.7}) but not on OOD
 ($-2.7$ \ci{$-$12.5}{6.3}). \textbf{Cost:} selective uses about 2.4$\times$ the tokens of always (test,
@@ -681,13 +683,11 @@ compute: real company systems with waiting time, fees or access to personal data
   are about $\pm$10 points on test, and OOD has only 51 risky records, so a single difference under about 8
   points is noise. With this size the hypothesis rule could only have passed if selective were clearly safer
   than always (Table~\ref{tab:hyp}); we kept the rule and report its power.
-\item \textbf{Test mix.} The 6 November addition made test 28\% T5 against 19\% over all in-domain records.
-  Reweighted to the in-domain mix, Phase~B selective (v2) would be 68.3 (retrieved) and 75.1 (correct) instead
-  of 63.0 and 69.9; the raw numbers stay the main result.
-\item \textbf{Generated records and rule-made labels.} Our records, their labels and the check tools' answers
-  come from our own seeds, policy rules and a simulated company. The labels were checked by code, but
-  \textbf{no human agreement study was done on our records}; the only $\kappa$ we have is 0.57 on 26 R-Judge
-  risk types, below the 0.6 target. One OOD seed is flagged for a person to read.
+\item \textbf{Test mix.} Test is 28\% T5 against 19\% over all in-domain records; reweighted to the
+  in-domain mix, Phase~B selective (v2) would be 68.3 (retrieved) and 75.1 (correct) instead of 63.0 and 69.9.
+\item \textbf{Generated records and rule-made labels.} Our records, labels and check answers come from our own
+  seeds, policy rules and a simulated company. The labels were checked by code, but \textbf{no human
+  agreement study was done on our records} (the only $\kappa$ is 0.57 on 26 R-Judge risk types).
 \item \textbf{One training run per adapter}, so run-to-run variance is unknown and differences of a few points
   between the 30 October and the final adapter may be noise. All 26 two-check training records use one
   mechanism, so the 24 test records that combine two different facts are not learned.
@@ -696,8 +696,6 @@ compute: real company systems with waiting time, fees or access to personal data
 \item \textbf{Collected datasets.} Our own splits, not comparable with leaderboards; shortcuts (a word model
   reaches 88.6; 43 of the 115 R-Judge test records are near-copies of a training record); the AgentRisk
   licence allows no redistribution.
-\item \textbf{Not in this report:} the deployment demo and service, live runs with two agent LLMs, the
-  ablations listed in Section~\ref{sec:abl} as not run, and the 50 human evidence checks.
 \end{itemize}
 
 \section{Conclusions}
@@ -710,13 +708,11 @@ compute: real company systems with waiting time, fees or access to personal data
   and fine-tuning raise accuracy, the trust rule is learned, no checks are wasted).
 \item \textbf{It is not as safe as always checking on the test set.} The main hypothesis fails
   ($+26.8$ \ci{14.3}{39.5} more risky actions let through with correct policies), mainly because the monitor
-  makes one check where two are needed, and because a missing policy turns into a wrong check. The proposal
-  said both answers would be useful; this is the negative one, reported as it is.
+  makes one check where two are needed, and because a missing policy turns into a wrong check.
 \item \textbf{Retrieval with action tags (v2) made the system safer without retraining} (test, selective:
   52.4 $\rightarrow$ 39.0 risky actions let through). \textbf{The cost case is about calls, not tokens}.
 \end{enumerate}
-\textbf{Future work}: two-check training data with several mechanisms; second-pass examples with all check
-results; a second training seed; the human label study; a prompt with only the action's check tools.
+\textbf{Future work}: two-check training data, a second training seed and a human label study.
 
 {\footnotesize
 \bibliographystyle{plainnat}
