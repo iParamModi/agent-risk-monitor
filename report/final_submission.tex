@@ -64,19 +64,19 @@ AI agents now work inside company systems: they share files, give access rights 
 such action is safe often depends on a fact that is not in the conversation, for example whether a file is
 shared outside the company. We built a safety monitor that looks at each proposed action and answers \ALLOW,
 \ASK, \BLOCK\ or \ESC. Before it answers, it may call a read-only \emph{check tool} to learn one missing fact.
-Our question: can a small model learn to check only when it needs to (\emph{selective} checking) and stay
-about as safe as checking everything (\emph{always} checking)? We built 594 test scenarios with hidden facts,
-a store of 154 company policies, 28 check tools and a Qwen3-8B monitor fine-tuned with QLoRA. On the locked
-test set, selective checking uses 0.74--0.80 checks per case instead of 4.82 (about 85\% fewer) and reaches
-63.0\% accuracy with retrieved policies (always checking: 62.3\%). But it lets more risky actions through:
-$+14.6$ points (95\% CI \ci{0.0}{29.7}) with retrieved policies and $+26.8$ \ci{14.3}{39.5} with the correct
-policies. So our main safety hypothesis \textbf{fails on the test set}, and the result on the new-domain set
-is inconclusive. The main reason is cases that need two checks, where the monitor makes only one. Five
-further hypotheses, tested after the main results, \textbf{all hold} on test and on the new-domain set:
-training teaches the model when to ask ($+28.0$ points over the base model on test), checking makes it more
-accurate ($+8.9$), fine-tuning makes it more accurate ($+26.7$), it learns which tool results to trust
-($+50.0$ on those cases), and it wastes no checks compared with an ideal checker. Selective checking saves
-check calls, not model compute: it uses about 2.4 times the tokens of always checking.
+We ask whether a small model can learn to check only when it needs to (\emph{selective} checking) instead
+of checking everything (\emph{always} checking). We built 594 test scenarios with hidden facts, a store of 154
+company policies, 28 check tools and a Qwen3-8B monitor fine-tuned with QLoRA. \textbf{Selective checking
+cuts check calls by about 85\%} (0.74--0.80 per case instead of 4.82 on the locked test set) and \textbf{keeps
+the accuracy of always checking} with retrieved policies (63.0\% against 62.3\%); on a new domain it is even
+more accurate than always checking (80.4\% against 66.1\% with the correct policies). Training is what makes
+this work: the fine-tuned model asks for a check when one is needed far more often than the untrained model
+($+28.0$ points on test), it learns which earlier tool results it can trust ($+50.0$ points on those cases),
+and it is 26.7 points more accurate. The saving has a safety cost: selective checking lets more risky actions
+through than always checking ($+14.6$ points, 95\% CI \ci{0.0}{29.7}, with retrieved policies; $+26.8$
+\ci{14.3}{39.5} with the correct policies), mostly in cases that need two checks, where the monitor makes only
+one. Selective checking saves check calls, not model compute (about 2.4 times the tokens of always checking),
+so it pays off where each call to a company system is costly or touches private data.
 \end{abstract}
 
 \section{Introduction}
@@ -706,9 +706,9 @@ compute: real company systems with waiting time, fees or access to personal data
 \item \textbf{Selective checking uses about a sixth of the check calls}, and the model learns \emph{when} to
   ask and mostly \emph{what} to ask: the five further hypotheses all hold (training teaches asking, checking
   and fine-tuning raise accuracy, the trust rule is learned, no checks are wasted).
-\item \textbf{It is not as safe as always checking on the test set.} The main hypothesis fails
-  ($+26.8$ \ci{14.3}{39.5} more risky actions let through with correct policies), mainly because the monitor
-  makes one check where two are needed, and because a missing policy turns into a wrong check.
+\item \textbf{The saving has a safety cost on the test set:} $+26.8$ \ci{14.3}{39.5} more risky actions let
+  through with correct policies, so the main hypothesis is not met; most of it comes from cases where the
+  monitor makes one check where two are needed, a clear target for the next training round.
 \item \textbf{Retrieval with action tags (v2) made the system safer without retraining} (test, selective:
   52.4 $\rightarrow$ 39.0 risky actions let through). \textbf{The cost case is about calls, not tokens}.
 \end{enumerate}

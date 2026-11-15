@@ -122,6 +122,7 @@ How our monitor really runs on our records: diagrams of the loop and the 4 setti
 
 ## Activity Log (newest first)
 
+- 2026-11-15, Meet: report abstract and conclusions reworded to lead with what works (about 85% fewer check calls at the same accuracy; training teaches asking and the trust rule), with the safety cost and its numbers kept.
 - 2026-11-15, Meet: report: case types T1-T5 explained in simple words with an example each (Table 1); deployment bullet removed from Limitations; body still 8 pages.
 - 2026-11-15, Meet: five further hypotheses H2-H6 (written in `docs/decisions.md` before running `scripts/extra_hypotheses.py`; exploratory, stated after the main results): training teaches asking, checking helps, fine-tuning helps, trust rule learned, no wasted checks: **all hold** with correct policies on test and OOD (`docs/reports/extra_hypotheses.md`). Report: one table of further hypotheses (H2-H6 + C1-C4), "fixed in advance" wording removed, main hypothesis (H1) result unchanged; body still 8 pages.
 - 2026-11-15, Meet: final report rewritten to the TA's rules (`report/final_submission.tex`: body under 8 pages, references last, plain English, whole-project flowchart). **The demo is not in the report** and no report task on it is assigned: reply to Prateek's three questions in `docs/messages/2026-11-15_to_Prateek_report_no_demo.md`.
