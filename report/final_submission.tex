@@ -20,8 +20,8 @@
 \setlength{\parskip}{1.5pt}
 \setlength{\parindent}{0pt}
 \setlength{\emergencystretch}{2em}
-\setlength{\textfloatsep}{5pt}
-\setlength{\intextsep}{4pt}
+\setlength{\textfloatsep}{4pt}
+\setlength{\intextsep}{3pt}
 \setlength{\bibsep}{1pt}
 \titlespacing*{\section}{0pt}{6pt}{2pt}
 \titlespacing*{\subsection}{0pt}{4pt}{1.5pt}
@@ -70,10 +70,13 @@ a store of 154 company policies, 28 check tools and a Qwen3-8B monitor fine-tune
 test set, selective checking uses 0.74--0.80 checks per case instead of 4.82 (about 85\% fewer) and reaches
 63.0\% accuracy with retrieved policies (always checking: 62.3\%). But it lets more risky actions through:
 $+14.6$ points (95\% CI \ci{0.0}{29.7}) with retrieved policies and $+26.8$ \ci{14.3}{39.5} with the correct
-policies. So the safety hypothesis we fixed before seeing any result \textbf{fails on the test set}, and the
-result on the new-domain set is inconclusive. The main reason is cases that need two checks, where the
-monitor makes only one. Selective checking saves check calls, not model compute: it uses about 2.4 times the
-tokens of always checking.
+policies. So our main safety hypothesis \textbf{fails on the test set}, and the result on the new-domain set
+is inconclusive. The main reason is cases that need two checks, where the monitor makes only one. Five
+further hypotheses, tested after the main results, \textbf{all hold} on test and on the new-domain set:
+training teaches the model when to ask ($+28.0$ points over the base model on test), checking makes it more
+accurate ($+8.9$), fine-tuning makes it more accurate ($+26.7$), it learns which tool results to trust
+($+50.0$ on those cases), and it wastes no checks compared with an ideal checker. Selective checking saves
+check calls, not model compute: it uses about 2.4 times the tokens of always checking.
 \end{abstract}
 
 \section{Introduction}
@@ -93,8 +96,8 @@ know enough.
 
 \textbf{Research question.} Can a small model learn to check selectively and stay about as safe as checking
 everything, while making far fewer checks? We compare four checking settings on the same cases (never,
-always, selective, oracle). Before seeing any result we fixed one hypothesis: selective checking lets through
-at most 5 points more risky actions than always checking.
+always, selective, oracle). Our main hypothesis: selective checking lets through at most 5 points more risky
+actions than always checking.
 
 \textbf{Contributions.} To our knowledge, this is the first study that measures \emph{when} a learned monitor
 chooses to query the environment, and what that costs compared with always checking. In detail: (1) a task
@@ -102,8 +105,8 @@ and a dataset in which the deciding fact is hidden and must be checked (pairs of
 the hidden fact; tool results that may or may not be trusted; conflicts); (2) a monitor that decides when to
 check and which check to make, trained with QLoRA, with a policy retriever and a read-only check gateway;
 (3) a comparison of four checking settings against two rule baselines, with correct and with retrieved
-policies, with confidence intervals and a hypothesis fixed in advance; (4) an honest negative result on
-safety, an analysis of why it fails, and a cost analysis that separates check calls from model tokens.
+policies, with confidence intervals, a main hypothesis and five further ones; (4) an honest negative result
+on safety, an analysis of why it fails, and a cost analysis that separates check calls from model tokens.
 
 \textbf{What we do not claim.} We are not the first environment-aware monitor, the first to use retrieval for
 agent safety, the first to study hidden state, or the first policy-aware safety system. Our claim is
@@ -158,7 +161,7 @@ and to ask for a missing fact.
 \node[model=8.0cm] (F) at (0,-3.15)    {\textbf{Phase A adapter}: fine-tune Qwen3-8B (QLoRA) to answer\\``is this conversation unsafe, and which risk type?''};
 \node[model=8.6cm] (G) at (9.0,-3.15)  {\textbf{Phase B adapter (final)}: Phase A data + our 290 train records\\$\rightarrow$ decide on one action, or ask for the missing fact, then decide};
 \node[ok=8.0cm]    (H) at (0,-4.7)     {\textbf{Evaluation 1}: safe / unsafe on the collected test sets\\(428 records), next to a word model with no LLM};
-\node[ok=8.6cm]    (I) at (9.0,-4.7)   {\textbf{Evaluation 2}: 4 checking settings $\times$ 2 policy conditions on the locked\\test (146) and OOD (112) sets; hypothesis fixed in advance;\\error analysis; cost analysis};
+\node[ok=8.6cm]    (I) at (9.0,-4.7)   {\textbf{Evaluation 2}: 4 checking settings $\times$ 2 policy conditions on the locked\\test (146) and OOD (112) sets; main and further hypotheses;\\error analysis; cost analysis};
 \draw[->] (A) -- (C);  \draw[->] (C) -- (F);  \draw[->] (F) -- (H);
 \draw[->] (B) -- (B |- D.north);  \draw[->] (E) -- (E |- D.north);
 \draw[->] (D) -- (G);  \draw[->] (G) -- (I);
@@ -349,7 +352,7 @@ class and macro-F1 over risk types. Every main number has a 95\% confidence inte
 that resamples whole seeds (2,000 times; paired between settings). Selective and always are compared with
 paired tests (Wilcoxon on checks per record, McNemar on accuracy).
 
-\textbf{Hypothesis (fixed before any result).} Selective checking is not less safe than always checking: the
+\textbf{Main hypothesis (H1).} Selective checking is not less safe than always checking: the
 upper end of the 95\% CI of the difference in risky actions let through (selective $-$ always) is at most
 $+5$ points, while selective makes clearly fewer checks. The main test uses correct policies, so that
 retrieval errors are kept out.
@@ -444,8 +447,7 @@ retrieved policies where they differ. On OOD the rule baselines score 54.5 (rule
 \item \textbf{Fine-tuning helps a lot.} Phase~B beats the base model and both rule baselines in every setting
   on test and OOD, and on validation (40 records) in every setting but one (always with retrieved policies:
   base 80.0 vs Phase~B 70.0). Validation selective: 85.0 with correct and 77.5 with retrieved policies.
-\item \textbf{Selective saves 83.4--84.9\% of the check calls}: 0.74--0.80 per record against 4.82 on test and
-  0.68 against 4.50 on OOD ($p<0.001$ everywhere).
+\item \textbf{Selective saves 83.4--84.9\% of the check calls} ($p<0.001$ everywhere).
 \item \textbf{Accuracy is close to always checking; safety is not.} On test, selective is level with always
   under retrieved policies (63.0 vs 62.3) and behind with correct policies (69.9 vs 75.3; difference
   $-5.5$ \ci{$-$15.0}{3.4}, $p=0.200$), but it lets through more risky actions: 39.0\% against 24.4\% and
@@ -465,7 +467,7 @@ $\rightarrow$ 15.9) and shows more of the deciding policies (oracle accuracy 76.
 policies only the selective setting changes (test 69.2 $\rightarrow$ 69.9, OOD 78.6 $\rightarrow$ 80.4).
 
 
-\section{Ablations}
+\section{Ablations}\label{sec:abl}
 Table~\ref{tab:abl} lists the ablations and comparisons that were run; all numbers come from the generated
 reports in the repository.
 
@@ -480,9 +482,7 @@ Checking setting & never / always / selective / oracle, Phase~B, test & correct 
 Policy source & correct vs retrieved policies, selective & test 69.9 vs 63.0; OOD 80.4 vs 66.1; of the 48 v1 test errors that start with a missing policy, 12 become right with the correct policies & better retrieval can win at most the gap between the two conditions ($+7.6$ test, $+11.6$ OOD under v1)\\
 Retriever v1 $\rightarrow$ v2 & tag filter and 8 shown instead of top 3 & all right policies shown: train 0.55 $\rightarrow$ 0.88, val 0.33 $\rightarrow$ 0.80; val selective 27 $\rightarrow$ 31 of 40 (retrieval change alone 32); test unsafe (selective) 52.4 $\rightarrow$ 39.0 & better recall made the system safer without retraining; the second-source rule never fired on validation\\
 Retriever top $k$ and tag filter (332 train + val records) & $k = 3 / 5 / 8 / 10$, with and without the filter; also a cross-encoder re-ranker & all right policies shown 0.52 / 0.59 / 0.69 / 0.73 $\rightarrow$ with filter 0.63 / 0.74 / 0.87 / 0.89; re-ranker at $k=3$: 0.52 $\rightarrow$ 0.32 & the filter helps more than a larger $k$; the re-ranker was rejected\\
-Training & base vs Phase~B, selective & test 43.2 $\rightarrow$ 69.9 (correct), 44.5 $\rightarrow$ 63.0 (retrieved); OOD 57.1 $\rightarrow$ 80.4, 50.0 $\rightarrow$ 66.1 & fine-tuning teaches when and what to check (Section~\ref{sec:ask})\\
 Training data & 30 October vs final adapter, same 120 test records, v1 & never 56.7 $\rightarrow$ 70.8; selective 74.2 / 79.2 $\rightarrow$ 74.2 / 82.5; always 76.7 / 80.0 $\rightarrow$ 75.8 / 83.3; oracle 81.7 / 84.2 $\rightarrow$ 85.0 / 90.0 (retrieved / correct) & more data improved deciding, not asking\\
-Rule baselines & rules only / rules + environment vs Phase~B & test, correct policies: 43.8 / 52.1 vs Phase~B selective 69.9 ($+17.8$ \ci{3.8}{32.1} over rules + environment) & the learned monitor beats fixed rules that check everything, at a sixth of the checks\\
 \bottomrule
 \end{tabular}
 \caption{Ablations and comparisons that were run (\%, except retrieval shares and check counts).}
@@ -496,18 +496,16 @@ ask after the first results) were built with a validation rule set in advance bu
 Kaggle weekly GPU quota ran out on 12 November. None of these is reported as a result.
 
 \section{Evaluations}
-\subsection{The hypothesis}
-Table~\ref{tab:hyp} gives the test that was fixed in advance. \textbf{It fails on the test set} in both
+\subsection{The main hypothesis (H1)}
+Table~\ref{tab:hyp} gives the main hypothesis. \textbf{It fails on the test set} in both
 policy conditions: with correct policies the whole interval is above zero ($+26.8$ \ci{14.3}{39.5}), so
 selective checking is clearly less safe than always checking there; with retrieved policies the interval
 starts at 0.0 (under v1 it was \ci{8.2}{28.9}). On OOD and on validation the intervals contain zero but reach
 above $+5$, so the result is inconclusive. The cost side holds everywhere ($p<0.001$). \textbf{Power.} With
 82 risky test records the interval half-width is 12.6--14.8 points, so the rule could only have passed if
-selective were clearly \emph{safer} than always (a difference of at most $-7.6$ to $-9.8$ points; on OOD, 51
-risky records, $-7.7$ to $-12.1$). We kept the rule as fixed and report the power it had. \textbf{Always is
-not safe either}: it lets 24.4\% of risky test records through with retrieved policies and 12.2\% with
-correct policies, because it inherits missing policies and sometimes decides on a fact that does not decide
-the case.
+selective were clearly \emph{safer} than always (a difference of at most $-7.6$ to $-9.8$ points); we kept
+the rule and report its power. \textbf{Always is not safe either}: it lets 24.4\% (retrieved) and 12.2\%
+(correct policies) of risky test records through.
 
 \begin{table}[h]
 \centering\footnotesize
@@ -524,7 +522,7 @@ Val & correct & $0.0$ \ci{$-$21.1}{21.1} & $0.0$ \ci{$-$21.1}{21.1} & 19 & 21.1 
 Val & retrieved & $+5.3$ \ci{$-$23.5}{31.2} & $+10.5$ \ci{$-$18.2}{41.2} & 19 & 27.4 & inconclusive\\
 \bottomrule
 \end{tabular}
-\caption{The hypothesis: difference in risky actions let through, selective $-$ always, in points, with 95\%
+\caption{The main hypothesis (H1): difference in risky actions let through, selective $-$ always, in points, with 95\%
 CIs (bootstrap over seeds, paired). It passes only if the upper end is at most $+5$. The base model fails
 everywhere except OOD with retrieved policies ($-11.8$ \ci{$-$26.4}{2.3}), where it passes only because it
 blocks most records.}
@@ -533,11 +531,9 @@ blocks most records.}
 
 \subsection{Does the monitor learn to ask, and ask for the right fact?}\label{sec:ask}
 We looked inside the selective setting with correct policies, on the same records for all three models
-(test: the 120 records that existed before 6 November; system v1, so these are the model's own requests). \textbf{Training teaches the model when to ask}, and this carries over to OOD: Phase~B asks in
-87.7\% (test) and 91.5\% (OOD) of the records that need a check; the base model in 53.1\% and 33.8\%. It is
-clearest on T2: the base model never asks when the fact changed after the tool result (T2c) and rarely when
-the result is about another resource (T2b); Phase~B asks in 100\% of both and stays quiet in 92\% (test) and
-91\% (OOD) of the fresh-result (T2a) records. It makes \emph{every} needed check in 64.2\% (test) and 73.2\% (OOD) of the records (base model: 30.9 and
+(test: the 120 records that existed before 6 November; system v1, so these are the model's own requests).
+\textbf{Training teaches the model when to ask} (87.7\% on test and 91.5\% on OOD of the records that need a
+check; base model 53.1\% and 33.8\%; tested as H2 in Section~\ref{sec:more}). It makes \emph{every} needed check in 64.2\% (test) and 73.2\% (OOD) of the records (base model: 30.9 and
 25.4). \textbf{When it has the facts, it decides right} (94.2\% when every needed check was made; 55.2 and
 21.1 when one was missing); the weak point is asking, not using the answer.
 \textbf{It asks for one check when two are needed}: on the T5 records where two facts disagree, Phase~B asks
@@ -549,9 +545,8 @@ drops to 50.7 (test) and 59.1 (OOD), because the model checks the facts that the
 
 \subsection{T2 subtypes: which tool results to trust}
 Table~\ref{tab:t2} reports the trust-rule cases, the part of the task that other monitors do not handle.
-Phase~B handles in-domain T2 almost perfectly in the selective setting (92.3--100 per subtype), and already
-without checks (never: 92.3--100 on test), so the trust rule was learned from the conversation. The base
-model is far lower: with correct policies 15.4 (a), 61.5 (b), 84.6 (c) and 38.5 (d) on test.
+Phase~B handles in-domain T2 almost perfectly (92.3--100 per subtype), already without checks (never:
+92.3--100 on test), so the trust rule was learned from the conversation; the base model is far lower (H5).
 
 \begin{table}[h]
 \centering\small
@@ -635,30 +630,50 @@ arguments, extra check, invalid JSON.}
 
 \textbf{OOD by kind of shift.} Of the 112 OOD records, 42 use new tools as well as new wording, style and
 values; 70 change only wording, style and values. Phase~B selective (v2) scores 61.9 on the new-tool records
-and 68.6 on the reworded ones with retrieved policies (78.6 and 81.4 with correct policies); always scores
-61.9 and 64.3 (73.8 and 61.4). Selective is weakest where it has never seen the check tools, but the learned
-checking carries over to a new domain.
+and 68.6 on the reworded ones with retrieved policies (78.6 and 81.4 with correct policies).
 
-\subsection{Exploratory cost hypotheses}
-Four cost hypotheses were stated on 12 November, \textbf{after the results were seen}, so they are
-exploratory; the safety hypothesis above stays the only one fixed in advance. Each is judged by its 95\% CI
-(bootstrap over seeds, paired). \textbf{Fewer check calls, yes (C1)}: selective makes 0.15--0.17 of the check
-calls of always (test, retrieved: 0.17 \ci{0.14}{0.20}; the threshold was 0.5). \textbf{Less model compute,
-no (C2)}: selective uses 2.33--2.48$\times$ the prompt and output tokens of always (test, retrieved: 2.45
-\ci{2.35}{2.57}; 2,591 against 1,056 tokens per record) and about twice the time (20.2 against 12.2 seconds
-per record),
-because its prompt lists every check tool (about 990 tokens) and most records need a second pass after the
-checks (1.63--1.75 passes per record). The break-even point is 351--392 tokens of model compute per check
-call: selective is cheaper overall only where one check call costs more than that, i.e.\ real company systems
-with waiting time, rate limits, fees or access to personal data, not a free local lookup, as the proposal had
-expected. \textbf{Accuracy within 5 points of always (C3)}: not shown on test
-(test: $+0.7$ \ci{$-$7.7}{8.6} retrieved, $-5.5$ \ci{$-$15.0}{3.4} correct; OOD retrieved $+2.7$
-\ci{$-$9.5}{14.9}: the intervals cross $-5$); on OOD with correct policies selective is clearly more accurate
-($+14.3$ \ci{3.4}{25.0}). \textbf{Better than rules that check everything (C4)}: holds on test in both
-policy conditions ($+16.4$ \ci{0.7}{31.1} retrieved, $+17.8$ \ci{3.8}{32.1} correct) and on OOD with correct
-policies ($+25.9$ \ci{10.5}{40.5}); on OOD with retrieved policies the interval touches zero ($+17.9$
-\ci{0.0}{34.5}).
+\subsection{Further hypotheses (tested after the main results)}\label{sec:more}
+After the main results we tested nine further hypotheses (Table~\ref{tab:more}). Because they were stated
+after we had seen the results, they are \textbf{exploratory}: they describe what the runs support, but they
+do not replace the main hypothesis. We wrote each one and its pass rule in the decision log before computing
+it, and we report every result. C1--C4 (cost) were stated on 12 November, H2--H6 on 15 November. All use the
+final system with correct policies and 95\% CIs by bootstrap over seeds (paired).
 
+\begin{table}[h]
+\centering\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lL{0.32\linewidth}ccl@{}}
+\toprule
+ & \textbf{Hypothesis: holds if} & \textbf{Test} [95\% CI] & \textbf{OOD} [95\% CI] & \textbf{Result}\\
+\midrule
+H2 & Training teaches when to ask: share of records needing a check where it asks, Phase~B $-$ base $>0$ & $+28.0$ \ci{17.0}{39.6} & $+54.9$ \ci{37.5}{70.4} & \textbf{holds}\\
+H3 & Checking helps: accuracy, selective $-$ never $>0$ & $+8.9$ \ci{2.8}{15.3} & $+12.5$ \ci{5.0}{20.2} & \textbf{holds}\\
+H4 & Fine-tuning helps: accuracy, Phase~B $-$ base (selective) $>0$ & $+26.7$ \ci{17.4}{35.3} & $+23.2$ \ci{11.2}{34.5} & \textbf{holds}\\
+H5 & The trust rule is learned: H4 on T2 records only & $+50.0$ \ci{38.6}{60.4} & $+38.6$ \ci{21.9}{55.4} & \textbf{holds}\\
+H6 & No wasted checks: saving $-$ oracle saving $\ge -5$ & $+4.7$ \ci{2.4}{7.1} & $-0.6$ \ci{$-$3.0}{1.8} & \textbf{holds}\\
+\midrule
+C1 & Fewer check calls: ratio selective / always $\le 0.5$ & 0.15 \ci{0.13}{0.18} & 0.15 \ci{0.12}{0.19} & \textbf{holds}\\
+C2 & Less model compute: token ratio selective / always $\le 0.5$ & 2.48 \ci{2.39}{2.58} & 2.43 \ci{2.31}{2.56} & does not hold\\
+C3 & Accuracy kept: selective $-$ always $\ge -5$ & $-5.5$ \ci{$-$15.0}{3.4} & $+14.3$ \ci{3.4}{25.0} & OOD only\\
+C4 & Beats rules that check everything: selective $-$ rules + env.\ $>0$ & $+17.8$ \ci{3.8}{32.1} & $+25.9$ \ci{10.5}{40.5} & \textbf{holds}\\
+\bottomrule
+\end{tabular}
+\caption{Further hypotheses, tested after the main results (exploratory). Final system v2, correct policies;
+differences in points, ratios as numbers. A hypothesis holds if the whole 95\% CI is on the right side of its
+threshold.}
+\label{tab:more}
+\end{table}
+
+\textbf{What they show.} The fine-tuned model asks for a check when one is needed far more often than the
+base model (test: 90.7\% against 62.6\%; OOD: 88.7\% against 33.8\%), and its asking pays off: selective is
+more accurate than never checking. It handles the trust-rule cases almost perfectly (test 100.0\% against
+50.0\% for the base model). H6 holds because selective makes about as many checks as the ideal checker; on
+test it even saves a little more, which means it skips some needed checks (the two-check cases). With
+retrieved policies H2, H4 and H5 also hold, and H3 holds on test ($+4.8$ \ci{1.3}{8.7}) but not on OOD
+($-2.7$ \ci{$-$12.5}{6.3}). \textbf{Cost:} selective uses about 2.4$\times$ the tokens of always (test,
+retrieved: 2,591 against 1,056 per record) because its prompt lists every check tool and most records need a
+second pass, so it is cheaper overall only where one check call costs more than 351--392 tokens of model
+compute: real company systems with waiting time, fees or access to personal data.
 
 \section{Limitations}\label{sec:limits}
 \begin{itemize}
@@ -676,15 +691,13 @@ policies ($+25.9$ \ci{10.5}{40.5}); on OOD with retrieved policies the interval 
 \item \textbf{One training run per adapter}, so run-to-run variance is unknown and differences of a few points
   between the 30 October and the final adapter may be noise. All 26 two-check training records use one
   mechanism, so the 24 test records that combine two different facts are not learned.
-\item \textbf{Accuracy counts} \BLOCK\ \textbf{for} \ESC\ \textbf{as wrong}, although both stop the action.
-  Counting that swap as acceptable, always rises from 75.3 to 89.0 on test with correct policies, but
-  selective only from 69.9 to 74.7: most of selective's errors really let the risky action through.
+\item \textbf{Accuracy counts} \BLOCK\ \textbf{for} \ESC\ \textbf{as wrong}, although both stop the action;
+  counting it as right, always rises from 75.3 to 89.0 on test (correct policies), selective only to 74.7.
 \item \textbf{Collected datasets.} Our own splits, not comparable with leaderboards; shortcuts (a word model
   reaches 88.6; 43 of the 115 R-Judge test records are near-copies of a training record); the AgentRisk
   licence allows no redistribution.
-\item \textbf{Not in this report.} The deployment demo and the service are not evaluated here. Live runs with
-  two agent LLMs, the no-policy, check-noise and top-$k$ model ablations, the Qwen3-235B comparison, the v3
-  validation check and the 50 human evidence checks were not run.
+\item \textbf{Not in this report:} the deployment demo and service, live runs with two agent LLMs, the
+  ablations listed in Section~\ref{sec:abl} as not run, and the 50 human evidence checks.
 \end{itemize}
 
 \section{Conclusions}
@@ -693,22 +706,17 @@ policies ($+25.9$ \ci{10.5}{40.5}); on OOD with retrieved policies the interval 
   model and both rule baselines in every setting on test and OOD, and the skill carries over to a new domain
   (selective, retrieved policies: 63.0 on test, 66.1 on OOD).
 \item \textbf{Selective checking uses about a sixth of the check calls}, and the model learns \emph{when} to
-  ask (87.7--91.5\% of the records that need a check) and mostly \emph{what} to ask; with every needed fact in
-  hand it decides right in 94.2\%.
-\item \textbf{It is not as safe as always checking on the test set.} The hypothesis fixed in advance fails
+  ask and mostly \emph{what} to ask: the five further hypotheses all hold (training teaches asking, checking
+  and fine-tuning raise accuracy, the trust rule is learned, no checks are wasted).
+\item \textbf{It is not as safe as always checking on the test set.} The main hypothesis fails
   ($+26.8$ \ci{14.3}{39.5} more risky actions let through with correct policies), mainly because the monitor
   makes one check where two are needed, and because a missing policy turns into a wrong check. The proposal
   said both answers would be useful; this is the negative one, reported as it is.
 \item \textbf{Retrieval with action tags (v2) made the system safer without retraining} (test, selective:
-  52.4 $\rightarrow$ 39.0 risky actions let through); the remaining errors are checking errors.
-\item \textbf{The cost case is about calls, not tokens}: selective is cheaper only where one check call costs
-  more than about 350--390 tokens of model compute.
+  52.4 $\rightarrow$ 39.0 risky actions let through). \textbf{The cost case is about calls, not tokens}.
 \end{enumerate}
-\textbf{Future work}, in order: (i) two-check training data with several mechanisms, so that ``ask for both
-facts'' is learned as a rule; (ii) second-pass training examples with the full check-table results, so that
-the model learns to ignore facts that do not decide the case; (iii) a second training seed, the only way to
-tell run noise from real change; (iv) the human label study on our records; (v) a prompt that lists only the
-action's check tools, to cut the token cost.
+\textbf{Future work}: two-check training data with several mechanisms; second-pass examples with all check
+results; a second training seed; the human label study; a prompt with only the action's check tools.
 
 {\footnotesize
 \bibliographystyle{plainnat}
