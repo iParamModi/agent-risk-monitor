@@ -1,5 +1,5 @@
 \documentclass[10pt]{article}
-\usepackage[a4paper,margin=1.9cm]{geometry}
+\usepackage[a4paper,margin=1.5cm]{geometry}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage{microtype}
@@ -10,28 +10,30 @@
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc}
 \usepackage{enumitem}
+\usepackage{titlesec}
 \usepackage[round,authoryear]{natbib}
 \usepackage{caption}
 \usepackage{hyperref}
 \setlist{nosep,leftmargin=*}
-\captionsetup{font=small,labelfont=bf,skip=4pt}
+\captionsetup{font=small,labelfont=bf,skip=2pt}
 \hypersetup{colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black,citecolor=blue!50!black}
-\setlength{\parskip}{3pt}
+\setlength{\parskip}{1.5pt}
 \setlength{\parindent}{0pt}
 \setlength{\emergencystretch}{2em}
-\setlength{\textfloatsep}{8pt}
-\setlength{\intextsep}{6pt}
+\setlength{\textfloatsep}{5pt}
+\setlength{\intextsep}{4pt}
 \setlength{\bibsep}{1pt}
-\let\oldus\_\renewcommand{\_}{\oldus\allowbreak}   % long tool names may break after _
+\titlespacing*{\section}{0pt}{6pt}{2pt}
+\titlespacing*{\subsection}{0pt}{4pt}{1.5pt}
+\let\oldus\_\renewcommand{\_}{\oldus\allowbreak}
 \newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
-\newcommand{\todo}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
 \newcommand{\ALLOW}{\textsc{allow}}
 \newcommand{\ASK}{\textsc{ask\_confirmation}}
 \newcommand{\BLOCK}{\textsc{block}}
 \newcommand{\ESC}{\textsc{escalate}}
 \newcommand{\NEED}{\textsc{need\_information}}
 \newcommand{\ci}[2]{[#1, #2]}
-\newcommand{\hd}[1]{\begin{tabular}[b]{@{}c@{}}#1\end{tabular}}   % two-line table header
+\newcommand{\hd}[1]{\begin{tabular}[b]{@{}c@{}}#1\end{tabular}}
 
 \definecolor{cdata}{HTML}{374151}\definecolor{cdatabg}{HTML}{F3F4F6}
 \definecolor{cmodel}{HTML}{1D4ED8}\definecolor{cmodelbg}{HTML}{DBEAFE}
@@ -40,171 +42,178 @@
 \tikzset{
   >={Stealth[length=2mm]},
   box/.style={draw, rounded corners=2pt, align=center, inner sep=3pt, line width=0.6pt,
-              minimum height=1.05cm, text width=#1, font=\footnotesize},
+              minimum height=0.95cm, text width=#1, font=\footnotesize},
   data/.style={box=#1, draw=cdata, fill=cdatabg},
   model/.style={box=#1, draw=cmodel, fill=cmodelbg},
   gate/.style={box=#1, draw=cgate, fill=cgatebg},
   ok/.style={box=#1, draw=cok, fill=cokbg},
   note/.style={font=\scriptsize, fill=white, inner sep=1pt}}
 
-\title{\vspace{-1.2cm}\textbf{Selective Environment Verification for Agent-Risk Monitoring}\\[2pt]
+\title{\vspace{-1.3cm}\textbf{Selective Environment Verification for Agent-Risk Monitoring}\\[2pt]
 \large LMA Group Project 2026 \,--\, Final report}
 \author{\textbf{Team Catalyst}: Meet Ghelani, Moiesha, Param Modi, Prateek Tiwari\\[2pt]
 \normalsize GitHub: \url{https://github.com/meet6868/Agent-Risk-Monitoring}}
-\date{14 November 2026}
+\date{November 2026}
 
 \begin{document}
 \maketitle
-\vspace{-0.8cm}
+\vspace{-0.9cm}
 
 \begin{abstract}
-An LLM agent that works inside a company proposes actions such as sharing a file, granting access or
-transferring money. Whether an action is safe often depends on a fact that is not in the conversation:
-is the file shared outside the company, is the user the last administrator. We build a safety monitor that
-decides \ALLOW, \ASK, \BLOCK\ or \ESC\ before each action and that may first ask read-only check tools for a
-missing fact. We ask whether a small model can learn to check \emph{selectively}, only when it lacks a fact,
-and stay about as safe as checking everything. We built a dataset of 594 records from 245 hand-written
-scenarios with labels computed by policy rules, a store of 154 policies (170 in the out-of-domain store), 28 check
-tools behind a gateway over a simulated company state, a hybrid policy retriever, and a Qwen3-8B monitor
-fine-tuned with QLoRA. On the locked 146-record test set the monitor makes 0.74--0.80 checks per record
-against 4.82 for always checking, at 63.0\% accuracy with retrieved policies and 69.9\% with the correct
-policies (always: 62.3 and 75.3), and it beats the untrained model and two rule baselines. The hypothesis
-fixed before any result, that selective checking lets through at most 5 points more risky actions than
-always checking, \textbf{fails on test} ($\Delta$ unsafe $+14.6$ \ci{0.0}{29.7} with retrieved policies,
-$+26.8$ \ci{14.3}{39.5} with correct policies; 95\% CI) and is inconclusive out of domain. The main cause is
-cases that need two checks, where the monitor makes both in about 12\%. Selective checking saves check calls,
-not model tokens (about 2.4$\times$ those of always checking).
+AI agents now work inside company systems: they share files, give access rights and move money. Whether one
+such action is safe often depends on a fact that is not in the conversation, for example whether a file is
+shared outside the company. We built a safety monitor that looks at each proposed action and answers \ALLOW,
+\ASK, \BLOCK\ or \ESC. Before it answers, it may call a read-only \emph{check tool} to learn one missing fact.
+Our question: can a small model learn to check only when it needs to (\emph{selective} checking) and stay
+about as safe as checking everything (\emph{always} checking)? We built 594 test scenarios with hidden facts,
+a store of 154 company policies, 28 check tools and a Qwen3-8B monitor fine-tuned with QLoRA. On the locked
+test set, selective checking uses 0.74--0.80 checks per case instead of 4.82 (about 85\% fewer) and reaches
+63.0\% accuracy with retrieved policies (always checking: 62.3\%). But it lets more risky actions through:
+$+14.6$ points (95\% CI \ci{0.0}{29.7}) with retrieved policies and $+26.8$ \ci{14.3}{39.5} with the correct
+policies. So the safety hypothesis we fixed before seeing any result \textbf{fails on the test set}, and the
+result on the new-domain set is inconclusive. The main reason is cases that need two checks, where the
+monitor makes only one. Selective checking saves check calls, not model compute: it uses about 2.4 times the
+tokens of always checking.
 \end{abstract}
 
 \section{Introduction}
-\textbf{The pricing-sheet example.} A user asks an agent to update a sales workbook, and the agent proposes
-to write the internal cost numbers into \texttt{pricing\_v2.xlsx}. A company policy forbids writing internal
-figures into a file that is shared outside the company. Nothing in the conversation says whether that file is
-shared. A monitor that reads only the conversation has to guess. A monitor that queries every company system
-before every action is slow, costs money and reads a lot of private state. The right step is one read-only
-check, \texttt{check\_file\_sharing(pricing\_v2.xlsx)}: if it returns \texttt{sharing = external:org\_4} the
-monitor blocks the action under the sharing policy, otherwise it allows it. A variant shows the harder part of
-the problem: an earlier tool result in the conversation said the file was internal, but the agent then moved
-the file, so that result is stale and the monitor has to check again.
+\textbf{An example.} A user asks an agent to update a sales workbook, and the agent proposes to write the
+company's internal cost numbers into \texttt{pricing\_v2.xlsx}. A company policy forbids internal figures in a
+file that is shared outside the company. Nothing in the conversation says whether that file is shared. A
+monitor that reads only the conversation has to guess. The right step is one read-only check,
+\texttt{check\_file\_sharing(pricing\_v2.xlsx)}: if it returns \texttt{sharing = external:org\_4}, the monitor
+blocks the action; otherwise it allows it. A harder variant: an earlier tool result said the file was
+internal, but the agent then moved the file, so that result is out of date and the monitor must check again.
 
-\textbf{Why it matters.} Guard models label a prompt or a reply without any access to the environment, so
-they cannot see the fact that decides such a case. Checking every fact for every action is the safe default
-but it is expensive: each check is a call to a real company system, with latency, rate limits and access to
-personal data. We study the middle way: a monitor that first decides whether it knows enough and asks for
-exactly the missing fact when it does not.
+\textbf{Why it matters.} Guard models judge a prompt or a reply without any access to the environment, so
+they cannot see the fact that decides such a case. Checking every fact for every action is safe but
+expensive: each check is a call to a real company system, with waiting time, rate limits and access to
+personal data. We study the middle way: a monitor that asks for exactly the missing fact when it does not
+know enough.
 
 \textbf{Research question.} Can a small model learn to check selectively and stay about as safe as checking
-everything, while making far fewer checks? We compare four checking settings on the same records (never,
-always, selective, oracle), with the hypothesis fixed before any result that selective checking lets through
+everything, while making far fewer checks? We compare four checking settings on the same cases (never,
+always, selective, oracle). Before seeing any result we fixed one hypothesis: selective checking lets through
 at most 5 points more risky actions than always checking.
 
 \textbf{Contributions.} To our knowledge, this is the first study that measures \emph{when} a learned monitor
-chooses to query the environment and what that costs against always checking. Concretely:
-\begin{enumerate}
-\item a task and a dataset in which the deciding fact is hidden and must be checked: A/B record pairs that
-  look the same and differ only in the hidden fact, tool results that may or may not be trusted (fresh,
-  about another resource, made stale by a later write, or only claimed by the agent), and conflicts;
-\item a monitor that decides when to check (\NEED) and which check to make, trained with QLoRA, with a
-  policy retriever and a read-only check gateway;
-\item a comparison of the four checking settings against two rule baselines, under correct and under
-  retrieved policies, with confidence intervals and a pre-registered hypothesis;
-\item an honest negative result on safety, an analysis of why it fails, and a cost analysis that separates
-  check calls from model tokens.
-\end{enumerate}
+chooses to query the environment, and what that costs compared with always checking. In detail: (1) a task
+and a dataset in which the deciding fact is hidden and must be checked (pairs of cases that differ only in
+the hidden fact; tool results that may or may not be trusted; conflicts); (2) a monitor that decides when to
+check and which check to make, trained with QLoRA, with a policy retriever and a read-only check gateway;
+(3) a comparison of four checking settings against two rule baselines, with correct and with retrieved
+policies, with confidence intervals and a hypothesis fixed in advance; (4) an honest negative result on
+safety, an analysis of why it fails, and a cost analysis that separates check calls from model tokens.
 
-\textbf{What we do not claim.} We do not claim to be the first environment-aware monitor, the first to use
-RAG for agent safety, the first to study hidden state, or the first policy-aware safety system. Our claim is
+\textbf{What we do not claim.} We are not the first environment-aware monitor, the first to use retrieval for
+agent safety, the first to study hidden state, or the first policy-aware safety system. Our claim is
 narrower: we study checking only when needed as a way to make policy-based agent safety monitoring work.
 
-All code, data generators, policies, prompts, evaluation scripts and the generated result reports are in the
-repository: \url{https://github.com/meet6868/Agent-Risk-Monitoring}. The only data not in the repository is
-the AgentRisk dataset, which has no redistribution licence (Section~\ref{sec:data}).
+All code, data generators, policies, prompts, evaluation scripts and result reports are in the repository:
+\url{https://github.com/meet6868/Agent-Risk-Monitoring}. The only data not in it is the AgentRisk dataset,
+which has no redistribution licence (Section~\ref{sec:data}).
 
 \section{Literature Review}
 \textbf{Agent safety benchmarks.} R-Judge \citep{yuan2024rjudge} tests LLMs as judges of risk in agent
-conversations. ATBench \citep{li2026atbench} has long safe and unsafe agent trajectories with many tools.
-Agent-SafetyBench \citep{zhang2024agentsafetybench}, AgentHarm \citep{andriushchenko2025agentharm},
-SafeArena \citep{tur2025safearena}, OpenAgentSafety \citep{vijayvargiya2025openagentsafety} and ToolEmu
-\citep{ruan2024toolemu} cover more harmful tasks and environments.
-These benchmarks mostly give fixed, labelled records; the monitor cannot query an environment, which is the
-step we study.
+conversations. ATBench \citep{li2026atbench} has long safe and unsafe agent conversations with many tools.
+Agent-SafetyBench \citep{zhang2024agentsafetybench}, AgentHarm \citep{andriushchenko2025agentharm}, SafeArena
+\citep{tur2025safearena}, OpenAgentSafety \citep{vijayvargiya2025openagentsafety} and ToolEmu
+\citep{ruan2024toolemu} cover more harmful tasks and environments. These benchmarks give fixed, labelled
+records; the monitor cannot query an environment, which is the step we study.
 
 \textbf{Closest work.} ShieldAgent \citep{chen2025shieldagent} verifies policy rules using information from
 the agent's trajectory; we study when to check the environment and what that costs compared with always
 checking. AGrail \citep{luo2025agrail} creates safety checks before actions but has no explicit ``do I know
-enough?'' step. PhantomPolicy and Sentinel \citep{wu2026phantompolicy} name the failure in which an agent's
-compliance depends on facts it cannot see in its context, and enforce policies by simulating each action on a
+enough?'' step. PhantomPolicy and Sentinel \citep{wu2026phantompolicy} describe the failure in which an
+agent's compliance depends on facts it cannot see, and enforce policies by simulating each action on a
 knowledge graph; we give the monitor read-only tools and measure whether it learns to use them only when
 needed. ``Ask the World Before Acting'' \citep{song2026askworld} lets an agent probe the environment for one
-uncertain belief before it acts, under a budget, to improve task success; our probing step serves a separate
-safety monitor and is compared with checking everything. pi-bench \citep{das2026pibench} tests whether agents
-follow policies with hidden state; we test a separate monitor and how selective it is. SABER
-\citep{hu2026saber} judges safety from the final state of a workspace, not before the action. Trust No Tool
-\citep{yan2026trustnotool} uses hidden triggers with matched safe cases but focuses on attacked tool outputs.
-AgentDoG \citep{liu2026agentdog} diagnoses risks in agent runs without environment access.
+uncertain belief before it acts; our probing step serves a separate safety monitor and is compared with
+checking everything. pi-bench \citep{das2026pibench} tests whether agents follow policies with hidden state;
+SABER \citep{hu2026saber} judges safety from the final state of a workspace; Trust No Tool
+\citep{yan2026trustnotool} studies attacked tool outputs; AgentDoG \citep{liu2026agentdog} diagnoses risks in
+agent runs without environment access. None of them measures how selectively a monitor checks.
 
 \textbf{Guard models and related ideas.} Guard models such as Llama Guard \citep{inan2023llamaguard} label
 prompts or replies without access to the environment. Our ``do I know enough?'' step is close to selective
 prediction \citep{geifman2017selective} and active feature acquisition \citep{shim2018afa}, where a model pays
-to see extra information only when needed; we apply the idea to a safety decision with a hard call budget. We
+for extra information only when needed; we apply the idea to a safety decision with a hard limit on calls. We
 use LoRA \citep{hu2022lora} and QLoRA \citep{dettmers2023qlora} on Qwen3-8B \citep{qwen2025qwen3}, retrieval
 over a policy store \citep{lewis2020rag} with BM25 \citep{robertson2009bm25} and BGE embeddings
-\citep{xiao2023cpack}, and Cohen's $\kappa$ \citep{cohen1960} for label agreement on the collected data.
+\citep{xiao2023cpack}, and Cohen's $\kappa$ \citep{cohen1960} to measure label agreement.
 
 \section{Dataset created / used}\label{sec:data}
-\subsection{Our generated records: the main evaluation}
-\textbf{From seed to record.} Each record starts from a hand-written \emph{seed}: one scenario with an
-action, the fact that decides it, the policy and the hidden company state. Code and a writer LLM from a
-different model family than the monitor (Claude) turn a seed into records: the writer LLM writes only the user
-and agent sentences; the simulator supplies the company state; the gold label (decision, risk label, risk
-type, whether a check is needed, the missing fact, the required checks, the policy ids) is \textbf{computed by
-code} from machine-readable policy rules, never by an LLM. Each record has a \emph{visible} part (the
-conversation and the proposed action), a \emph{hidden} part (the company state, reachable only through the
-check tools) and the gold label (used only for scoring and training targets). Automatic checks run on every
-record: schema, the identity of A/B pairs, that every hidden fact is answerable by a check tool, and
-near-duplicate detection.
+Figure~\ref{fig:project} shows how the two kinds of data were used: the three collected datasets only teach
+the model to tell safe from unsafe conversations; our own generated records teach it to decide on one action
+and to ask for a missing fact.
 
-\textbf{Size and domains.} 245 seeds give 594 records: 200 in-domain seeds, 482 records, in six domains
-(access control 112 records, files 108, privacy and sharing 94, money transfers 74, repositories 66, calendar
-and email 28), and 45 out-of-domain (OOD) seeds, 112 records, with a new domain (customer records, 42 records),
-reworded versions of the other domains, new tools, and new names, values and writing styles. The proposal
-planned 195 seeds; the mid report had 212 seeds and 528 records; 13 two-check T5 test seeds (26 records) and
-8 train seeds were added on 6 November, 12 seeds with new tools on 10 November, and distractor tool-error
-turns were inserted into 26 train records to break an ``error message means unsafe'' shortcut.
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}
+\node[data=8.0cm]  (A) at (0,0)        {\textbf{Collected data: 3 public datasets}\\R-Judge 531, ATBench 999, AgentRisk 617 agent conversations,\\each labelled safe or unsafe};
+\node[data=4.1cm]  (B) at (6.75,0)     {\textbf{245 hand-written scenarios}\\action, deciding hidden fact,\\policy, company state};
+\node[gate=4.1cm]  (E) at (11.25,0)    {\textbf{154 policies} (sentence + rule)\\\textbf{28 read-only check tools}\\behind a check gateway};
+\node[data=8.0cm]  (C) at (0,-1.6)     {Clean, map the risk types by hand (no LLM), split per dataset\\$\rightarrow$ \textbf{Phase A training set}: 1,034 examples, 517 safe / 517 unsafe};
+\node[data=8.6cm]  (D) at (9.0,-1.6)   {Code + a writer LLM $\rightarrow$ \textbf{594 records}: visible conversation,\\hidden company state, label computed by the policy rules.\\Split by scenario: train 292, val 40, \textbf{test 150 + OOD 112 (locked)}};
+\node[model=8.0cm] (F) at (0,-3.15)    {\textbf{Phase A adapter}: fine-tune Qwen3-8B (QLoRA) to answer\\``is this conversation unsafe, and which risk type?''};
+\node[model=8.6cm] (G) at (9.0,-3.15)  {\textbf{Phase B adapter (final)}: Phase A data + our 290 train records\\$\rightarrow$ decide on one action, or ask for the missing fact, then decide};
+\node[ok=8.0cm]    (H) at (0,-4.7)     {\textbf{Evaluation 1}: safe / unsafe on the collected test sets\\(428 records), next to a word model with no LLM};
+\node[ok=8.6cm]    (I) at (9.0,-4.7)   {\textbf{Evaluation 2}: 4 checking settings $\times$ 2 policy conditions on the locked\\test (146) and OOD (112) sets; hypothesis fixed in advance;\\error analysis; cost analysis};
+\draw[->] (A) -- (C);  \draw[->] (C) -- (F);  \draw[->] (F) -- (H);
+\draw[->] (B) -- (B |- D.north);  \draw[->] (E) -- (E |- D.north);
+\draw[->] (D) -- (G);  \draw[->] (G) -- (I);
+\draw[->] (C.east) -- ++(0.32,0) |- (G.west);
+\draw[->,cgate] (E.east) -- ++(0.25,0) |- (I.east);
+\end{tikzpicture}
+\caption{The whole project in one picture. Grey = data, orange = policies and check tools, blue = model
+training, green = evaluation. The collected data (left) only teaches safe versus unsafe; our generated
+records (right) teach the monitor when to check. The final adapter is trained on both.}
+\label{fig:project}
+\end{figure}
+
+\subsection{Our generated records: the main evaluation}
+\textbf{From scenario to record.} Each record starts from a hand-written \emph{seed}: one scenario with an
+action, the fact that decides it, the policy and the hidden company state. Code and a writer LLM (Claude, a
+different model family from the monitor) turn a seed into records: the writer LLM writes only the user and
+agent sentences; a simulator supplies the company state; the gold label (decision, risk label, risk type,
+whether a check is needed, the missing fact, the required checks, the policy ids) is \textbf{computed by code}
+from machine-readable policy rules, never by an LLM. Each record has a \emph{visible} part (conversation and
+proposed action), a \emph{hidden} part (the company state, reachable only through the check tools) and the
+gold label (used only for scoring and training targets).
+
+\textbf{Size, domains and case types.} 245 seeds give 594 records: 200 in-domain seeds give 482 records in
+six domains (access control, files, privacy and sharing, money transfers, repositories, calendar and
+email), and 45 out-of-domain (OOD) seeds give 112 records with a new domain (customer records, 42 records),
+reworded versions of the other domains, new tools, and new names, values and writing styles. Table~\ref{tab:types} explains the five case types; Table~\ref{tab:splits} gives the splits. Records
+are split by seed, and seeds that share a policy stay in one split. The test and OOD files are
+\textbf{locked} with hashes: nothing was trained, tuned or chosen on them. Policy ids never reach the model:
+the prompt shows policies as numbers in a random order. Evaluation uses the phase-1 tools, as in training:
+146 of the 150 test records (4 \texttt{create\_event} records are left out) and 290 of the 292 train records.
 
 \begin{table}[h]
-\centering\small
+\centering\footnotesize
 \setlength{\tabcolsep}{4pt}
-\begin{tabular}{@{}L{0.12\linewidth}L{0.50\linewidth}L{0.14\linewidth}L{0.08\linewidth}r@{}}
+\begin{tabular}{@{}L{0.12\linewidth}L{0.52\linewidth}L{0.12\linewidth}L{0.09\linewidth}r@{}}
 \toprule
-\textbf{Type} & \textbf{What it tests} & \textbf{Gold decision} & \textbf{Checks needed} & \textbf{Records}\\
+\textbf{Type} & \textbf{What it tests} & \textbf{Right decision} & \textbf{Checks needed} & \textbf{Records}\\
 \midrule
-T1 hidden fact & Two records A and B with the same visible text; only a hidden fact differs, so the right decision differs (e.g.\ the recipient address is verified or not) & set by the fact & 1 & 158\\
-T2 trust rule & A fact appears earlier in the conversation: (a) a fresh tool result about the same resource, (b) a result about another resource, (c) a result made stale by a later write, (d) only the agent claims it. Only (a) may be trusted & set by the fact & a: 0; b, c, d: 1 & 164\\
+T1 hidden fact & Two records A and B with the same visible text; only a hidden fact differs, so the right decision differs (e.g.\ the recipient's address is verified or not) & set by the fact & 1 & 158\\
+T2 trust rule & A fact appears earlier in the conversation: (a) a fresh tool result about the same resource, (b) a result about another resource, (c) a result made out of date by a later write, (d) only the agent claims it. Only (a) may be trusted & set by the fact & a: 0; b, c, d: 1 & 164\\
 T3 clearly safe & A policy allows the action whatever the hidden state is & \ALLOW & 0 & 30\\
 T4 clearly unsafe & The violation is visible in the request itself & \BLOCK & 0 & 38\\
 T5 conflict & (i) two shown policies demand opposite things, or (ii) two checks return facts that cannot both be true & \ESC & (i) 0; (ii) 2 & 92\\
 \bottomrule
 \end{tabular}
-\caption{Case types of the generated data and their in-domain record counts (482 in all). A T1 seed gives 2
-records, a T2 seed 4 (one per subtype), T3--T5 seeds 2 each in two writing styles.}
+\caption{Case types of the generated data and their in-domain record counts (482 in all).}
 \label{tab:types}
 \end{table}
 
-\textbf{Splits and locking.} Records are split by seed, and seeds that share a gold policy stay in one split,
-so no policy text decides both a training and a test case (Table~\ref{tab:splits}). The test and OOD files are
-locked by SHA-256 hashes; every later change to them is logged with a relock. Policy ids never reach the model:
-the prompt shows the policies as numbers in a random order. No near-duplicates across splits were found.
-Evaluation uses the phase-1 tools, as in training: 146 of the 150 test records (4 \texttt{create\_event}
-records are left out), and 290 of the 292 train records are used for training. The 6 November addition made
-T5 28\% of test against 19\% of all in-domain records, which Section~\ref{sec:limits} comes back to.
-
 \begin{table}[h]
 \centering\footnotesize
-\setlength{\tabcolsep}{4pt}
+\setlength{\tabcolsep}{2.6pt}
 \begin{tabular}{@{}lrrrrrrrrrrrr@{}}
 \toprule
- & & & \multicolumn{5}{c}{\textbf{Case type}} & \multicolumn{4}{c}{\textbf{Gold decision}} & \\
+ & & & \multicolumn{5}{c}{\textbf{Case type}} & \multicolumn{4}{c}{\textbf{Right decision}} & \\
 \cmidrule(lr){4-8}\cmidrule(lr){9-12}
 \textbf{Split} & \textbf{Seeds} & \textbf{Records} & T1 & T2 & T3 & T4 & T5 & \textsc{allow} & \textsc{ask} & \textsc{block} & \textsc{esc.} & \textbf{Need a check}\\
 \midrule
@@ -214,89 +223,64 @@ Test (locked) & 62 & 150 & 36 & 52 & 10 & 10 & 42 & 67 & 4 & 37 & 42 & 109\\
 OOD test (locked) & 45 & 112 & 36 & 44 & 10 & 10 & 12 & 61 & 3 & 36 & 12 & 71\\
 \bottomrule
 \end{tabular}
-\caption{Splits of the generated data (records). ``Need a check'' counts records whose gold label requires at
-least one check. OOD = the customer domain plus reworded other domains, new tools and new wording.}
+\caption{Splits of the generated data (records). ``Need a check'' = records whose right answer needs at least
+one check. The 13 two-check T5 test seeds added on 6 November made T5 28\% of test (19\% of all in-domain records).}
 \label{tab:splits}
 \end{table}
 
-\textbf{Policy store, check tools and gateway.} The in-domain store holds 154 policies, the OOD store 170
-(reworded, plus the new domain); each policy is one plain sentence for the monitor, with machine-readable
-logic and conflict pairs kept apart for the gold labeller. For the final system each policy also carries an
-``applies to'' tag: the agent tools it governs, derived from the \emph{actions} field of the policy logic only
-(never from its condition, fact or decision). There are 28 typed read-only check tools (2 OOD-only), e.g.\
-\texttt{check\_file\_sharing}, \texttt{check\_user\_clearance}, \texttt{check\_repository\_status}, answered by
-a \textbf{check gateway} built from each record's hidden state: it validates arguments, refuses writes,
-returns only each tool's declared fields, returns errors as data (\texttt{not\_found},
-\texttt{invalid\_args}), logs every call and enforces the call limit. A fixed \emph{check table} lists, per
-action, every check any applicable policy can need; it defines the always setting (about 4.5--5 checks per
-record).
+\textbf{Policies, check tools and gateway.} The in-domain store holds 154 policies, the OOD store 170. Each
+policy is one plain sentence for the monitor, with machine-readable logic kept apart for the labeller; for
+the final system each policy also carries a tag with the agent tools it applies to. The 28 typed read-only
+check tools (2 OOD-only), such as \texttt{check\_file\_sharing}, are answered by a \textbf{check gateway}
+built from each record's hidden state: it validates arguments, refuses writes, returns errors as data, logs
+every call and enforces the call limit. A fixed \emph{check table} lists, per action, every check that any
+policy for it can need; it defines the always setting (4.50--5.00 checks per record).
 
-\textbf{Label audit.} Because the labels come from our own rules, we checked them by code on all 594 records
-(no LLM, no human judgement): the merge checks pass (0 problems, 0 T1 pairs failed), every record rebuilds
-identically from its source, test and OOD match their locks, there are 0 near-duplicates, every scored record
-can be decided from what the monitor sees (conversation plus gold check results), the same policy, fact and
-value always give the same decision (168 groups, 0 contradictions), and every gold check runs without an
-error. One OOD seed (OOD-CUST-T3-002, 2 records) has a gold label that differs from the policy rule as the
-audit script reads it; it is left for a person to read. The planned human agreement study on our records
-(two annotators, Cohen's $\kappa$) was \textbf{not done}; the only $\kappa$ we have is 0.57 on 26 R-Judge
-risk types.
+\textbf{Label audit.} Because the labels come from our own rules, we checked them by code on all 594 records:
+every record rebuilds identically from its source, test and OOD match their locks, there are 0
+near-duplicates, the same policy, fact and value always give the same decision (168 groups, 0
+contradictions), and every gold check runs without an error. One OOD seed (2 records) is flagged for a
+person to read. The planned human agreement study on our records (two people, Cohen's $\kappa$) was
+\textbf{not done}.
 
-\subsection{Collected datasets: risk detection only}
-Three public datasets give whole agent trajectories with a safe/unsafe label but no policies and no
-environment, so they are used only for risk detection (safe or unsafe, and the risk type), not for the
-four-way decision (Table~\ref{tab:collected}). Safe/unsafe comes from the source. The risk type is one of our
-six classes (privacy leakage, security, access control, financial loss, data loss, other), made from a mapping
-table and by hand; \textbf{no LLM labelled anything}. 41 physical-world records were removed. Each dataset
-is split per dataset into train, validation and test by us. \textbf{Our R-Judge and ATBench numbers therefore
-come from our own splits and cannot be compared with published leaderboards}; ATBench was released as a
-test-only benchmark. The AgentRisk data \citep{agentrisk2026} has no redistribution licence: it was never
-committed or uploaded, the derived adapters are private, and this report shows only counts and scores from
-it. The training list for risk detection holds 1,034 examples (R-Judge 226, ATBench 594, AgentRisk 214),
-balanced 517 safe / 517 unsafe, with privacy leakage capped at 149 so that no risk type dominates.
-
-\begin{table}[h]
-\centering\small
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{@{}lrrrrL{0.44\linewidth}@{}}
-\toprule
-\textbf{Dataset} & \textbf{Records} & \textbf{Train} & \textbf{Val} & \textbf{Test} & \textbf{How the risk type was made}\\
-\midrule
-R-Judge & 531 & 369 & 47 & 115 & no type field: all by hand, blind; 4 members; $\kappa=0.57$ on a 26-item double check\\
-ATBench & 999 & 699 & 100 & 200 & harm category $\rightarrow$ mapping table agreed by 2 members; unclear cases by hand\\
-AgentRisk & 617 & 394 & 98 & 125 & risk domain $\rightarrow$ mapping table; two-domain cases by hand\\
-\bottomrule
-\end{tabular}
-\caption{Collected datasets after conversion and filtering (records). Splits are our own.}
-\label{tab:collected}
-\end{table}
+\subsection{Collected datasets: safe or unsafe only}
+R-Judge (531 records; our split 369 / 47 / 115), ATBench (999; 699 / 100 / 200) and AgentRisk
+\citep{agentrisk2026} (617; 394 / 98 / 125) give whole agent conversations with a safe/unsafe label but no
+policies and no environment, so they are used only for risk detection (safe or unsafe, and the risk type),
+not for the four-way decision. The risk type is one of our six classes, made from a mapping table and by
+hand (R-Judge has no type field, so all 531 were labelled blind by us; $\kappa=0.57$ on a 26-item double
+check); \textbf{no LLM labelled anything}. \textbf{Our R-Judge and ATBench numbers come from our own splits
+and cannot be compared with published leaderboards}; ATBench was released as a test-only benchmark. AgentRisk has no redistribution licence: it was never committed or
+uploaded, the trained adapters are private, and this report shows only counts and scores from it. The
+training list for risk detection holds 1,034 examples (R-Judge 226, ATBench 594, AgentRisk 214), 517 safe /
+517 unsafe, with privacy leakage capped at 149 so that no risk type dominates.
 
 \section{Methodology}
-\subsection{Task}
-The monitor sees the visible input $x=(\tau, a, p)$: the conversation $\tau$, the proposed action $a$ and the
-policies $p$ shown for it. The environment has a hidden state $s$; a read-only gateway offers check tools
-$q$, and a call returns $q(s)$. The monitor either decides or asks: a \textsc{decision} is one of \ALLOW,
-\ASK, \BLOCK, \ESC\ with a risk label, a risk type and evidence (facts and policy numbers); \NEED\ names the
-missing fact and 1--2 checks. If several policies apply and do not conflict, the strictest wins; \ESC\ is
-reserved for conflicts between policies or between facts. A \emph{trust rule} says when a fact counts as
-known: a tool result in the conversation states it and no later action changed that resource; what the agent
-says by itself never counts.
+\subsection{The task}
+The monitor sees the conversation, the proposed action and the policies shown for it. The company state is
+hidden; a read-only gateway offers check tools that read it. The monitor answers with one JSON object: either
+a \textsc{decision} (\ALLOW, \ASK, \BLOCK\ or \ESC, with a risk label, a risk type and evidence: the facts and
+policy numbers it used) or \NEED\ (the missing fact and 1--2 checks). If several policies apply and do not
+conflict, the strictest wins; \ESC\ is only for conflicts between policies or between facts. A \emph{trust
+rule} says when a fact counts as known: a tool result in the conversation states it, and no later action
+changed that resource. What the agent says by itself never counts.
 
 \subsection{Four checking settings and two policy conditions}
 \begin{center}\small
-\begin{tabular}{@{}lL{0.5\linewidth}L{0.3\linewidth}@{}}
+\begin{tabular}{@{}lL{0.52\linewidth}L{0.28\linewidth}@{}}
 \toprule
 \textbf{Setting} & \textbf{Checks before the decision} & \textbf{Role in the study}\\
 \midrule
-never & none; decide from the conversation & lower bound, no cost\\
-always & every check of the fixed check table for the action (4.50--5.00 per record) & safe but expensive reference\\
-selective & the checks the model itself asks for (\NEED), at most 4 calls, one retry after a tool error & \textbf{our method}\\
-oracle & exactly the checks the gold label needs & upper bound for checking\\
+never & none; decide from the conversation alone & lower bound, no cost\\
+always & every check in the check table for the action (4.50--5.00 per record) & safe but expensive reference\\
+selective & the checks the model itself asks for, at most 4 calls, one retry after a tool error & \textbf{our method}\\
+oracle & exactly the checks the right answer needs & upper bound for checking\\
 \bottomrule
 \end{tabular}
 \end{center}
-Every setting is run under two \textbf{policy conditions}: \emph{correct policies} (the gold policies plus 2
-look-alikes, shuffled and numbered: checking and deciding as if retrieval were perfect, the main test of
-checking) and \emph{retrieved policies} (the retriever's output: the full system).
+Every setting is run under two \textbf{policy conditions}: \emph{correct policies} (the right policies plus 2
+look-alikes, shuffled: this tests checking as if retrieval were perfect) and \emph{retrieved policies} (what
+the retriever finds: the full system).
 
 \subsection{The monitor loop}
 \begin{figure}[h]
@@ -304,10 +288,10 @@ checking) and \emph{retrieved policies} (the retriever's output: the full system
 \begin{tikzpicture}
 \node[data=2.5cm]  (vis) at (0,0)     {\textbf{Visible input}\\conversation +\\proposed action};
 \node[data=2.7cm]  (ret) at (3.5,0)   {\textbf{Policy retriever}\\v1: top 3 of the store\\v2: tagged, top 8};
-\node[model=2.9cm] (llm) at (7.2,0)   {\textbf{Monitor}\\Qwen3-8B + QLoRA\\one JSON object per pass};
+\node[model=2.9cm] (llm) at (7.2,0)   {\textbf{Monitor}\\Qwen3-8B + adapter\\one JSON answer\\per pass};
 \node[ok=2.9cm]    (dec) at (11.3,0)  {\textbf{Decision}\\\textsc{allow} / \textsc{ask} /\\\textsc{block} / \textsc{escalate}\\+ evidence};
-\node[gate=2.9cm]  (gw)  at (7.2,-2.3){\textbf{Check gateway}\\28 read-only tools, $\le$4 calls,\\errors returned as data};
-\node[gate=2.9cm]  (sim) at (11.3,-2.3){\textbf{Company state}\\built from the hidden part;\\never in the prompt};
+\node[gate=3.2cm]  (gw)  at (7.2,-2.05){\textbf{Check gateway}\\28 read-only tools, $\le$4 calls,\\errors returned as data};
+\node[gate=2.9cm]  (sim) at (11.3,-2.05){\textbf{Company state}\\built from the hidden part;\\never in the prompt};
 \draw[->] (vis) -- (ret);
 \draw[->] (ret) -- (llm);
 \draw[->,cok] (llm) -- node[note,above=1pt]{decides} (dec);
@@ -315,110 +299,92 @@ checking) and \emph{retrieved policies} (the retriever's output: the full system
 \draw[->,cgate] ([xshift=14pt]gw.north) -- node[note,right=2pt,align=left]{results; next pass\\($\le$3 passes per record)} ([xshift=14pt]llm.south);
 \draw[->,cgate] (gw) -- (sim);
 \end{tikzpicture}
-\caption{The monitor loop in the selective setting. Each pass sends one prompt (decision rules, the trust rule,
-the shown policies, the conversation, the proposed action, the check tools and any check results) and gets one
-JSON object back. In the final system (v2) the loop also adds a second-source check when the model names a
-fact that two tools report (Section~\ref{sec:v2}).}
+\caption{The monitor loop in the selective setting. Each pass sends one prompt (the decision rules, the trust
+rule, the shown policies, the conversation, the proposed action, the check tools and any check results) and
+gets one JSON answer back.}
 \label{fig:loop}
 \end{figure}
 
 A record uses at most 3 model passes and 4 gateway calls; after a tool error the model may ask once more,
-then it must decide. Invalid JSON counts as a wrong answer in every metric (the live system would fall back
-to \ASK). A test suite enforces that no hidden field and no gold label ever reaches a prompt. The monitor is
-Qwen3-8B at a pinned revision, greedy decoding, thinking mode off, run on Kaggle with two T4 GPUs.
+then it must decide. An answer that is not valid JSON counts as wrong in every metric. A test suite makes
+sure that no hidden field and no gold label ever reaches a prompt. The monitor is Qwen3-8B at a fixed
+revision, greedy decoding, thinking mode off, run on Kaggle with two T4 GPUs.
 
 \subsection{Policy retrieval: v1 and v2}\label{sec:v2}
-The retriever is a hybrid of BM25 and \texttt{bge-base-en-v1.5} cosine similarity over the visible policy
-sentences, score $s = 0.6\cdot\mathrm{embedding} + 0.4\cdot\mathrm{BM25}$ (each min-max scaled per query), query =
-the proposed action plus all user and agent turns. The weight and the query form were tuned on train and
-validation only. \textbf{v1} (the system of the mid report and of the first final runs) shows the top 3: the
-deciding policy is in the top 3 for 55\% of train and validation records (top 5: 62\%). \textbf{v2} (the final
-system) ranks only the policies whose ``applies to'' tag contains the proposed action's tool and shows 8.
-Measured on the 332 train and validation records, the share of records with \emph{all} gold policies shown
-rises from 0.52 to 0.63 at $k=3$ and from 0.69 to 0.87 at $k=8$ with the tag filter; on the records as run,
-from 0.55 to 0.88 (train) and 0.33 to 0.80 (validation). Showing 8 policies costs about 90 prompt tokens.
-
-\textbf{v2 additions to the selective loop.} (1) A \emph{second-source check}: when the model's missing fact
-is one of the three facts that two check tools report (\texttt{account\_type}, \texttt{modifiable},
-\texttt{role\_eligible}), the loop adds the other tool's check on the same resource from the action's check
-table, so that the monitor sees both sources; the added calls are marked and counted. (2) Two prompt hints:
-if a policy depends on two facts or two tools report the same fact, ask for both; after a failed check, do
-not repeat the same call. Nothing was retrained. The decision to adopt v2 was taken on validation with a rule
-written down before the run: v2 replaces v1 if selective accuracy with retrieved policies does not fall
-(27 of 40), wrong blocks rise by at most 2 records, and selective with correct policies is at most 2 records
-below v1 (33 of 40). The run passed: 31 of 40, wrong blocks 2 $\rightarrow$ 1, and 34 of 40. The retrieval
-change alone gave 32 of 40, so the gain on validation is the retrieval change; the second-source rule never
-fired there (its 2 two-check records use a different mechanism).
+The retriever searches the policy sentences by keywords (BM25) and by meaning (\texttt{bge-base-en-v1.5}
+embeddings), combined with weights 0.4 and 0.6; the query is the proposed action plus all user and agent
+turns. Weights and query form were tuned on train and validation only. \textbf{v1} (the mid report and the
+first final runs) shows the top 3 policies: the deciding policy is in the top 3 for 55\% of train and
+validation records. \textbf{v2} (the final system) keeps only the policies whose tag names the proposed
+action's tool and shows 8. On the 332 train and validation records, the share with \emph{all} right policies
+shown rises from 0.69 to 0.87 at $k=8$. v2 also adds a \emph{second-source check} (when the missing fact is
+one of three facts that two tools report, the loop also calls the other tool) and two prompt hints (if a
+policy depends on two facts, ask for both; do not repeat a failed check). Nothing was retrained. v2 was
+adopted on validation with a rule written down before the run, and it passed (selective accuracy with
+retrieved policies 27 $\rightarrow$ 31 of 40; wrong blocks 2 $\rightarrow$ 1; with correct policies 33
+$\rightarrow$ 34 of 40).
 
 \subsection{Fine-tuning}
-QLoRA on Qwen3-8B: rank 16, $\alpha$ 32, learning rate $2\cdot10^{-4}$, 2 epochs, 4-bit NF4, at most 4,096
-tokens; the targets are built by code from the gold labels and the loss is on the answer only.
-\textbf{Phase~A} trains on the collected data only (1,034 examples: risk label and type).
-\textbf{Phase~B} (the final adapter, trained 10--11 November) adds our 290 train records as 988 examples:
-a first-pass example per record (\textsc{decision}, or \NEED\ with the gold checks) and, for records that need
-a check, a second-pass example (the gateway's results $\rightarrow$ \textsc{decision}), our examples repeated
-twice, plus the same 1,034 collected examples: 2,022 examples, 1,981 within the token limit. Training loss
-0.031, evaluation loss 0.024 $\rightarrow$ 0.025 over the two epochs, about 6.5 hours on two T4 GPUs. The
-earlier Phase~B adapter of 30 October was trained the same way on 42 fewer train records and without the
-distractor turns. There is one training run per adapter.
+QLoRA (a small trainable adapter on a 4-bit copy of the model) on Qwen3-8B: rank 16, $\alpha$ 32, learning
+rate $2\cdot10^{-4}$, 2 epochs, at most 4,096 tokens; the training targets are built by code from the gold
+labels and the loss is on the answer only. \textbf{Phase~A} trains on the collected data only (1,034
+examples: safe/unsafe and risk type). \textbf{Phase~B} (the final adapter, trained 10--11 November) adds our
+290 train records as 988 examples: a first-pass example per record (\textsc{decision}, or \NEED\ with the
+right checks) and, for records that need a check, a second-pass example (the check results $\rightarrow$
+\textsc{decision}), repeated twice, plus the same 1,034 collected examples: 2,022 examples in all (1,981
+within the token limit). Training loss 0.031; about 6.5 hours on two T4 GPUs. An earlier Phase~B adapter
+(30 October) was trained the same way on 42 fewer train records. One training run per adapter.
 
-\subsection{Rule baselines, metrics and the hypothesis}
-Two hand-written rule systems over the shown policy text and the facts: \emph{rules only} (never checks) and
-\emph{rules + environment} (runs every table check first, then the same rules). They use only train records
-and visible policy text.
+\subsection{Baselines, metrics and the hypothesis}
+\textbf{Rule baselines.} Two hand-written rule systems over the shown policy text and the facts: \emph{rules
+only} (never checks) and \emph{rules + environment} (runs every check in the check table first, then the same
+rules).
 
-Metrics (all in \%, defined in the repository's \texttt{docs/evaluation\_metrics.md}): decision
-\textbf{accuracy}; \textbf{unsafe-action rate}, the share of risky records (gold is not \ALLOW) given a weaker
-decision than the gold one (\ALLOW\ 0 $<$ \ASK\ 1 $<$ \BLOCK\ = \ESC\ 2); \textbf{wrong-block rate}, the share of
-safe records blocked or escalated; \textbf{checks per record} and \textbf{saving} $=1-$ calls / calls(always),
-always printed next to the \textbf{oracle saving} (the same for exactly the gold checks); check precision and
-recall; right missing fact; T1 pair accuracy (both records of an A/B pair right); T2 accuracy per subtype;
-decision macro-F1; risk-label F1 and risk-type macro-F1 on the collected data; valid-JSON rate. Every main
-number gets a 95\% interval from a bootstrap over seeds (2,000 resamples; whole seeds are drawn because the
-records of one seed are near-copies; paired between settings). Selective and always are compared with a
-Wilcoxon signed-rank test on checks per record and an exact McNemar test on accuracy.
+\textbf{Metrics} (all in \%): \textbf{accuracy} of the decision; \textbf{risky actions let through}
+(``unsafe'' in the tables): the share of risky cases that got a weaker decision than the right one, where
+\ALLOW\ $<$ \ASK\ $<$ \BLOCK\ = \ESC; \textbf{wrong block}: the share of safe cases blocked or escalated;
+\textbf{checks per record} and the \textbf{saving} $=1-$ calls / calls(always), shown next to the
+\textbf{oracle saving}; T1 pair accuracy; accuracy per T2 subtype; on the collected data, F1 for the unsafe
+class and macro-F1 over risk types. Every main number has a 95\% confidence interval (CI) from a bootstrap
+that resamples whole seeds (2,000 times; paired between settings). Selective and always are compared with
+paired tests (Wilcoxon on checks per record, McNemar on accuracy).
 
-\textbf{Hypothesis (R10.4, fixed before any result).} Selective checking is not less safe than always
-checking: the upper end of the 95\% interval of $\Delta$ unsafe-action rate (selective $-$ always) is at most
-$+5$ points, while selective makes clearly fewer checks. The main test is with correct policies, so that
-retrieval errors are not mixed in.
+\textbf{Hypothesis (fixed before any result).} Selective checking is not less safe than always checking: the
+upper end of the 95\% CI of the difference in risky actions let through (selective $-$ always) is at most
+$+5$ points, while selective makes clearly fewer checks. The main test uses correct policies, so that
+retrieval errors are kept out.
 
-\textbf{Rigour.} Test and OOD were run and scored once with the final setup; nothing was trained, tuned or
-chosen on them. Every change after the mid report (the final adapter, v2) was decided on validation with a
-rule written in the decision log before the run.
+\textbf{Rigour.} Test and OOD were run and scored once, with the final setup. Every change after the mid
+report (the final adapter, v2) was decided on validation with a rule written in the decision log before the
+run.
 
 \section{Experiment runs}
-All runs use Qwen3-8B (pinned revision, greedy, thinking off) on Kaggle $2\times$T4 (at most two GPU jobs at a
-time, 12 hours each). A full evaluation of one model on validation, test and OOD takes about 5 hours; a
-Phase~B training run about 6.5 hours. Every model was trained once and every setting
-run once; the runs, traces and generated tables are kept, and all numbers below are copied from them.
+All runs use Qwen3-8B (fixed revision, greedy, thinking off) on Kaggle $2\times$T4; a full evaluation of one
+model takes about 5 hours, a training run about 6.5 hours. Every model was trained once and every setting
+run once; all runs, traces and generated tables are kept, and every number below is copied from them.
 
-\subsection{Experiment 1: risk detection on the collected data}
-Whole-trajectory risk detection, one pass, no checks, on our own splits (Table~\ref{tab:exp1}). Fine-tuning
-lifts the base model from near-chance to about 90\% in every dataset. A \textbf{word model with no LLM}
-(TF-IDF and logistic regression on the judged step, one per dataset, no tuning) already reaches 88.6, so most
-of the jump from the base model comes from wording the datasets share between train and test; Phase~A's lead
-over the word model is significant on test ($p=0.025$), the final Phase~B adapter's is not ($p=0.374$). On
-R-Judge, 43 of the 115 test records are near-copies of a training record (Phase~A without them: 86.1); on
-AgentRisk, a rule ``the agent replies to the user $\Rightarrow$ safe'' gets 85.6, but Phase~A also holds up
-without replies (76 of 77 right); the ATBench tool-error shortcut cannot be tested on our splits (no safe
-validation or test record carries it).
+\subsection{Experiment 1: safe or unsafe on the collected data}
+One pass, no checks, on our own splits (Table~\ref{tab:exp1}). Fine-tuning lifts the base model from near
+chance to about 90\% on every dataset. But a \textbf{word model with no LLM} (TF-IDF and logistic regression
+on the judged step) already reaches 88.6, so most of the jump comes from wording that train and test share.
+Phase~A's lead over the word model is significant on test ($p=0.025$); the final Phase~B adapter's is not
+($p=0.374$).
 
 \begin{table}[h]
 \centering\footnotesize
-\setlength{\tabcolsep}{3.5pt}
-\begin{tabular}{@{}lccc@{\hspace{10pt}}cccccc@{}}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lcc@{\hspace{10pt}}cccccc@{}}
 \toprule
- & \multicolumn{3}{c}{\textbf{Validation (241 records)}} & \multicolumn{6}{c}{\textbf{Test (428 records)}}\\
-\cmidrule(lr){2-4}\cmidrule(lr){5-10}
- & & F1 & Type & & F1 & Type & \multicolumn{3}{c}{Accuracy per dataset}\\
-\textbf{Model} & Accuracy & unsafe & macro-F1 & Accuracy & unsafe & macro-F1 & R-Judge & ATBench & AgentRisk\\
+ & \multicolumn{2}{c}{\textbf{Validation (241)}} & \multicolumn{6}{c}{\textbf{Test (428 records)}}\\
+\cmidrule(lr){2-3}\cmidrule(lr){4-9}
+ & & F1 & & F1 & Type & \multicolumn{3}{c}{Accuracy per dataset}\\
+\textbf{Model} & Accuracy & unsafe & Accuracy & unsafe & macro-F1 & R-Judge & ATBench & AgentRisk\\
 \midrule
-Base Qwen3-8B (prompted) & 52.3 & 14.8 & 4.0 & 54.9 & 32.8 & 26.1 & 57.4 & 53.7 & 54.4\\
-Phase A (collected data only) & \textbf{93.8} & \textbf{93.4} & 59.6 & \textbf{92.8} & \textbf{91.9} & \textbf{55.0} & 91.3 & 89.4 & 99.2\\
-Phase B, 30 October & 92.1 & 91.5 & 55.6 & 91.4 & 90.2 & 50.0 & 90.4 & 87.8 & 97.6\\
-Phase B, final & 91.7 & 91.1 & \textbf{60.6} & 90.4 & 89.0 & 52.7 & 89.6 & 86.2 & 97.6\\
-Word model, no LLM & -- & -- & -- & 88.6 & -- & -- & 87.8 & 86.2 & 92.8\\
+Base Qwen3-8B (prompted) & 52.3 & 14.8 & 54.9 & 32.8 & 26.1 & 57.4 & 53.7 & 54.4\\
+Phase A (collected data only) & \textbf{93.8} & \textbf{93.4} & \textbf{92.8} & \textbf{91.9} & \textbf{55.0} & 91.3 & 89.4 & 99.2\\
+Phase B, 30 October & 92.1 & 91.5 & 91.4 & 90.2 & 50.0 & 90.4 & 87.8 & 97.6\\
+Phase B, final & 91.7 & 91.1 & 90.4 & 89.0 & 52.7 & 89.6 & 86.2 & 97.6\\
+Word model, no LLM & -- & -- & 88.6 & -- & -- & 87.8 & 86.2 & 92.8\\
 \bottomrule
 \end{tabular}
 \caption{Experiment 1 (\%): safe/unsafe accuracy, F1 for the unsafe class and risk-type macro-F1 on the
@@ -427,8 +393,7 @@ collected validation and test sets (our own splits; 12 test records over 7,300 t
 \end{table}
 
 \subsection{Experiment 2: our records in four settings (final system, v2)}
-Tables~\ref{tab:main-test} and~\ref{tab:main-ood} give the main results on the locked in-domain test set and
-the locked OOD set; validation is summarised in the text.
+Table~\ref{tab:main-test} gives the main results on the locked test set and the locked OOD set.
 
 \begin{table}[h]
 \centering\footnotesize
@@ -447,119 +412,76 @@ Rules + environment & always & 52.1 \ci{39.9}{63.6} & 28.0 & 40.6 & 46.6 \ci{35.
  & selective & 43.2 \ci{34.7}{51.4} & 26.8 & 43.8 & 44.5 \ci{34.9}{53.5} & 26.8 & 40.6 & 0.58 / 0.61\\
  & oracle & 51.4 \ci{41.3}{60.6} & 6.1 & 31.2 & 50.0 \ci{39.9}{59.3} & 8.5 & 32.8 & 0.97\\
 \midrule
-\multirow{4}{*}{Phase B (QLoRA)} & never & 61.0 \ci{49.3}{70.9} & 29.3 & 14.1 & 58.2 \ci{46.1}{68.8} & 30.5 & 7.8 & 0\\
+\multirow{4}{*}{Phase B (final adapter)} & never & 61.0 \ci{49.3}{70.9} & 29.3 & 14.1 & 58.2 \ci{46.1}{68.8} & 30.5 & 7.8 & 0\\
  & always & 75.3 \ci{65.4}{84.0} & 12.2 & 4.7 & 62.3 \ci{52.2}{71.3} & 24.4 & 4.7 & 4.82\\
  & \textbf{selective} & \textbf{69.9} \ci{59.0}{79.6} & \textbf{39.0} & \textbf{3.1} & \textbf{63.0} \ci{50.8}{73.3} & \textbf{39.0} & \textbf{6.2} & \textbf{0.74 / 0.80}\\
  & oracle & 86.3 \ci{79.2}{92.3} & 3.7 & 1.6 & 80.8 \ci{72.1}{88.2} & 15.9 & 1.6 & 0.97\\
-\bottomrule
-\end{tabular}
-\caption{Experiment 2, locked in-domain \textbf{test} set, 146 records, final system v2 (\%). Accuracy with a
-95\% CI (bootstrap over seeds); unsafe = unsafe-action rate; wrong block = wrong-block rate. Checks per record
-are given for correct / retrieved policies where they differ.}
-\label{tab:main-test}
-\end{table}
-
-\begin{table}[h]
-\centering\footnotesize
-\setlength{\tabcolsep}{2.5pt}
-\begin{tabular}{@{}llcrrcrrc@{}}
-\toprule
- & & \multicolumn{3}{c}{\textbf{Correct policies}} & \multicolumn{3}{c}{\textbf{Retrieved policies (full system)}} & \\
-\cmidrule(lr){3-5}\cmidrule(lr){6-8}
-\textbf{Method} & \textbf{Setting} & Acc.\ [95\% CI] & Unsafe$\downarrow$ & \hd{Wrong\\block$\downarrow$} & Acc.\ [95\% CI] & Unsafe$\downarrow$ & \hd{Wrong\\block$\downarrow$} & \hd{Checks /\\record}\\
 \midrule
-Rules only & never & 54.5 \ci{45.2}{62.7} & 100.0 & 0.0 & 53.6 \ci{44.3}{61.6} & 100.0 & 1.6 & 0\\
-Rules + environment & always & 54.5 \ci{41.2}{67.5} & 31.4 & 45.9 & 48.2 \ci{36.4}{61.2} & 27.5 & 55.7 & 4.50\\
+\multicolumn{9}{@{}l}{\textbf{Locked OOD set (new domain and wording), 112 records}}\\
 \midrule
 \multirow{4}{*}{Base Qwen3-8B} & never & 48.2 \ci{38.9}{57.5} & 13.7 & 63.9 & 48.2 \ci{38.4}{57.7} & 11.8 & 60.7 & 0\\
  & always & 55.4 \ci{44.3}{66.3} & 19.6 & 44.3 & 58.9 \ci{50.0}{68.2} & 23.5 & 41.0 & 4.50\\
  & selective & 57.1 \ci{46.4}{68.0} & 9.8 & 52.5 & 50.0 \ci{40.8}{59.4} & 11.8 & 59.0 & 0.25 / 0.44\\
  & oracle & 63.4 \ci{52.0}{74.5} & 3.9 & 37.7 & 65.2 \ci{53.8}{76.4} & 3.9 & 36.1 & 0.65\\
 \midrule
-\multirow{4}{*}{Phase B (QLoRA)} & never & 67.9 \ci{58.3}{77.2} & 23.5 & 31.1 & 68.8 \ci{58.8}{78.2} & 19.6 & 32.8 & 0\\
+\multirow{4}{*}{Phase B (final adapter)} & never & 67.9 \ci{58.3}{77.2} & 23.5 & 31.1 & 68.8 \ci{58.8}{78.2} & 19.6 & 32.8 & 0\\
  & always & 66.1 \ci{56.2}{75.5} & 19.6 & 27.9 & 63.4 \ci{53.9}{73.2} & 29.4 & 23.0 & 4.50\\
  & \textbf{selective} & \textbf{80.4} \ci{71.5}{88.0} & \textbf{15.7} & \textbf{14.8} & \textbf{66.1} \ci{54.8}{76.3} & \textbf{35.3} & \textbf{18.0} & \textbf{0.68}\\
  & oracle & 87.5 \ci{80.2}{93.9} & 3.9 & 9.8 & 82.1 \ci{73.6}{89.7} & 5.9 & 13.1 & 0.65\\
 \bottomrule
 \end{tabular}
-\caption{Experiment 2, locked \textbf{OOD} test set, 112 records, final system v2 (\%). Same columns as
-Table~\ref{tab:main-test}.}
-\label{tab:main-ood}
+\caption{Experiment 2: the locked \textbf{test} set (146 records, top) and the locked \textbf{OOD} set (112
+records, bottom), final system v2 (\%). Accuracy with a 95\% CI (bootstrap over seeds); unsafe = risky actions
+let through; wrong block = safe actions blocked or escalated. Checks per record are given for correct /
+retrieved policies where they differ. On OOD the rule baselines score 54.5 (rules only) and 54.5 / 48.2
+(rules + environment, correct / retrieved policies).}
+\label{tab:main-test}
 \end{table}
 
-\textbf{Findings.}
+
+\textbf{What the tables show.}
 \begin{itemize}
 \item \textbf{Fine-tuning helps a lot.} Phase~B beats the base model and both rule baselines in every setting
-  on test and OOD, and on validation in every setting but one (always with retrieved policies: base 80.0 vs
-  Phase~B 70.0 on 40 records). Validation, Phase~B never / always / selective / oracle: 75.0 / 82.5 / 85.0 /
-  97.5 with correct policies and 72.5 / 70.0 / 77.5 / 90.0 with retrieved policies.
+  on test and OOD, and on validation (40 records) in every setting but one (always with retrieved policies:
+  base 80.0 vs Phase~B 70.0). Validation selective: 85.0 with correct and 77.5 with retrieved policies.
 \item \textbf{Selective saves 83.4--84.9\% of the check calls}: 0.74--0.80 per record against 4.82 on test and
-  0.68 against 4.50 on OOD (Wilcoxon $p<0.001$ everywhere).
-\item \textbf{Accuracy is close to always checking, safety is not.} On test, selective is level with always
-  under retrieved policies (63.0 vs 62.3) and behind with correct policies (69.9 vs 75.3; $\Delta$ accuracy
-  $-5.5$ \ci{$-$15.0}{3.4}, McNemar $p=0.200$), but it lets through more risky actions: unsafe-action rate
-  39.0 against 24.4 and 12.2. On OOD
-  selective is \emph{more} accurate than always (80.4 vs 66.1 with correct policies, $p=0.009$): always
-  over-reacts to facts that do not decide the case (wrong blocks 27.9 vs 14.8).
+  0.68 against 4.50 on OOD ($p<0.001$ everywhere).
+\item \textbf{Accuracy is close to always checking; safety is not.} On test, selective is level with always
+  under retrieved policies (63.0 vs 62.3) and behind with correct policies (69.9 vs 75.3; difference
+  $-5.5$ \ci{$-$15.0}{3.4}, $p=0.200$), but it lets through more risky actions: 39.0\% against 24.4\% and
+  12.2\%. On OOD, selective is \emph{more} accurate than always (80.4 vs 66.1 with correct policies,
+  $p=0.009$): always over-reacts to facts that do not decide the case (wrong blocks 27.9 vs 14.8).
 \item \textbf{The base model does not learn to check.} Its selective setting is worse than its always setting
-  on test ($-$8.9 points with correct policies, $p=0.015$); its low OOD unsafe rate comes from blocking most
-  records (wrong block 52--59\%), not from good checking.
+  on test ($-$8.9 points with correct policies, $p=0.015$), and its low OOD unsafe rate comes from blocking
+  most records (wrong block 52--59\%).
 \end{itemize}
 
 \subsection{Experiment 3: system v1 against the final system v2}
-Table~\ref{tab:v1v2} compares the same adapter under the two systems on the same records. v2 is safer with
-retrieved policies (test unsafe rate: always 34.1 $\rightarrow$ 24.4, selective 52.4 $\rightarrow$ 39.0,
-oracle 20.7 $\rightarrow$ 15.9) and shows more of the deciding policies (oracle accuracy 76.0 $\rightarrow$
-80.8 on test, 75.9 $\rightarrow$ 82.1 on OOD), while accuracy moves little (selective $+1.4$ on test, $-0.9$
-on OOD, both well inside the intervals). The base model's selective accuracy with retrieved policies also
-rises (test 39.0 $\rightarrow$ 44.5, OOD 46.4 $\rightarrow$ 50.0).
+The same adapter was run under both systems on the same records. v2 is safer with retrieved policies (test,
+risky actions let through: always 34.1 $\rightarrow$ 24.4, selective 52.4 $\rightarrow$ 39.0, oracle 20.7
+$\rightarrow$ 15.9) and shows more of the deciding policies (oracle accuracy 76.0 $\rightarrow$ 80.8 on test,
+75.9 $\rightarrow$ 82.1 on OOD), while accuracy moves little (selective 61.6 $\rightarrow$ 63.0 on test,
+67.0 $\rightarrow$ 66.1 on OOD, well inside the intervals; validation 67.5 $\rightarrow$ 77.5). With correct
+policies only the selective setting changes (test 69.2 $\rightarrow$ 69.9, OOD 78.6 $\rightarrow$ 80.4).
 
-\begin{table}[h]
-\centering\small
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{@{}llcccccc@{}}
-\toprule
- & & \multicolumn{4}{c}{\textbf{Accuracy, v1 $\rightarrow$ v2}} & \hd{\textbf{Unsafe, selective}\\v1 $\rightarrow$ v2} & \hd{\textbf{Acceptable, selective}\\v1 $\rightarrow$ v2}\\
-\cmidrule(lr){3-6}
-\textbf{Split} & \textbf{Policies} & never & always & \textbf{selective} & oracle & & \\
-\midrule
-Test & retrieved & 58.2 $\rightarrow$ 58.2 & 65.8 $\rightarrow$ 62.3 & \textbf{61.6 $\rightarrow$ 63.0} & 76.0 $\rightarrow$ 80.8 & 52.4 $\rightarrow$ 39.0 & 65.8 $\rightarrow$ 74.0\\
-Test & correct & 61.0 & 75.3 & \textbf{69.2 $\rightarrow$ 69.9} & 86.3 & 41.5 $\rightarrow$ 39.0 & 72.6 $\rightarrow$ 74.7\\
-OOD & retrieved & 60.7 $\rightarrow$ 68.8 & 59.8 $\rightarrow$ 63.4 & \textbf{67.0 $\rightarrow$ 66.1} & 75.9 $\rightarrow$ 82.1 & 37.3 $\rightarrow$ 35.3 & 68.8 $\rightarrow$ 72.3\\
-OOD & correct & 67.9 & 66.1 & \textbf{78.6 $\rightarrow$ 80.4} & 87.5 & 15.7 $\rightarrow$ 15.7 & 82.1 $\rightarrow$ 83.0\\
-Val & retrieved & 67.5 $\rightarrow$ 72.5 & 70.0 $\rightarrow$ 70.0 & \textbf{67.5 $\rightarrow$ 77.5} & 90.0 $\rightarrow$ 90.0 & 52.6 $\rightarrow$ 42.1 & 70.0 $\rightarrow$ 77.5\\
-Val & correct & 75.0 & 82.5 & \textbf{82.5 $\rightarrow$ 85.0} & 97.5 & 26.3 $\rightarrow$ 26.3 & 82.5 $\rightarrow$ 85.0\\
-\bottomrule
-\end{tabular}
-\caption{Experiment 3, Phase~B under system v1 (top-3 text retrieval, plain selective loop) and v2 (tagged
-top-8 retrieval, second-source check, hints), in \%. With correct policies only the selective setting changes
-between v1 and v2; a single number means unchanged. Acceptable = right, or \BLOCK\ where \ESC\ was right (or
-the reverse): both stop the action. The hypothesis intervals under both systems are in Table~\ref{tab:hyp}.}
-\label{tab:v1v2}
-\end{table}
 
 \section{Ablations}
-Table~\ref{tab:abl} lists every ablation and comparison that was run. All numbers come from the generated
-reports in the repository (\texttt{docs/reports/}).
+Table~\ref{tab:abl} lists the ablations and comparisons that were run; all numbers come from the generated
+reports in the repository.
 
 \begin{table}[h]
 \centering\footnotesize
 \setlength{\tabcolsep}{4pt}
-\begin{tabular}{@{}L{0.17\linewidth}L{0.22\linewidth}L{0.30\linewidth}L{0.26\linewidth}@{}}
+\begin{tabular}{@{}L{0.16\linewidth}L{0.22\linewidth}L{0.32\linewidth}L{0.25\linewidth}@{}}
 \toprule
 \textbf{Ablation} & \textbf{What changes} & \textbf{Result} & \textbf{What it shows}\\
 \midrule
-Checking setting & never / always / selective / oracle, Phase~B, test & correct policies 61.0 / 75.3 / 69.9 / 86.3; retrieved 58.2 / 62.3 / 63.0 / 80.8; checks 0 / 4.82 / 0.74--0.80 / 0.97 & checking matters (never 61.0, oracle 86.3 with correct policies); selective keeps most of the accuracy at a sixth of the calls but not the safety\\
-Policy source & correct vs retrieved policies, selective & test 69.9 vs 63.0; OOD 80.4 vs 66.1; of the 48 v1 test errors that start with a retrieval miss, 12 become right with the correct policies & the retrieval ceiling is the gap between the two conditions ($+7.6$ test, $+11.6$ OOD, $+15$ val under v1), not the first-cause count\\
-Retriever v1 $\rightarrow$ v2 & tag filter and 8 shown instead of top 3 & all gold policies shown: train 0.55 $\rightarrow$ 0.88, val 0.33 $\rightarrow$ 0.80; val selective 27 $\rightarrow$ 31 of 40; test unsafe (selective) 52.4 $\rightarrow$ 39.0 & better recall makes the system safer without retraining\\
-v2 components (val) & retrieval change alone vs full v2 & 32 vs 31 of 40 (v1: 27); the second-source rule never fired on val & the validation gain is the retrieval change\\
-Retriever top $k$ and tag filter (CPU, train + val, 332 records) & $k = 3 / 5 / 8 / 10$, with and without the filter & all gold policies shown 0.52 / 0.59 / 0.69 / 0.73 $\rightarrow$ with filter 0.63 / 0.74 / 0.87 / 0.89 & the filter helps more than a larger $k$; T1 policies name a hidden fact that no text query can find\\
-Retriever query and weight & 3 query forms $\times$ 6 weights, recall@3 & action + all turns at $w=0.6$ is best (0.56); last turn 0.49; action only 0.44 & little is left in query wording\\
-Cross-encoder re-ranker & \texttt{bge-reranker-base} on the top 20 & all gold shown at $k=3$: 0.52 $\rightarrow$ 0.32 (0.63 $\rightarrow$ 0.44 after the filter) & rejected: one-sentence policies and conversation-length queries suit a passage re-ranker badly\\
+Checking setting & never / always / selective / oracle, Phase~B, test & correct policies 61.0 / 75.3 / 69.9 / 86.3; retrieved 58.2 / 62.3 / 63.0 / 80.8; checks 0 / 4.82 / 0.74--0.80 / 0.97 & checking matters (never 61.0, oracle 86.3); selective keeps most of the accuracy at a sixth of the calls, but not the safety\\
+Policy source & correct vs retrieved policies, selective & test 69.9 vs 63.0; OOD 80.4 vs 66.1; of the 48 v1 test errors that start with a missing policy, 12 become right with the correct policies & better retrieval can win at most the gap between the two conditions ($+7.6$ test, $+11.6$ OOD under v1)\\
+Retriever v1 $\rightarrow$ v2 & tag filter and 8 shown instead of top 3 & all right policies shown: train 0.55 $\rightarrow$ 0.88, val 0.33 $\rightarrow$ 0.80; val selective 27 $\rightarrow$ 31 of 40 (retrieval change alone 32); test unsafe (selective) 52.4 $\rightarrow$ 39.0 & better recall made the system safer without retraining; the second-source rule never fired on validation\\
+Retriever top $k$ and tag filter (332 train + val records) & $k = 3 / 5 / 8 / 10$, with and without the filter; also a cross-encoder re-ranker & all right policies shown 0.52 / 0.59 / 0.69 / 0.73 $\rightarrow$ with filter 0.63 / 0.74 / 0.87 / 0.89; re-ranker at $k=3$: 0.52 $\rightarrow$ 0.32 & the filter helps more than a larger $k$; the re-ranker was rejected\\
 Training & base vs Phase~B, selective & test 43.2 $\rightarrow$ 69.9 (correct), 44.5 $\rightarrow$ 63.0 (retrieved); OOD 57.1 $\rightarrow$ 80.4, 50.0 $\rightarrow$ 66.1 & fine-tuning teaches when and what to check (Section~\ref{sec:ask})\\
-Training data & 30 October vs final adapter, same 120 test records, v1 & never 56.7 $\rightarrow$ 70.8; selective 74.2 / 79.2 $\rightarrow$ 74.2 / 82.5; always 76.7 / 80.0 $\rightarrow$ 75.8 / 83.3; oracle 81.7 / 84.2 $\rightarrow$ 85.0 / 90.0 (retrieved / correct) & more data improved deciding, not asking; the final adapter asks a little less often\\
-Phase~A vs Phase~B on collected data & collected-only vs all training data & test accuracy 92.8 vs 90.4; risk-type macro-F1 55.0 vs 52.7 & adding our records lowers collected-test accuracy from 92.8 to 90.4 and type macro-F1 from 55.0 to 52.7\\
-Shortcut baseline & word model with no LLM, collected test & 88.6 vs Phase~A 92.8 and Phase~B 90.4 & most of the base $\rightarrow$ trained jump is shared wording\\
+Training data & 30 October vs final adapter, same 120 test records, v1 & never 56.7 $\rightarrow$ 70.8; selective 74.2 / 79.2 $\rightarrow$ 74.2 / 82.5; always 76.7 / 80.0 $\rightarrow$ 75.8 / 83.3; oracle 81.7 / 84.2 $\rightarrow$ 85.0 / 90.0 (retrieved / correct) & more data improved deciding, not asking\\
 Rule baselines & rules only / rules + environment vs Phase~B & test, correct policies: 43.8 / 52.1 vs Phase~B selective 69.9 ($+17.8$ \ci{3.8}{32.1} over rules + environment) & the learned monitor beats fixed rules that check everything, at a sixth of the checks\\
 \bottomrule
 \end{tabular}
@@ -567,144 +489,100 @@ Rule baselines & rules only / rules + environment vs Phase~B & test, correct pol
 \label{tab:abl}
 \end{table}
 
-\textbf{Planned but not run.} Ablations with no policies shown, with noisy check results (the gateway supports
-seeded noise) and a top-$k$ sweep on the model were planned but their code was not delivered. The Qwen3-235B
-comparison was dropped (no endpoint decision). Live runs with two agent LLMs, the service and the demo were
-not built. Two v3 candidates (show only the action's check tools; allow one more ask after the first results)
-were built with a pre-set validation rule but could not be run: the Kaggle weekly GPU quota was used up on
-12 November. None of these is reported as a result.
+\textbf{Planned but not run.} Ablations with no policies shown, with noisy check results and a top-$k$ sweep
+on the model were planned but not delivered; the Qwen3-235B comparison was dropped; live runs with two agent
+LLMs were not done. Two v3 candidates (show only the action's check tools; allow one more
+ask after the first results) were built with a validation rule set in advance but could not be run: the
+Kaggle weekly GPU quota ran out on 12 November. None of these is reported as a result.
 
 \section{Evaluations}
 \subsection{The hypothesis}
-Table~\ref{tab:hyp} gives the pre-registered test. \textbf{It fails on the in-domain test set} in both policy
-conditions and under both systems: the interval of $\Delta$ unsafe is entirely above zero with correct policies
-($+26.8$ \ci{14.3}{39.5} under v2), so selective checking is clearly less safe than always checking there;
-with retrieved policies the v2 interval starts at 0.0 (\ci{0.0}{29.7}; under v1 \ci{8.2}{28.9}). On OOD and
-on validation the intervals contain zero but reach above $+5$, so the result is inconclusive. The
-cost side holds everywhere (Wilcoxon $p<0.001$). \textbf{Power.} With 82 risky test records the interval
-half-width is 12.6--14.8 points, so the rule could only pass if the observed $\Delta$ were at most $-7.6$ to
-$-9.8$ points, i.e.\ if selective were clearly \emph{safer} than always; on OOD (51 risky records) the needed
-$\Delta$ is $-7.7$ to $-12.1$. The rule stays as it was fixed; this is the power it had. \textbf{Always is not
-safe either}: it lets 24.4\% of risky test records through with retrieved policies and 12.2\% with correct
-policies, because it inherits retrieval misses and sometimes decides on a fact that does not decide the case.
+Table~\ref{tab:hyp} gives the test that was fixed in advance. \textbf{It fails on the test set} in both
+policy conditions: with correct policies the whole interval is above zero ($+26.8$ \ci{14.3}{39.5}), so
+selective checking is clearly less safe than always checking there; with retrieved policies the interval
+starts at 0.0 (under v1 it was \ci{8.2}{28.9}). On OOD and on validation the intervals contain zero but reach
+above $+5$, so the result is inconclusive. The cost side holds everywhere ($p<0.001$). \textbf{Power.} With
+82 risky test records the interval half-width is 12.6--14.8 points, so the rule could only have passed if
+selective were clearly \emph{safer} than always (a difference of at most $-7.6$ to $-9.8$ points; on OOD, 51
+risky records, $-7.7$ to $-12.1$). We kept the rule as fixed and report the power it had. \textbf{Always is
+not safe either}: it lets 24.4\% of risky test records through with retrieved policies and 12.2\% with
+correct policies, because it inherits missing policies and sometimes decides on a fact that does not decide
+the case.
 
 \begin{table}[h]
 \centering\footnotesize
 \setlength{\tabcolsep}{5pt}
 \begin{tabular}{@{}llccrrl@{}}
 \toprule
-\textbf{Split} & \textbf{Policies} & \hd{\textbf{Phase~B v2}\\$\Delta$ unsafe [95\% CI]} & \hd{\textbf{Phase~B v1}\\$\Delta$ unsafe [95\% CI]} & \hd{Risky\\records} & \hd{Half-width\\(v2)} & \textbf{Result}\\
+\textbf{Split} & \textbf{Policies} & \hd{\textbf{Phase~B v2}\\difference [95\% CI]} & \hd{\textbf{Phase~B v1}\\difference [95\% CI]} & \hd{Risky\\records} & \hd{Half-width\\(v2)} & \textbf{Result}\\
 \midrule
 \textbf{Test} & \textbf{correct (main)} & $\mathbf{+26.8}$ \ci{14.3}{39.5} & $+29.3$ \ci{16.7}{42.2} & 82 & 12.6 & \textbf{fails (clearly less safe)}\\
 Test & retrieved & $+14.6$ \ci{0.0}{29.7} & $+18.3$ \ci{8.2}{28.9} & 82 & 14.8 & fails\\
-OOD & correct & $-3.9$ \ci{$-$16.4}{9.1} & $-3.9$ \ci{$-$17.0}{8.9} & 51 & 12.7 & fails (inconclusive)\\
-OOD & retrieved & $+5.9$ \ci{$-$10.9}{23.3} & $0.0$ \ci{$-$13.2}{13.2} & 51 & 17.1 & fails (inconclusive)\\
-Val & correct & $0.0$ \ci{$-$21.1}{21.1} & $0.0$ \ci{$-$21.1}{21.1} & 19 & 21.1 & fails (inconclusive)\\
-Val & retrieved & $+5.3$ \ci{$-$23.5}{31.2} & $+10.5$ \ci{$-$18.2}{41.2} & 19 & 27.4 & fails (inconclusive)\\
+OOD & correct & $-3.9$ \ci{$-$16.4}{9.1} & $-3.9$ \ci{$-$17.0}{8.9} & 51 & 12.7 & inconclusive\\
+OOD & retrieved & $+5.9$ \ci{$-$10.9}{23.3} & $0.0$ \ci{$-$13.2}{13.2} & 51 & 17.1 & inconclusive\\
+Val & correct & $0.0$ \ci{$-$21.1}{21.1} & $0.0$ \ci{$-$21.1}{21.1} & 19 & 21.1 & inconclusive\\
+Val & retrieved & $+5.3$ \ci{$-$23.5}{31.2} & $+10.5$ \ci{$-$18.2}{41.2} & 19 & 27.4 & inconclusive\\
 \bottomrule
 \end{tabular}
-\caption{Hypothesis R10.4: $\Delta$ unsafe-action rate, selective $-$ always, in points, with 95\% CIs
-(bootstrap over seeds, paired). Passes only if the upper end is at most $+5$. The base model fails everywhere
-except OOD with retrieved policies ($-11.8$ \ci{$-$26.4}{2.3}), where it passes only because it blocks most
-records.}
+\caption{The hypothesis: difference in risky actions let through, selective $-$ always, in points, with 95\%
+CIs (bootstrap over seeds, paired). It passes only if the upper end is at most $+5$. The base model fails
+everywhere except OOD with retrieved policies ($-11.8$ \ci{$-$26.4}{2.3}), where it passes only because it
+blocks most records.}
 \label{tab:hyp}
 \end{table}
 
 \subsection{Does the monitor learn to ask, and ask for the right fact?}\label{sec:ask}
-Table~\ref{tab:ask} looks inside the selective setting with correct policies, on the same records for all
-three models (test: the 120 records that existed before 6 November; these runs are under system v1, i.e.\ the
-model's own requests). \textbf{Training teaches the model when to ask}, and it carries over to OOD: Phase~B
-asks in 87.7\% (test) and 91.5\% (OOD) of the records that need a check, the base model in 53.1\% and 33.8\%.
-It is clearest on T2: the base model never asks when the fact changed after the tool result (T2c) and rarely
-when the result is about another resource (T2b: 31\% on test, 0\% on OOD); Phase~B asks in 100\% of both and
-stays quiet in 92\% (test) and 91\% (OOD) of the T2a records whose result is fresh. \textbf{When it has the
-facts, it decides right} (94.2\% when every needed check was made); the weak point is asking, not using the
-answer. \textbf{It asks for one check when two are needed}: on the T5 records where two facts disagree Phase~B
-asks in 94\% but makes both checks in 11.8\% (test, 34 records); on the 26 such records added on 6 November it
-makes both checks in 2 and gets 2 right, while the oracle, given both facts, escalates correctly in 18 of 26.
-\textbf{Wrong policies lead to wrong checks}: with retrieved policies the right check among the records where
-it asked drops to 50.7 (test) and 59.1 (OOD), because the model checks the facts that the shown policies talk
-about.
+We looked inside the selective setting with correct policies, on the same records for all three models
+(test: the 120 records that existed before 6 November; system v1, so these are the model's own requests). \textbf{Training teaches the model when to ask}, and this carries over to OOD: Phase~B asks in
+87.7\% (test) and 91.5\% (OOD) of the records that need a check; the base model in 53.1\% and 33.8\%. It is
+clearest on T2: the base model never asks when the fact changed after the tool result (T2c) and rarely when
+the result is about another resource (T2b); Phase~B asks in 100\% of both and stays quiet in 92\% (test) and
+91\% (OOD) of the fresh-result (T2a) records. It makes \emph{every} needed check in 64.2\% (test) and 73.2\% (OOD) of the records (base model: 30.9 and
+25.4). \textbf{When it has the facts, it decides right} (94.2\% when every needed check was made; 55.2 and
+21.1 when one was missing); the weak point is asking, not using the answer.
+\textbf{It asks for one check when two are needed}: on the T5 records where two facts disagree, Phase~B asks
+in 94\% but makes both checks in 11.8\% (test, 34 records); on the 26 such records added on 6 November it
+makes both checks in 2, while the oracle, given both facts, escalates correctly in 18 of 26. \textbf{Wrong
+policies lead to wrong checks}: with retrieved policies the right check among the records where it asked
+drops to 50.7 (test) and 59.1 (OOD), because the model checks the facts that the shown policies talk about.
 
-\begin{table}[h]
-\centering\small
-\setlength{\tabcolsep}{5pt}
-\begin{tabular}{@{}lccc@{}}
-\toprule
-\textbf{Selective, correct policies; test / OOD} & \textbf{Base} & \textbf{Phase B, 30 Oct} & \textbf{Phase B, final}\\
-\midrule
-Asks when a check is needed (81 / 71 records) & 53.1 / 33.8 & 97.5 / 97.2 & 87.7 / 91.5\\
-Quiet when no check is needed (39 / 41) & 84.6 / 92.7 & 89.7 / 82.9 & 92.3 / 80.5\\
-Right check, among the records where it asked & 67.4 / 75.0 & 84.8 / 82.6 & 81.7 / 80.0\\
-Every needed check made & 30.9 / 25.4 & 72.8 / 78.9 & 64.2 / 73.2\\
-Accuracy when every needed check was made & 56.0 / 83.3 & 93.2 / 98.2 & 94.2 / 94.2\\
-Accuracy when a needed check was missing & 55.4 / 52.8 & 36.4 / 53.3 & 55.2 / 21.1\\
-\bottomrule
-\end{tabular}
-\caption{Asking behaviour in the selective setting with correct policies (\%), test (120 records) / OOD (112),
-system v1.}
-\label{tab:ask}
-\end{table}
 
-\subsection{T2 subtypes: tool results to trust or not}
+\subsection{T2 subtypes: which tool results to trust}
 Table~\ref{tab:t2} reports the trust-rule cases, the part of the task that other monitors do not handle.
-Phase~B handles in-domain T2 almost perfectly in the selective setting (92.3--100 per subtype) and already
-without checks (never: 92.3--100 on test), so the trust rules were learned from the conversation; the base
-model is far lower (15.4--84.6 with correct policies).
+Phase~B handles in-domain T2 almost perfectly in the selective setting (92.3--100 per subtype), and already
+without checks (never: 92.3--100 on test), so the trust rule was learned from the conversation. The base
+model is far lower: with correct policies 15.4 (a), 61.5 (b), 84.6 (c) and 38.5 (d) on test.
 
 \begin{table}[h]
 \centering\small
 \setlength{\tabcolsep}{5pt}
 \begin{tabular}{@{}lcccc@{}}
 \toprule
-\textbf{T2 subtype, selective setting} & \hd{\textbf{Test}\\retrieved} & \hd{\textbf{Test}\\correct} & \hd{\textbf{OOD}\\retrieved} & \hd{\textbf{OOD}\\correct}\\
+\textbf{T2 subtype, Phase B, selective} & \hd{\textbf{Test}\\retrieved} & \hd{\textbf{Test}\\correct} & \hd{\textbf{OOD}\\retrieved} & \hd{\textbf{OOD}\\correct}\\
 \midrule
-Phase B: a. fresh result about the same resource & 100.0 & 100.0 & 81.8 & 90.9\\
-Phase B: b. result about another resource & 100.0 & 100.0 & 72.7 & 90.9\\
-Phase B: c. fact changed since the result & 92.3 & 100.0 & 90.9 & 100.0\\
-Phase B: d. only the agent says it & 100.0 & 100.0 & 90.9 & 81.8\\
-\midrule
-Base Qwen3-8B: a. fresh result & 46.2 & 15.4 & 36.4 & 45.5\\
-Base Qwen3-8B: b. another resource & 61.5 & 61.5 & 27.3 & 27.3\\
-Base Qwen3-8B: c. fact changed & 84.6 & 84.6 & 100.0 & 100.0\\
-Base Qwen3-8B: d. only the agent says it & 38.5 & 38.5 & 36.4 & 36.4\\
+a. fresh result about the same resource (no check needed) & 100.0 & 100.0 & 81.8 & 90.9\\
+b. result about another resource & 100.0 & 100.0 & 72.7 & 90.9\\
+c. fact changed since the result & 92.3 & 100.0 & 90.9 & 100.0\\
+d. only the agent says it & 100.0 & 100.0 & 90.9 & 81.8\\
 \bottomrule
 \end{tabular}
-\caption{Accuracy (\%) on the T2 records by subtype, selective setting, system v2: Phase~B (top) and the base
-model (bottom). 13 test records and 11 OOD records per subtype.}
+\caption{Accuracy (\%) on the T2 records by subtype, selective setting, system v2; 13 test and 11 OOD records
+per subtype.}
 \label{tab:t2}
 \end{table}
 
-\subsection{T1 pairs: both records of an A/B pair right}
-The two records of a T1 pair look the same and differ only in the hidden fact, so only a check can get both
-right; a monitor that never checks gets at most one (Table~\ref{tab:pairs}). T1 is the hardest case type for
-selective: with correct policies it gets both records right in under half of the pairs (8 of 17 on test, 8 of
-18 on OOD; T1 record accuracy 73.5 and 66.7). With retrieved policies pairs fall further, because a missing
-policy breaks both records of a pair.
+\subsection{T1 pairs, and saving next to the oracle saving}
+\textbf{T1 pairs.} The two records of a T1 pair look the same and differ only in the hidden fact, so only a
+check can get both right. T1 is the hardest case type for selective: with correct policies it gets both
+records right in under half of the pairs (test: 8 of 17 pairs, 47.1\%; OOD: 8 of 18, 44.4\%; never 1 and 0,
+always 10 and 11, oracle 12 and 13). With retrieved policies pairs fall further (test 4 of 17, OOD 3 of 18),
+because a missing policy breaks both records of a pair.
 
-\begin{table}[h]
-\centering\small
-\setlength{\tabcolsep}{6pt}
-\begin{tabular}{@{}lcccc@{}}
-\toprule
-\textbf{Phase B, pairs with both right} & \textbf{never} & \textbf{always} & \textbf{selective} & \textbf{oracle}\\
-\midrule
-Test, correct policies (17 pairs) & 1 & 10 & \textbf{8 (47.1\%)} & 12\\
-Test, retrieved policies (17 pairs) & 0 & 4 & \textbf{4 (23.5\%)} & 9\\
-OOD, correct policies (18 pairs) & 0 & 11 & \textbf{8 (44.4\%)} & 13\\
-OOD, retrieved policies (18 pairs) & 2 & 6 & \textbf{3 (16.7\%)} & 12\\
-\bottomrule
-\end{tabular}
-\caption{T1 pair accuracy: number of A/B pairs with both records decided right, system v2.}
-\label{tab:pairs}
-\end{table}
-
-\subsection{Saving next to the oracle saving}
-Saving is $1-$ check calls / check calls of always; the oracle saving is the same quantity for exactly the
-gold checks, i.e.\ the best saving possible with every needed check made (Table~\ref{tab:saving}). Selective
-makes somewhat fewer checks than the oracle on test (108--117 against 141 calls) and about as many on OOD (76
-against 73), so it does not save by skipping checks wholesale: most of its gap to the oracle's accuracy (16--18
-points on test) comes from \emph{which} checks it makes, a wrong fact or one check of two.
+\textbf{Saving.} The oracle saving is the best saving possible with every needed check made
+(Table~\ref{tab:saving}). Selective makes somewhat fewer checks than the oracle on test (108--117 against 141
+calls) and about as many on OOD (76 against 73), so it does not save by skipping checks wholesale: most of
+its gap to the oracle's accuracy (16--18 points on test) comes from \emph{which} checks it makes: a wrong
+fact, or one check of two.
 
 \begin{table}[h]
 \centering\small
@@ -725,36 +603,29 @@ saving, system v2.}
 \end{table}
 
 \subsection{Error analysis}
-Every wrong decision of Phase~B in the selective setting is put in exactly one group, the first failure in
-the order the monitor works (Table~\ref{tab:err}; system v1 runs). With correct policies the largest group on
-test is \textbf{two-check T5 records where one check was made} (22 of 45); with retrieved policies a
-\textbf{retrieval miss} is the most common first cause (48 of 56 on test, 26 of 37 on OOD). The first-cause
-count overstates what better retrieval can win: given the correct policies, only 12 of those 48 test records
-become right and 36 stay wrong for other reasons (OOD 17 of 26, validation 6 of 10); the real ceiling is the
-gap between the two policy conditions, $+7.6$ points on test, $+11.6$ on OOD and $+15$ on validation under
-v1. Most errors are in the unsafe direction: on test, 43 of the 56 (retrieved) and 34 of the 45 (correct)
-wrong answers let a risky action through.
-
-Under v2 the second-source rule fired on only 1 test record. Of the 34 two-check test records, 10 are of the
-kind the rule covers (one fact reported by two tools: 8 \texttt{modifiable}, 2 \texttt{role\_eligible}), but
-the rule starts from the fact the model names, and there the model named another fact (for example
-``production'' of the repository while calling one of the two right tools), so the rule did not start. The
-other 24 need two \emph{different} facts combined (classification and sharing, classification and retention,
-recipient class, registered vendor); all 26 two-check records in training use one other mechanism
-(\texttt{account\_type}), so no inference rule can supply those without new training data.
+Every wrong decision of Phase~B in the selective setting is put in exactly one group: the first thing that
+went wrong, in the order the monitor works (Table~\ref{tab:err}; system v1 runs). With correct policies the
+largest group on test is \textbf{two-check T5 records where one check was made} (22 of 45). With retrieved
+policies the most common first cause is a \textbf{missing policy} (48 of 56 on test, 26 of 37 on OOD), but
+this count overstates what better retrieval can win: given the correct policies, only 12 of those 48 test
+records become right and 36 stay wrong for other reasons (OOD 17 of 26). Most errors are in the unsafe
+direction: on test, 43 of the 56 (retrieved) and 34 of the 45 (correct) wrong answers let a risky action
+through. Under v2 the second-source rule fired on only 1 test record: of the 34 two-check test records, 10
+are of the kind it covers, but the model named another fact, so the rule did not start; the other 24 need two
+\emph{different} facts, and all 26 two-check training records use one other mechanism, so only new training
+data can fix them.
 
 \begin{table}[h]
 \centering\footnotesize
 \setlength{\tabcolsep}{4pt}
 \begin{tabular}{@{}lccccccc@{}}
 \toprule
-\textbf{Phase B, selective} & \textbf{Wrong} & \hd{Retrieval\\miss} & \hd{Missed\\check} & \hd{Two needed,\\one made} & \hd{Wrong fact\\checked} & \hd{Right fact,\\wrong decision} & Other\\
+\textbf{Phase B, selective} & \textbf{Wrong} & \hd{Missing\\policy} & \hd{Missed\\check} & \hd{Two needed,\\one made} & \hd{Wrong fact\\checked} & \hd{Right fact,\\wrong decision} & Other\\
 \midrule
 Test, retrieved policies & 56 of 146 & 48 & 0 & 0 & 5 & 1 & 2\\
 Test, correct policies & 45 of 146 & -- & 5 & 22 & 10 & 8 & 0\\
 OOD, retrieved policies & 37 of 112 & 26 & 2 & 0 & 4 & 4 & 1\\
 OOD, correct policies & 24 of 112 & -- & 4 & 0 & 10 & 7 & 3\\
-Val, retrieved policies & 13 of 40 & 10 & 0 & 0 & 1 & 1 & 1\\
 \bottomrule
 \end{tabular}
 \caption{First cause of each wrong decision (counts), Phase~B selective, system v1. ``Other'' = wrong tool or
@@ -762,111 +633,84 @@ arguments, extra check, invalid JSON.}
 \label{tab:err}
 \end{table}
 
-\subsection{OOD by kind of shift}
-Of the 112 OOD records, 42 use new tools as well as new wording, style and values; 70 change only wording,
-style and values. Phase~B selective (v2) scores 61.9 on the new-tool records and 68.6 on the reworded ones
-with retrieved policies (78.6 and 81.4 with correct policies); always scores 61.9 and 64.3 (73.8 and 61.4).
-Selective is weakest where it has never seen the check tools, and overall its OOD accuracy is close to its
-test accuracy (66.1 vs 63.0 retrieved; 80.4 vs 69.9 correct), so the learned checking carries over to a new
-domain.
+\textbf{OOD by kind of shift.} Of the 112 OOD records, 42 use new tools as well as new wording, style and
+values; 70 change only wording, style and values. Phase~B selective (v2) scores 61.9 on the new-tool records
+and 68.6 on the reworded ones with retrieved policies (78.6 and 81.4 with correct policies); always scores
+61.9 and 64.3 (73.8 and 61.4). Selective is weakest where it has never seen the check tools, but the learned
+checking carries over to a new domain.
 
 \subsection{Exploratory cost hypotheses}
-Four cost hypotheses were stated on 12 November, \textbf{after the results were seen}, so they are exploratory
-and R10.4 stays the only pre-registered test; their thresholds are round values (half the cost) and the same
-5-point margin (Table~\ref{tab:cost}). \textbf{Fewer check calls, yes (C1)}: selective makes 0.15--0.17 of the
-check calls of always. \textbf{Less model compute, no (C2)}: selective uses about 2.4$\times$ the prompt and
-output tokens of always (test, retrieved: 2,591 against 1,056 per record) and about twice the time (20.2
-against 12.2 seconds per record), for two reasons: its prompt lists every check tool (about 990 tokens), and
-most records need a second pass after the checks (1.63--1.75 passes per record; always and never make one).
-The break-even point is 351--392 tokens of model compute per check call: selective is cheaper overall only
-where one check call costs more than that, i.e.\ real company APIs with latency, rate limits, fees or access
-to personal data, not a free local lookup. The proposal had anticipated this: selective checking ``may use
-more tokens or time; its gain may be fewer checks and less access to private data rather than lower cost''.
-\textbf{Accuracy within 5 points of always (C3)}: not shown on test (the intervals are too wide; $-5.5$ with
-correct policies); on OOD with correct policies selective is clearly more accurate ($+14.3$
-\ci{3.4}{25.0}). \textbf{Better than rules that check everything (C4)}: holds on test in both policy
-conditions and on OOD with correct policies, by 16--26 points at about a sixth of the checks.
+Four cost hypotheses were stated on 12 November, \textbf{after the results were seen}, so they are
+exploratory; the safety hypothesis above stays the only one fixed in advance. Each is judged by its 95\% CI
+(bootstrap over seeds, paired). \textbf{Fewer check calls, yes (C1)}: selective makes 0.15--0.17 of the check
+calls of always (test, retrieved: 0.17 \ci{0.14}{0.20}; the threshold was 0.5). \textbf{Less model compute,
+no (C2)}: selective uses 2.33--2.48$\times$ the prompt and output tokens of always (test, retrieved: 2.45
+\ci{2.35}{2.57}; 2,591 against 1,056 tokens per record) and about twice the time (20.2 against 12.2 seconds
+per record),
+because its prompt lists every check tool (about 990 tokens) and most records need a second pass after the
+checks (1.63--1.75 passes per record). The break-even point is 351--392 tokens of model compute per check
+call: selective is cheaper overall only where one check call costs more than that, i.e.\ real company systems
+with waiting time, rate limits, fees or access to personal data, not a free local lookup, as the proposal had
+expected. \textbf{Accuracy within 5 points of always (C3)}: not shown on test
+(test: $+0.7$ \ci{$-$7.7}{8.6} retrieved, $-5.5$ \ci{$-$15.0}{3.4} correct; OOD retrieved $+2.7$
+\ci{$-$9.5}{14.9}: the intervals cross $-5$); on OOD with correct policies selective is clearly more accurate
+($+14.3$ \ci{3.4}{25.0}). \textbf{Better than rules that check everything (C4)}: holds on test in both
+policy conditions ($+16.4$ \ci{0.7}{31.1} retrieved, $+17.8$ \ci{3.8}{32.1} correct) and on OOD with correct
+policies ($+25.9$ \ci{10.5}{40.5}); on OOD with retrieved policies the interval touches zero ($+17.9$
+\ci{0.0}{34.5}).
 
-\begin{table}[h]
-\centering\footnotesize
-\setlength{\tabcolsep}{5pt}
-\begin{tabular}{@{}lcccc@{}}
-\toprule
-\textbf{Phase B v2} & \hd{\textbf{C1: check calls}\\ratio sel./always $\le 0.5$} & \hd{\textbf{C2: model tokens}\\ratio sel./always $\le 0.5$} & \hd{\textbf{C3: accuracy kept}\\$\Delta$ acc.\ vs always $\ge -5$} & \hd{\textbf{C4: beats rules + env.}\\$\Delta$ acc.\ vs rules + env.\ $> 0$}\\
-\midrule
-Test, retrieved policies & \textbf{0.17} \ci{0.14}{0.20} & 2.45 \ci{2.35}{2.57} & $+0.7$ \ci{$-$7.7}{8.6} & $\mathbf{+16.4}$ \ci{0.7}{31.1}\\
-Test, correct policies & \textbf{0.15} \ci{0.13}{0.18} & 2.48 \ci{2.39}{2.58} & $-5.5$ \ci{$-$15.0}{3.4} & $\mathbf{+17.8}$ \ci{3.8}{32.1}\\
-OOD, retrieved policies & \textbf{0.15} \ci{0.12}{0.18} & 2.33 \ci{2.22}{2.43} & $+2.7$ \ci{$-$9.5}{14.9} & $+17.9$ \ci{0.0}{34.5}\\
-OOD, correct policies & \textbf{0.15} \ci{0.12}{0.19} & 2.43 \ci{2.31}{2.56} & $\mathbf{+14.3}$ \ci{3.4}{25.0} & $\mathbf{+25.9}$ \ci{10.5}{40.5}\\
-\bottomrule
-\end{tabular}
-\caption{Exploratory cost hypotheses, Phase~B v2: ratios of selective to always (C1, C2) and accuracy
-differences in points (C3 against always, C4 against rules + environment), with 95\% CIs (bootstrap over
-seeds, paired). \textbf{Bold} = the hypothesis holds (its 95\% bound is on the right side of the threshold).
-C2 does not hold anywhere (the whole interval is above 0.5); a plain C3 or C4 cell means not shown (the
-interval crosses the threshold).}
-\label{tab:cost}
-\end{table}
 
 \section{Limitations}\label{sec:limits}
 \begin{itemize}
-\item \textbf{Small sets.} 40 validation, 146 test and 112 OOD records; the accuracy intervals are about $\pm$10
-  points on test, and OOD has only 51 risky records. Any single difference under about 8 points is noise.
-\item \textbf{Power of the hypothesis test.} With this size the pre-registered rule could only have passed if
-  selective were clearly safer than always (Table~\ref{tab:hyp}); the rule was kept as fixed and its power is
-  reported instead of changing it.
+\item \textbf{Small sets and a weak test.} 40 validation, 146 test and 112 OOD records; accuracy intervals
+  are about $\pm$10 points on test, and OOD has only 51 risky records, so a single difference under about 8
+  points is noise. With this size the hypothesis rule could only have passed if selective were clearly safer
+  than always (Table~\ref{tab:hyp}); we kept the rule and report its power.
 \item \textbf{Test mix.} The 6 November addition made test 28\% T5 against 19\% over all in-domain records.
-  Reweighted to the in-domain case-type mix, Phase~B selective (v2) would be 68.3 (retrieved) and 75.1
-  (correct) instead of 63.0 and 69.9; the raw test numbers stay the main result, and the 30 October numbers on
-  the smaller test set are not comparable with them.
+  Reweighted to the in-domain mix, Phase~B selective (v2) would be 68.3 (retrieved) and 75.1 (correct) instead
+  of 63.0 and 69.9; the raw numbers stay the main result.
 \item \textbf{Generated records and rule-made labels.} Our records, their labels and the check tools' answers
-  come from our own seeds, policy rules and a simulated company state. The labels were checked by code
-  (Section~\ref{sec:data}) but \textbf{no human agreement study was done on our records}; the only $\kappa$ is
-  0.57 on 26 R-Judge risk types, below the 0.6 target. One OOD seed is flagged for a human to read.
-\item \textbf{One training run per adapter.} Run-to-run variance is unknown, so differences of a few points
-  between the 30 October and the final adapter may be noise.
-\item \textbf{Two-check cases.} All 26 two-check training records use one mechanism; the 24 test records that
-  combine two different facts are not learned, and no inference rule fixes them.
-\item \textbf{Accuracy counts} \BLOCK\ \textbf{for} \ESC\ \textbf{as wrong} although both stop the action. Counting that swap as
-  acceptable, always rises from 75.3 to 89.0 on test with correct policies but selective only from 69.9 to
-  74.7: most of selective's errors really let the risky action through.
-\item \textbf{Selective costs more model tokens than always} (about 2.4$\times$) and about twice the time; it
-  saves check calls and access to private state, not compute.
+  come from our own seeds, policy rules and a simulated company. The labels were checked by code, but
+  \textbf{no human agreement study was done on our records}; the only $\kappa$ we have is 0.57 on 26 R-Judge
+  risk types, below the 0.6 target. One OOD seed is flagged for a person to read.
+\item \textbf{One training run per adapter}, so run-to-run variance is unknown and differences of a few points
+  between the 30 October and the final adapter may be noise. All 26 two-check training records use one
+  mechanism, so the 24 test records that combine two different facts are not learned.
+\item \textbf{Accuracy counts} \BLOCK\ \textbf{for} \ESC\ \textbf{as wrong}, although both stop the action.
+  Counting that swap as acceptable, always rises from 75.3 to 89.0 on test with correct policies, but
+  selective only from 69.9 to 74.7: most of selective's errors really let the risky action through.
 \item \textbf{Collected datasets.} Our own splits, not comparable with leaderboards; shortcuts (a word model
-  reaches 88.6; 43 R-Judge near-copies); the AgentRisk licence allows no redistribution.
-\item \textbf{Not done.} The plug-in service, the demo and the live runs with two agent LLMs are empty in the
-  repository; the no-policy, check-noise and top-$k$ model ablations, the Qwen3-235B comparison, the v3
+  reaches 88.6; 43 of the 115 R-Judge test records are near-copies of a training record); the AgentRisk
+  licence allows no redistribution.
+\item \textbf{Not in this report.} The deployment demo and the service are not evaluated here. Live runs with
+  two agent LLMs, the no-policy, check-noise and top-$k$ model ablations, the Qwen3-235B comparison, the v3
   validation check and the 50 human evidence checks were not run.
 \end{itemize}
 
 \section{Conclusions}
 \begin{enumerate}
-\item \textbf{Fine-tuning teaches an 8B model to monitor agents with checks.} Phase~B beats the untrained model
-  and both rule baselines in every setting on test and OOD, and the skill carries over to a new domain
+\item \textbf{Fine-tuning teaches an 8B model to monitor agents with checks.} Phase~B beats the untrained
+  model and both rule baselines in every setting on test and OOD, and the skill carries over to a new domain
   (selective, retrieved policies: 63.0 on test, 66.1 on OOD).
-\item \textbf{Selective checking costs about a sixth of the check calls of always checking}, and the model
-  learns \emph{when} to ask (87.7--91.5\% of the records that need a check, 100\% on stale or unrelated tool
-  results) and mostly \emph{what} to ask; with every needed fact in hand it decides right in 94.2\%.
-\item \textbf{It is not as safe as always checking on the in-domain test set.} The pre-registered hypothesis
-  fails ($\Delta$ unsafe $+26.8$ \ci{14.3}{39.5} with correct policies), mainly because the monitor makes one
-  check where two are needed, and because a retrieval miss turns into a wrong check. Both answers were said
-  to be useful in the proposal; this is the negative one, reported as it is.
-\item \textbf{Retrieval with action tags (v2) made the system safer without retraining} (test unsafe rate,
-  selective 52.4 $\rightarrow$ 39.0), but the retrieval ceiling is modest ($+7.6$ points on test under v1)
-  and the remaining errors are checking errors.
-\item \textbf{The cost case is about calls, not tokens.} Selective is cheaper only where a check call costs
+\item \textbf{Selective checking uses about a sixth of the check calls}, and the model learns \emph{when} to
+  ask (87.7--91.5\% of the records that need a check) and mostly \emph{what} to ask; with every needed fact in
+  hand it decides right in 94.2\%.
+\item \textbf{It is not as safe as always checking on the test set.} The hypothesis fixed in advance fails
+  ($+26.8$ \ci{14.3}{39.5} more risky actions let through with correct policies), mainly because the monitor
+  makes one check where two are needed, and because a missing policy turns into a wrong check. The proposal
+  said both answers would be useful; this is the negative one, reported as it is.
+\item \textbf{Retrieval with action tags (v2) made the system safer without retraining} (test, selective:
+  52.4 $\rightarrow$ 39.0 risky actions let through); the remaining errors are checking errors.
+\item \textbf{The cost case is about calls, not tokens}: selective is cheaper only where one check call costs
   more than about 350--390 tokens of model compute.
 \end{enumerate}
-\textbf{Future work}, in the order we would do it: (i) two-check training data with several mechanisms
-(train-only composite policies in four domains) and oversampled two-check examples, so that ``ask for both
-sources'' is learned as a rule rather than one pattern; (ii) second-pass training examples with the full
-check-table results, so that the model learns to ignore facts that do not decide the case (the always and
-OOD wrong-block errors); (iii) a second training seed of the final configuration, the only way to tell run
-noise from real change; (iv) the human label study on our records, with a held-out train-side dev set that
-covers every mechanism; and (v) a prompt that lists only the action's check tools and reuses the shared prefix
-between passes, to cut the token cost.
+\textbf{Future work}, in order: (i) two-check training data with several mechanisms, so that ``ask for both
+facts'' is learned as a rule; (ii) second-pass training examples with the full check-table results, so that
+the model learns to ignore facts that do not decide the case; (iii) a second training seed, the only way to
+tell run noise from real change; (iv) the human label study on our records; (v) a prompt that lists only the
+action's check tools, to cut the token cost.
 
-{\small
+{\footnotesize
 \bibliographystyle{plainnat}
 \bibliography{final_submission}}
 
