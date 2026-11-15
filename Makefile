@@ -1,6 +1,6 @@
 PYTHON ?= python3
 
-.PHONY: test external eval-dummy policies records
+.PHONY: test external eval-dummy policies records site
 
 test:
 	$(PYTHON) -m pytest -q tests
@@ -31,3 +31,7 @@ eval-dummy:
 	$(PYTHON) -m src.eval.tables --run never=outputs/runs/dummy_never --run always=outputs/runs/dummy_always \
 		--run selective=outputs/runs/dummy_selective --run oracle=outputs/runs/dummy_oracle \
 		--out outputs/runs/dummy_report --title "Dummy results (fake data)"
+
+# Static copy of the replay website in site/ (no server, no real account), checked for private data.
+site:
+	$(PYTHON) scripts/export_static.py

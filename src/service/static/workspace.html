@@ -349,7 +349,16 @@ const badge = (d, big) => el("span", { class: "dec " + (d || "") + (big ? " big"
 const fmtArgs = a => Object.entries(a || {}).map(([k, v]) => `${k}=${typeof v === "string" ? v : JSON.stringify(v)}`).join(", ");
 const call = (tool, args) => `${tool}(${fmtArgs(args)})`;
 const oneLine = v => JSON.stringify(v);
-async function api(path) { const r = await fetch(path); if (!r.ok) throw new Error(path + " " + r.status); return r.json(); }
+// Static build (scripts/export_static.py puts data-static="1" on <html>): there is no server, and the same answers
+// are read from JSON files written next to this page. "api/runs/x/y/state?step=2" is the file "api/runs/x/y/state/2.json".
+const STATIC_SITE = document.documentElement.dataset.static === "1";
+function apiUrl(path) {
+  if (!STATIC_SITE) return path;
+  const [file, query] = path.split("?");
+  const step = new URLSearchParams(query || "").get("step");
+  return (step === null ? file : file + "/" + step) + ".json";
+}
+async function api(path) { const r = await fetch(apiUrl(path)); if (!r.ok) throw new Error(path + " " + r.status); return r.json(); }
 
 // ---------- loading ----------
 async function init() {
@@ -497,7 +506,8 @@ function renderPresets() {
       const r = pick({ task: t.id, setting: S.summary ? S.summary.setting : "selective", confirm: S.summary && S.summary.confirm || "yes" }); if (r) openRun(r, { play: true }); },
   })));
   const offline = !S.health.live_available;
-  $("taskinput").placeholder = offline ? "Live mode is offline — showing recorded runs. Pick a preset task above."
+  $("taskinput").placeholder = STATIC_SITE ? "Live demo: available on request. Pick a preset task above to replay a recorded run."
+    : offline ? "Live mode is offline — showing recorded runs. Pick a preset task above."
     : live ? "Type a task for the agent, or pick a preset task above." : "Replay mode: pick a preset task above, or go live.";
   renderLive();
 }
@@ -803,7 +813,7 @@ function renderStatus() {
     sep(), el("span", {}, "agent ", el("b", { text: agent })),
     sep(), el("span", {}, "monitor ", el("b", { text: `${s.monitor_version || "?"} (k=${s.k ?? "?"})` }), modelName(s) ? " · " + modelName(s).slice(0, -2) : ""),
     sep(), el("span", {}, "monitor latency ", el("b", { text: secs(S.events) })),
-    el("span", { class: "right" }, el("span", { text: "live: " + (S.health.live_available ? "available" : "offline") }),
+    el("span", { class: "right" }, el("span", { text: STATIC_SITE ? "Live demo: available on request" : "live: " + (S.health.live_available ? "available" : "offline") }),
       el("button", { type: "button", id: "theme", text: "theme", onclick: flipTheme })));
 }
 
@@ -812,6 +822,7 @@ function renderStatus() {
 // Then the same UI is fed by the session's event stream instead of a log file. Every live request carries the
 // password in a header; it is kept in memory only, never stored and never put in a URL.
 async function liveCall(path, body) {
+  if (STATIC_SITE) throw new Error("live mode is not part of the static site");
   const r = await fetch(path, { method: body ? "POST" : "GET", body: body ? JSON.stringify(body) : undefined,
     headers: { "Content-Type": "application/json", "X-Live-Password": S.live.password } });
   if (!r.ok) { let why = String(r.status); try { why = (await r.json()).detail || why; } catch (e) { /* no JSON body */ } throw new Error(why); }
@@ -1158,7 +1169,7 @@ async function renderResults() {
       `The safety test, fixed before any result, is ${R.hypothesis_rule}.`),
     el("p", { class: "small muted" }, "System ", el("b", { text: R.system }), ". Every number on this page is read from ", el("code", { text: R.source }),
       ", the file the report's tables (", el("code", { text: R.rendered_tables }), ") are made from; rates are in %. ",
-      el("a", { href: "report.pdf", target: "_blank", rel: "noopener", text: "Open the final report (PDF)" }), "."),
+      R.report ? [el("a", { href: "report.pdf", target: "_blank", rel: "noopener", text: "Open the final report (PDF)" }), "."] : null),
     el("div", { class: "toolbar" }, el("span", { class: "lbl", text: "policies shown to the monitor" }),
       el("span", { class: "seg" }, ...conds.map(([id, name]) => el("button", { type: "button", "aria-pressed": String(id === S.res.policies), text: name,
         onclick: () => { S.res.policies = id; renderResults(); } })))),
