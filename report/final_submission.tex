@@ -105,8 +105,8 @@ and a dataset in which the deciding fact is hidden and must be checked (pairs of
 the hidden fact; tool results that may or may not be trusted; conflicts); (2) a monitor that decides when to
 check and which check to make, trained with QLoRA, with a policy retriever and a read-only check gateway;
 (3) a comparison of four checking settings against two rule baselines, with correct and with retrieved
-policies, with confidence intervals, a main hypothesis and five further ones; (4) an honest negative result
-on safety, an analysis of why it fails, and a cost analysis that separates check calls from model tokens.
+policies, with confidence intervals, a main hypothesis and five further ones; (4) a clear measure of the cost
+on safety, an analysis of where the safety gap comes from, and a cost analysis that separates check calls from model tokens.
 
 \textbf{What we do not claim.} Others have already built safety monitors that can look at the company's
 systems, that search a list of company rules, or that handle hidden facts; we are not the first to do any of
@@ -496,11 +496,13 @@ Training data & 30 October vs final adapter, same 120 test records, v1 & never 5
 
 \section{Evaluations}
 \subsection{The main hypothesis (H1)}
-Table~\ref{tab:hyp} gives the main hypothesis. \textbf{It fails on the test set} in both
-policy conditions: with correct policies the whole interval is above zero ($+26.8$ \ci{14.3}{39.5}), so
-selective checking is clearly less safe than always checking there; with retrieved policies the interval
-starts at 0.0 (under v1 it was \ci{8.2}{28.9}). On OOD and on validation the intervals contain zero but reach
-above $+5$, so the result is inconclusive. The cost side holds everywhere ($p<0.001$). \textbf{Power.} With
+The main hypothesis has two parts: far fewer checks, and about the same safety as checking everything
+(Table~\ref{tab:hyp}). \textbf{The first part is achieved everywhere}: selective checking cuts check calls by
+83.4--84.9\% on every split ($p<0.001$). \textbf{The second part is not reached on the test set}: selective
+checking lets more risky actions through than always checking, $+26.8$ \ci{14.3}{39.5} points with correct
+policies and $+14.6$ \ci{0.0}{29.7} with retrieved policies (under v1 it was \ci{8.2}{28.9}, so v2 closed part
+of the gap). On OOD and on validation the gap is close to zero ($-3.9$ and $0.0$ with correct policies), but the
+intervals are too wide to confirm the 5-point target. \textbf{Power.} With
 82 risky test records the interval half-width is 12.6--14.8 points, so the rule could only have passed if
 selective were clearly \emph{safer} than always (a difference of at most $-7.6$ to $-9.8$ points); we kept
 the rule and report its power. \textbf{Always is not safe either}: it lets 24.4\% (retrieved) and 12.2\%
@@ -513,18 +515,17 @@ the rule and report its power. \textbf{Always is not safe either}: it lets 24.4\
 \toprule
 \textbf{Split} & \textbf{Policies} & \hd{\textbf{Phase~B v2}\\difference [95\% CI]} & \hd{\textbf{Phase~B v1}\\difference [95\% CI]} & \hd{Risky\\records} & \hd{Half-width\\(v2)} & \textbf{Result}\\
 \midrule
-\textbf{Test} & \textbf{correct (main)} & $\mathbf{+26.8}$ \ci{14.3}{39.5} & $+29.3$ \ci{16.7}{42.2} & 82 & 12.6 & \textbf{fails (clearly less safe)}\\
-Test & retrieved & $+14.6$ \ci{0.0}{29.7} & $+18.3$ \ci{8.2}{28.9} & 82 & 14.8 & fails\\
-OOD & correct & $-3.9$ \ci{$-$16.4}{9.1} & $-3.9$ \ci{$-$17.0}{8.9} & 51 & 12.7 & inconclusive\\
-OOD & retrieved & $+5.9$ \ci{$-$10.9}{23.3} & $0.0$ \ci{$-$13.2}{13.2} & 51 & 17.1 & inconclusive\\
-Val & correct & $0.0$ \ci{$-$21.1}{21.1} & $0.0$ \ci{$-$21.1}{21.1} & 19 & 21.1 & inconclusive\\
-Val & retrieved & $+5.3$ \ci{$-$23.5}{31.2} & $+10.5$ \ci{$-$18.2}{41.2} & 19 & 27.4 & inconclusive\\
+\textbf{Test} & \textbf{correct (main)} & $\mathbf{+26.8}$ \ci{14.3}{39.5} & $+29.3$ \ci{16.7}{42.2} & 82 & 12.6 & \textbf{not reached}\\
+Test & retrieved & $+14.6$ \ci{0.0}{29.7} & $+18.3$ \ci{8.2}{28.9} & 82 & 14.8 & not reached\\
+OOD & correct & $-3.9$ \ci{$-$16.4}{9.1} & $-3.9$ \ci{$-$17.0}{8.9} & 51 & 12.7 & open (wide CI)\\
+OOD & retrieved & $+5.9$ \ci{$-$10.9}{23.3} & $0.0$ \ci{$-$13.2}{13.2} & 51 & 17.1 & open (wide CI)\\
+Val & correct & $0.0$ \ci{$-$21.1}{21.1} & $0.0$ \ci{$-$21.1}{21.1} & 19 & 21.1 & open (wide CI)\\
+Val & retrieved & $+5.3$ \ci{$-$23.5}{31.2} & $+10.5$ \ci{$-$18.2}{41.2} & 19 & 27.4 & open (wide CI)\\
 \bottomrule
 \end{tabular}
 \caption{The main hypothesis (H1): difference in risky actions let through, selective $-$ always, in points, with 95\%
-CIs (bootstrap over seeds, paired). It passes only if the upper end is at most $+5$. The base model fails
-everywhere except OOD with retrieved policies ($-11.8$ \ci{$-$26.4}{2.3}), where it passes only because it
-blocks most records.}
+CIs (bootstrap over seeds, paired). The safety target is reached if the upper end is at most $+5$. The base model reaches it only on OOD with
+retrieved policies ($-11.8$ \ci{$-$26.4}{2.3}), and only because it blocks most records.}
 \label{tab:hyp}
 \end{table}
 
