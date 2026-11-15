@@ -700,7 +700,21 @@ compute: real company systems with waiting time, fees or access to personal data
 \item \textbf{Retrieval with action tags (v2) made the system safer without retraining} (test, selective:
   52.4 $\rightarrow$ 39.0 risky actions let through). \textbf{The cost case is about calls, not tokens}.
 \end{enumerate}
-\textbf{Future work}: two-check training data, a second training seed and a human label study.
+\textbf{Future work.}
+\begin{itemize}
+\item \textbf{Teach the model to make two checks.} Most of the safety gap comes from cases where two facts
+  must be checked and the model checks only one. We would add more training cases of this kind, with
+  different pairs of facts, so that ``when a rule needs two facts, check both'' becomes a habit.
+\item \textbf{Teach it to ignore facts that do not matter.} We would add training cases that show all check
+  results at once, so that the model learns to pick the one fact that decides the case and to stop blocking
+  safe actions because of an unrelated fact.
+\item \textbf{Train more than once.} Each model was trained only once, so we cannot tell a real improvement
+  from luck. Training the final model again with a different random start would show how stable the results are.
+\item \textbf{Ask people to check our labels.} Our labels were made by rules and checked by code. Two people
+  labelling the same records on their own would show how much humans agree with them.
+\item \textbf{Make each step cheaper.} Showing the model only the check tools that fit the action, instead of
+  all 28, would shorten the prompt and cut the extra model cost of selective checking.
+\end{itemize}
 
 {\footnotesize
 \bibliographystyle{plainnat}
