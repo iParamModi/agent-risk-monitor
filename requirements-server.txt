@@ -1,0 +1,15 @@
+# Replay website only (src/service/app.py behind Caddy, deploy/Dockerfile). Python 3.12.
+# No torch, no transformers, no vLLM, no CUDA: the replay site loads no model. Live mode (Part G) gets its own file,
+# requirements-live.txt, which adds CPU-only torch + sentence-transformers.
+# Versions are the ones the test suite runs against in the team venv. Every package has a linux/arm64 wheel.
+fastapi==0.162.5
+uvicorn==0.54.0
+pydantic==2.14.1
+pyyaml==6.0.3
+# src/service/results.py formats the numbers with the report's own helpers (src/eval/tables.py -> bootstrap, stats)
+numpy==2.5.4
+scipy==1.18.1
+# imported by lma_agent at start-up (agent client, .env loader, tool-argument schemas); no call is made in replay
+openai==3.35.1
+python-dotenv==1.2.4
+jsonschema==4.26.0

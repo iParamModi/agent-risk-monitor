@@ -1,0 +1,55 @@
+# The public site on the Oracle VM: `app` (the replay website) behind `caddy` (HTTPS).
+#
+#   cd <repo> && mkdir -p ops
+#   docker compose -f deploy/docker-compose.yml up -d --build
+#   docker compose -f deploy/docker-compose.yml ps
+#
+# Variables come from deploy/.env (git-ignored, written by Prateek on the VM, mode 600; names in deploy/.env.example).
+# REPLAY ONLY: the app container gets LIVE_MODE and nothing else. No password, no key and no approval variable is
+# passed into it, and the served app has no live backend, so every /api/live/* route answers 403.
+# Part G (live mode) adds the live variables and requirements-live.txt here; until then they are not wired.
+name: agent-risk
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: agent-risk-site:replay
+    # the VM user that owns the checkout, so the two mounted folders stay writable for it (id -u / id -g on the VM)
+    user: "${APP_UID:-1000}:${APP_GID:-1000}"
+    environment:
+      LIVE_MODE: "${LIVE_MODE:-off}"
+    ports:
+      - "127.0.0.1:8000:8000"          # the VM's loopback only; the public ports are Caddy's
+    volumes:
+      - ../outputs/live:/app/outputs/live      # recorded runs (in git); live runs are written here later
+      - ../ops:/app/ops                        # ops/cost_ledger.csv
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      DOMAIN: "${DOMAIN:?set DOMAIN in deploy/.env}"
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data               # certificates: keep this volume, or Let's Encrypt is asked again
+      - caddy_config:/config
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

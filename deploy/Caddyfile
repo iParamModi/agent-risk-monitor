@@ -1,0 +1,28 @@
+# Public door of the site: HTTPS for {$DOMAIN} (the certificate is requested and renewed by Caddy), everything else
+# goes to the app container. DOMAIN comes from deploy/.env through docker-compose.yml.
+{$DOMAIN} {
+	# the app only takes small JSON bodies (live mode); nothing needs more
+	request_body {
+		max_size 64KB
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy no-referrer
+		-Server
+	}
+
+	# Server-Sent Events of a live run: no compression and no buffering, every event is flushed as it arrives
+	@sse path /api/live/events
+	handle @sse {
+		reverse_proxy app:8000 {
+			flush_interval -1
+		}
+	}
+
+	handle {
+		encode zstd gzip
+		reverse_proxy app:8000
+	}
+}
