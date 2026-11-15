@@ -1,7 +1,7 @@
 # Project Progress
 
 > Check this file before starting any work. Update it and push to GitHub after every change.
-> Last updated: 2026-11-15 by Meet
+> Last updated: 2026-11-16 by Prateek
 >
 > **Real accounts: Prateek only, cost rules in docs/DEPLOYMENT_RULES.md**
 
@@ -36,7 +36,7 @@ How our monitor really runs on our records: diagrams of the loop and the 4 setti
 
 | Task | Who | Started | Status / Notes |
 |------|-----|---------|----------------|
-| **Step 2: production deployment** (public HTTPS link: replay for everyone, live mode behind a password; Modal model server + the Oracle VM), parts D-additions, F, E, G, H | Prateek | 2026-11-15 | **Order changed 15 Nov (Prateek): F (Oracle, replay only, `LIVE_MODE=off`) before E (Modal), then G, H.** Part D additions done. **F1 files written 15 Nov** (`deploy/Dockerfile`, `docker-compose.yml`, `Caddyfile`, `.env.example`, `requirements-server.txt`): the app was run from the image's file tree with only the server requirements and gives the same answers as the full repo; **the image itself is not built yet** (no Docker on Prateek's laptop), first build is on the VM. **Next: Prateek's F0/F2 steps** (VM address, domain, deploy key, ports 80/443 in the VCN), then the SSH deploy (F2-F3). Parts E-G touch Modal, Oracle and Groq: each action is priced, logged in the ledger and approved by Prateek first (`docs/DEPLOYMENT_RULES.md`) |
+| **Step 2: production deployment** (public HTTPS link: replay for everyone, live mode behind a password; Modal model server + the Oracle VM), parts D-additions, F, E, G, H | Prateek | 2026-11-15 | **Order changed 15 Nov (Prateek): F (Oracle, replay only, `LIVE_MODE=off`) before E (Modal), then G, H.** Part D additions done. **F1 files written 15 Nov** (`deploy/Dockerfile`, `docker-compose.yml`, `Caddyfile`, `.env.example`, `requirements-server.txt`): the app was run from the image's file tree with only the server requirements and gives the same answers as the full repo; **the image itself is not built yet** (no Docker on Prateek's laptop), first build is on the VM. **Next: Prateek's F0/F2 steps** (VM address, domain, deploy key, ports 80/443 in the VCN), then the SSH deploy (F2-F3). **16 Nov: Oracle has no free capacity in Hyderabad (A1 and E2.1.Micro both "out of capacity"), so the public replay link is now a static export** (`scripts/export_static.py` writes `site/`: the workspace + every replay API answer as JSON files, live mode hidden; Prateek publishes it himself on GitHub Pages from a new public repo). **Static export: in progress (Prateek, 16 Nov).** Part F stays planned: Prateek keeps retrying the VM. Parts E-G touch Modal, Oracle and Groq: each action is priced, logged in the ledger and approved by Prateek first (`docs/DEPLOYMENT_RULES.md`) |
 
 ## Next Up
 
