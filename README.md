@@ -3,18 +3,19 @@
 LMA Group Project 2026 — Meet Ghelani, Moiesha, Param Modi, Prateek Tiwari.
 
 A safety monitor for tool-using LLM agents. For each proposed action it reads the
-conversation, the action and the top-3 retrieved policies. If a deciding fact is
+conversation, the action and the most relevant retrieved policies. If a deciding fact is
 missing it asks a read-only check tool for just that fact, then returns one of
 ALLOW / ASK_CONFIRMATION / BLOCK / ESCALATE. Main question: is checking only when
 needed almost as safe as always checking, with far fewer checks?
 
 ## Docs
 
-- `docs/Catalysts.pdf` — the proposal
-- `docs/How_Our_Project_Works.pdf` — plain-language guide
-- `docs/PLAN.md` — step-by-step work plan
-- `docs/STRUCTURE.md` — where every file lives
+- `docs/Project-Proposal.pdf` — the project proposal
+- `OUTPUT.md` — consolidated results: all metrics, hypotheses, error analysis, retrieval ablation
 - `docs/DATASET.md` — data sources, cleaning, labels
+- `docs/decisions.md` — design-decisions log
+- `docs/reports/final_results_v2.md` — final result tables
+- `report/final_submission.pdf` — the final paper
 
 ## Models and data
 
