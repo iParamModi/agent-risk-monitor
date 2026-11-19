@@ -124,6 +124,55 @@ retrieved 72.5 / 70.0 / 77.5 / 90.0 · correct 75.0 / 82.5 / 85.0 / 97.5.
 Base retrieved 55.0 / 80.0 / 65.0 / 67.5 · correct 57.5 / 75.0 / 65.0 / 80.0.
 Rules only/always: retrieved 57.5 / 67.5 · correct 57.5 / 65.0.
 
+### 2.1b System v1 (text retriever, top-3) — accuracy % (unsafe %)
+
+The pre-tag-filter system, for comparison. Format: accuracy (unsafe).
+
+**Test (146)**
+
+| Method | Setting | Retrieved | Correct |
+|---|---|---|---|
+| Rules only | never | 43.8 (93.9) | 43.8 (95.1) |
+| Rules + env | always | 52.7 (39.0) | 52.1 (28.0) |
+| Base | never | 35.6 (28.0) | 34.2 (23.2) |
+| Base | always | 52.7 (17.1) | 52.1 (12.2) |
+| Base | selective | 39.0 (29.3) | 43.8 (24.4) |
+| Base | oracle | 48.6 (14.6) | 51.4 (6.1) |
+| Phase B | never | 58.2 (29.3) | 61.0 (29.3) |
+| Phase B | always | 65.8 (34.1) | 75.3 (12.2) |
+| Phase B | selective | 61.6 (52.4) | 69.2 (41.5) |
+| Phase B | oracle | 76.0 (20.7) | 86.3 (3.7) |
+
+**OOD (112)**
+
+| Method | Setting | Retrieved | Correct |
+|---|---|---|---|
+| Rules only | never | 54.5 (100) | 54.5 (100) |
+| Rules + env | always | 47.3 (52.9) | 54.5 (31.4) |
+| Base | never | 43.8 (25.5) | 48.2 (13.7) |
+| Base | always | 49.1 (39.2) | 55.4 (19.6) |
+| Base | selective | 46.4 (25.5) | 58.0 (5.9) |
+| Base | oracle | 55.4 (17.6) | 63.4 (3.9) |
+| Phase B | never | 60.7 (25.5) | 67.9 (23.5) |
+| Phase B | always | 59.8 (37.3) | 66.1 (19.6) |
+| Phase B | selective | 67.0 (37.3) | 78.6 (15.7) |
+| Phase B | oracle | 75.9 (21.6) | 87.5 (3.9) |
+
+**Val (40)**
+
+| Method | Setting | Retrieved | Correct |
+|---|---|---|---|
+| Rules only | never | 57.5 (89.5) | 57.5 (89.5) |
+| Rules + env | always | 50.0 (47.4) | 65.0 (21.1) |
+| Base | never | 52.5 (42.1) | 57.5 (31.6) |
+| Base | always | 67.5 (47.4) | 75.0 (26.3) |
+| Base | selective | 57.5 (42.1) | 70.0 (31.6) |
+| Base | oracle | 70.0 (21.1) | 80.0 (21.1) |
+| Phase B | never | 67.5 (52.6) | 75.0 (47.4) |
+| Phase B | always | 70.0 (42.1) | 82.5 (26.3) |
+| Phase B | selective | 67.5 (52.6) | 82.5 (26.3) |
+| Phase B | oracle | 90.0 (21.1) | 97.5 (5.3) |
+
 ### 2.2 v1 → v2 change (same adapter, no retrain) — Phase B
 
 Accuracy (unsafe %). "Acceptable" = selective's BLOCK↔ESCALATE-tolerant rate.
