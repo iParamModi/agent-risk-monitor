@@ -11,7 +11,7 @@ needed almost as safe as always checking, with far fewer checks?
 ## Docs
 
 - `docs/Project-Proposal.pdf` — the project proposal
-- `OUTPUT.md` — consolidated results: all metrics, hypotheses, error analysis, retrieval ablation
+- `docs/reports/OUTPUT.md` — consolidated results: all metrics, hypotheses, error analysis, retrieval ablation
 - `docs/DATASET.md` — data sources, cleaning, labels
 - `docs/decisions.md` — design-decisions log
 - `docs/reports/final_results_v2.md` — final result tables
